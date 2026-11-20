@@ -23,7 +23,7 @@ ENV_FILE = ROOT / ".env"
 
 
 def _run(*args: str, env: dict[str, str] | None = None) -> int:
-    return subprocess.call(list(args), cwd=ROOT, env={**os.environ, **(env or {})})  # noqa: S603
+    return subprocess.call(list(args), cwd=ROOT, env={**os.environ, **(env or {})})  # noqa: S603  # nosec B603
 
 
 def _flask(*args: str) -> int:
