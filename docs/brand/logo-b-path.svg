@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Path logo draft">
+  <title>Direction B — Critical path</title>
+  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+    <path d="M14 46 L30 30 L48 18"/>
+    <path d="M30 30 L46 46" opacity=".35"/>
+  </g>
+  <circle cx="14" cy="46" r="6" fill="currentColor"/>
+  <circle cx="30" cy="30" r="6" fill="currentColor"/>
+  <circle cx="46" cy="46" r="5" fill="currentColor" opacity=".35"/>
+  <circle cx="48" cy="18" r="7" fill="#E0663A"/>
+</svg>

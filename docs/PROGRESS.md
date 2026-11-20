@@ -13,18 +13,18 @@ Goal: owner approves architecture + design direction.
 
 - [x] Read `PROJECT_BRIEF.md` in full
 - [x] First research pass on external tools (Pivotick, Vitrine, Claude Agent SDK, design skills) → `docs/DECISIONS.md` (draft)
-- [~] Analyse owner repos (`ecrou-exact`): rulezet-core, vitrine, flowintel, other recent repos on GitHub
-  - [ ] Structure, layering, component organisation (templates / static js / css per component)
-  - [ ] Commit style (seen: `fix: [scope] message`, gitchangelog), PR / issue style, docs style
-  - [ ] Tooling: uv + pyproject, Alembic, tests layout, linters, install/launch/update scripts
-  - [ ] Background jobs: Rulezet uses a DB-backed `BackgroundJob` queue + `worker.py` + APScheduler (no Redis) — study it
-  - [ ] Write `docs/OWNER_CONVENTIONS.md`
-- [ ] Deep read of Pivotick source (typed API reference, Simplify, filters, legend, table, plugins, history, `_variables.scss`); confirm constructor signature
-- [ ] Deep read of Vitrine source (common attributes, vt-json, vt-diff, vt-log, vt-markdown, `configure()`); pick bundle vs loader
+- [x] Analyse owner repos (`ecrou-exact`): rulezet-core, vitrine, flowintel, other recent repos on GitHub
+  - [x] Structure, layering, component organisation (templates / static js / css per component)
+  - [x] Commit style (seen: `fix: [scope] message`, gitchangelog), PR / issue style, docs style
+  - [x] Tooling: uv + pyproject, Alembic, tests layout, linters, install/launch/update scripts
+  - [x] Background jobs: Rulezet uses a DB-backed `BackgroundJob` queue + `worker.py` + APScheduler (no Redis) — study it
+  - [x] Write `docs/OWNER_CONVENTIONS.md`
+- [~] Deep read of Pivotick source (constructor + data API verified, D-013; Simplify/filters/table/plugins still to read in Phase 4 prep) (typed API reference, Simplify, filters, legend, table, plugins, history, `_variables.scss`); confirm constructor signature
+- [~] Deep read of Vitrine source (delivery decided, D-012; per-component attributes to read in Phase 2 prep) (common attributes, vt-json, vt-diff, vt-log, vt-markdown, `configure()`); pick bundle vs loader
 - [ ] Read Agent SDK pages not yet covered (permissions, hooks, sessions, MCP, streaming input); verify per-run `ANTHROPIC_API_KEY` via `env`
-- [ ] Install & compare design skills, choose a base
-- [ ] Write `docs/ARCHITECTURE.md`, `docs/SECURITY.md` (threat model), `CLAUDE.md`
-- [ ] Propose 3–5 names + 2–3 logo directions
+- [x] Compare design skills, propose a base (D-009) — install after reading their source
+- [x] Write `docs/ARCHITECTURE.md`, `docs/SECURITY.md` (threat model), `CLAUDE.md` (proposed)
+- [x] Propose names + 3 logo directions (`docs/IDENTITY.md`, `docs/brand/`)
 - [?] Batch the §19 questions to the owner
 - [?] Owner approval of architecture and design direction
 

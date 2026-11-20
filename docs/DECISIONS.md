@@ -38,13 +38,27 @@
 - **Choice:** per-component ES modules served from the app (self-hosted, pinned tag, SRI), wrapped in one app component; feed untrusted data through the `content`/`data` property, never inline markup.
 - **Note:** Vitrine is the owner's own library — gaps found here can be fixed upstream directly.
 
-## D-008 · 2026-11-20 · proposed — Frontend
-- **Choice:** server-rendered Jinja templates + per-component JS modules (ES modules, no inline scripts), Bootstrap 5.3 (latest stable at build time), Font Awesome 7 Free (matches Pivotick default), esbuild or Vite only to bundle Pivotick; no SPA framework unless analysis of Flowintel/Rulezet says otherwise (Rulezet uses Vue 3 on parts of the frontend — to confirm in conventions).
-- **Calendar:** FullCalendar (MIT standard plugins) — to evaluate vs. alternatives; Gantt: to evaluate (Frappe Gantt MIT, or a Pivotick-consistent custom SVG).
+## D-008 · 2026-11-21 · proposed — Frontend
+- **Facts:** Rulezet, flask-launchpad and Flowintel all use Jinja + **Vue 3 UMD without build step** (`createApp` in templates, ES modules, `[[ ]]` delimiters), Bootstrap 5.3 and Font Awesome vendored in `static/`.
+- **Choice:** same. Bootstrap 5.3, Font Awesome 7 Free (Pivotick's default icon font), Vue 3 UMD, all vendored and pinned. Pivotick is vendored from its npm `dist/` (no bundler needed). No SPA, no Node build in production; Node only for dev tooling (eslint, Playwright).
+- **Calendar:** FullCalendar, wrapped as `CalendarView` like in Rulezet. **Charts:** ECharts (Rulezet `ChartViewer`). **Gantt:** to evaluate in Phase 10 (FullCalendar resource timeline is premium → candidates: Frappe Gantt (MIT) or a custom SVG timeline).
 
-## D-009 · 2026-11-20 · proposed — Design skill
-- **Candidates:** Anthropic `frontend-design` skill (anthropics/skills, Apache-2.0) — explicitly targets the "AI-generated look" (generic fonts, purple gradients, predictable layouts); others to compare during Discovery.
-- **Choice pending** comparison; whatever is chosen is installed as a project skill in `.claude/skills/` and switchable from the app's Skills page.
+## D-009 · 2026-11-21 · proposed — Design skill
+- **Compared:** Anthropic `frontend-design` (official, Apache-2.0, guardrails against the generic AI look, fast); UI/UX Pro Max (style/palette/font database, heavy on tokens and time); Impeccable (audit/critique/polish commands for an existing UI). Third-party skills can carry prompt injection (Snyk: 36% of analysed skills) → read before install.
+- **Choice:** `frontend-design` as the base for creating screens; Impeccable as a review pass on finished screens (after reading its source). Both installed as project skills in `.claude/skills/`, switchable from the app's Skills page.
+
+## D-011 · 2026-11-21 · proposed — Start from the owner's flask-launchpad
+- **Context:** `ecrou-exact/flask-launchpad` is the owner's own Flask template: auth, roles, per-user settings, seven themes + Theme Studio, structured `log_action`, Flask-RESTX API, DB job runner with pause/resume/cancel/retry, data table, pagination, toasts, confirm modal, tests per feature.
+- **Options:** start from scratch · copy flask-launchpad as the skeleton and adapt it.
+- **Choice:** copy flask-launchpad's structure and the pieces that fit (app factory, decorators, logger, settings, jobs, themes, components), then harden (TOTP, vault, CSP, single-owner auth). Not a git fork: history starts here. Licence check of flask-launchpad needed (no LICENSE file seen) — it is the owner's own code, so the owner decides.
+- **Default port:** `127.0.0.1:7010` (7009 is used by Rulezet / flask-launchpad).
+
+## D-012 · 2026-11-21 · proposed — Vitrine delivery
+- Tag `v0.14.0` exists on `ecrou-exact/vitrine` (release tags contain `dist/`). Add Vitrine as a **git submodule pinned to the tag** (Rulezet pattern) and serve `dist/esm/vt-*.js` from `static/vendor/vitrine/`; no CDN. Trusted Types policy `vitrine` declared in the CSP.
+
+## D-013 · 2026-11-21 · accepted — Pivotick API facts verified in source (v3.0.0)
+- Constructor: `new Pivotick(container, data?, options?)` (`src/Graph.ts:87`), the form used in `project-graph`.
+- Live updates: `updateData(nodes, edges)` (batched add-or-update), `setData`, `addNode`, `addEdge`, `removeNode`, `removeEdge`, `removeBySource`; events `nodeAdd/nodeRemove/nodeChange/edgeAdd/edgeRemove/edgeChange/dataBatchChanged`. Selection: `addToSelection`, `removeFromSelection`. Legend: `setLegend`.
 
 ## D-010 · 2026-11-20 · proposed — Other libraries (to justify individually before adding)
 `psutil` (processes/ports, all OS) · `keyring` (OS secret store) · `cryptography` (AES-GCM vault) · `argon2-cffi` · `pyotp` · `Flask-Login`, `Flask-WTF` (CSRF), `Flask-Limiter` · `pydantic` v2 (schemas shared by API/forms/MCP) · `httpx` · `GitPython` or plain `git` subprocess for worktrees · `dateparser` (NL dates) · `icalendar` (read-only feed) · `platformdirs` · tests: `pytest`, `playwright`; lint: `ruff`, `mypy`, `eslint`; security: `pip-audit`, `bandit`, `npm audit`.
