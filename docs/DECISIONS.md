@@ -62,3 +62,21 @@
 
 ## D-010 · 2026-11-20 · proposed — Other libraries (to justify individually before adding)
 `psutil` (processes/ports, all OS) · `keyring` (OS secret store) · `cryptography` (AES-GCM vault) · `argon2-cffi` · `pyotp` · `Flask-Login`, `Flask-WTF` (CSRF), `Flask-Limiter` · `pydantic` v2 (schemas shared by API/forms/MCP) · `httpx` · `GitPython` or plain `git` subprocess for worktrees · `dateparser` (NL dates) · `icalendar` (read-only feed) · `platformdirs` · tests: `pytest`, `playwright`; lint: `ruff`, `mypy`, `eslint`; security: `pip-audit`, `bandit`, `npm audit`.
+
+---
+
+## D-014 · 2026-11-21 · accepted — Discovery closed (owner delegated every choice: "décide toi")
+| Topic | Choice | Reason |
+|---|---|---|
+| Name | **Cairn** (repo `ecrou-exact/cairn`) | short, vendor-neutral, matches the plan/graph idea (`docs/IDENTITY.md`) |
+| Logo | **Direction A — Cairn** (`docs/brand/logo-a-cairn.svg`) | pairs with the name, legible at 16 px |
+| Skeleton | start from **flask-launchpad** patterns (D-011) → accepted | owner's own template, avoids rebuilding auth/themes/jobs |
+| D-002 to D-013 | accepted as written | |
+| Context file in managed projects | **app-managed by default** (passed to runs, not committed); per-project setting "commit `CLAUDE.md`" | never pollutes upstream repos without consent |
+| Default Claude permissions | auto-approve **read + edit inside the run's worktree**; shell commands from a per-project allowlist (tests, lint, build); everything else asks in the UI | fast for normal work, safe by default |
+| Actions without confirmation | **none by default**: push, PR, issue, comment, release, branch deletion always confirm; the owner can switch a module to `auto` per scope | security first (§11) |
+| Database | PostgreSQL in production, SQLite for dev/tests | owner's stack |
+| Deployment | local Ubuntu machine, native install (`install.sh` + systemd user units); Docker Compose provided as an option; bind `127.0.0.1` | no remote exposure by default |
+| Instance port range | **8100–8199** (setting) | away from 7009/7010 and common dev ports (3000, 5000, 5173, 8000, 8080) |
+| Working hours | Mon–Fri 09:00–18:00, local time zone (setting) | sensible default, editable |
+| Default app port | `127.0.0.1:7010` | |

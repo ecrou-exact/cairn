@@ -1,4 +1,4 @@
-# Claude Manager — rules for Claude sessions on this repo
+# Cairn — rules for Claude sessions on this repo
 
 Self-hosted, single-owner developer workspace: planning (projects, tasks, dependencies), Pivotick graph, embedded Claude Code runs, GitHub, local instances, modules, calendar. Spec: `PROJECT_BRIEF.md` (single source of truth).
 

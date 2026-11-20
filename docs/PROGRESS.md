@@ -8,7 +8,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[?]` waiting for owner
 
 ---
 
-## Phase 1 — Discovery  *(current)*
+## Phase 1 — Discovery  *(done 2026-11-21, D-014)*
 Goal: owner approves architecture + design direction.
 
 - [x] Read `PROJECT_BRIEF.md` in full
@@ -25,10 +25,10 @@ Goal: owner approves architecture + design direction.
 - [x] Compare design skills, propose a base (D-009) — install after reading their source
 - [x] Write `docs/ARCHITECTURE.md`, `docs/SECURITY.md` (threat model), `CLAUDE.md` (proposed)
 - [x] Propose names + 3 logo directions (`docs/IDENTITY.md`, `docs/brand/`)
-- [?] Batch the §19 questions to the owner
-- [?] Owner approval of architecture and design direction
+- [x] §19 questions answered (owner delegated, D-014)
+- [x] Architecture and design direction approved (D-014)
 
-## Phase 2 — Foundations
+## Phase 2 — Foundations  *(current)*
 - [ ] Repo skeleton (Flask app factory, `features/` component layout like Rulezet, uv, pyproject, ruff, pytest, pre-commit)
 - [ ] Cross-platform base: `pathlib` everywhere, `platformdirs` for data/config dirs, no shell=True, CI matrix ubuntu / macos / windows
 - [ ] Config (env + settings table), SQLAlchemy + Alembic, SQLite dev / PostgreSQL prod
