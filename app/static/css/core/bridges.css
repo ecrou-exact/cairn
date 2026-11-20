@@ -1,0 +1,97 @@
+/*
+ * Maps Cairn tokens onto the libraries' own variables, so a theme change reaches all of them.
+ * Bootstrap 5.3 (--bs-*). Pivotick (--pvt-*) and Vitrine (--vt-*) are added with their wrappers.
+ */
+
+:root,
+[data-theme] {
+  --bs-body-font-family: var(--cn-font-ui);
+  --bs-body-font-size: var(--cn-text-md);
+  --bs-body-line-height: var(--cn-leading);
+  --bs-font-monospace: var(--cn-font-mono);
+  --bs-body-bg: var(--cn-bg);
+  --bs-body-color: var(--cn-text);
+  --bs-emphasis-color: var(--cn-text);
+  --bs-secondary-color: var(--cn-text-muted);
+  --bs-tertiary-color: var(--cn-text-faint);
+  --bs-secondary-bg: var(--cn-surface-sunken);
+  --bs-tertiary-bg: var(--cn-surface-sunken);
+  --bs-border-color: var(--cn-border);
+  --bs-border-color-translucent: var(--cn-border);
+  --bs-border-radius: var(--cn-radius);
+  --bs-border-radius-sm: var(--cn-radius-sm);
+  --bs-border-radius-lg: var(--cn-radius-lg);
+  --bs-link-color: var(--cn-accent);
+  --bs-link-color-rgb: currentcolor;
+  --bs-link-hover-color: var(--cn-accent-hover);
+  --bs-heading-color: var(--cn-text);
+  --bs-focus-ring-color: color-mix(in srgb, var(--cn-focus) 35%, transparent);
+  --bs-primary: var(--cn-accent);
+  --bs-success: var(--cn-success);
+  --bs-warning: var(--cn-warning);
+  --bs-danger: var(--cn-danger);
+  --bs-info: var(--cn-info);
+  --bs-primary-bg-subtle: var(--cn-accent-soft);
+  --bs-success-bg-subtle: var(--cn-success-soft);
+  --bs-warning-bg-subtle: var(--cn-warning-soft);
+  --bs-danger-bg-subtle: var(--cn-danger-soft);
+  --bs-info-bg-subtle: var(--cn-info-soft);
+  --bs-primary-text-emphasis: var(--cn-accent-hover);
+  --bs-success-text-emphasis: var(--cn-success);
+  --bs-warning-text-emphasis: var(--cn-warning);
+  --bs-danger-text-emphasis: var(--cn-danger);
+  --bs-info-text-emphasis: var(--cn-info);
+  --bs-primary-border-subtle: var(--cn-accent);
+  --bs-success-border-subtle: var(--cn-success);
+  --bs-warning-border-subtle: var(--cn-warning);
+  --bs-danger-border-subtle: var(--cn-danger);
+  --bs-info-border-subtle: var(--cn-info);
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--cn-accent);
+  --bs-btn-border-color: var(--cn-accent);
+  --bs-btn-color: var(--cn-on-accent);
+  --bs-btn-hover-bg: var(--cn-accent-hover);
+  --bs-btn-hover-border-color: var(--cn-accent-hover);
+  --bs-btn-hover-color: var(--cn-on-accent);
+  --bs-btn-active-bg: var(--cn-accent-hover);
+  --bs-btn-active-border-color: var(--cn-accent-hover);
+  --bs-btn-active-color: var(--cn-on-accent);
+  --bs-btn-disabled-bg: var(--cn-accent);
+  --bs-btn-disabled-border-color: var(--cn-accent);
+  --bs-btn-disabled-color: var(--cn-on-accent);
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: var(--cn-text);
+  --bs-btn-border-color: var(--cn-border-strong);
+  --bs-btn-hover-bg: var(--cn-surface-sunken);
+  --bs-btn-hover-color: var(--cn-text);
+  --bs-btn-hover-border-color: var(--cn-border-strong);
+  --bs-btn-active-bg: var(--cn-surface-sunken);
+  --bs-btn-active-color: var(--cn-text);
+}
+
+.form-control,
+.form-select {
+  background-color: var(--cn-surface-raised);
+  border-color: var(--cn-border-strong);
+  color: var(--cn-text);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--cn-surface-raised);
+  border-color: var(--cn-focus);
+  color: var(--cn-text);
+}
+
+.card {
+  --bs-card-bg: var(--cn-surface);
+  --bs-card-border-color: var(--cn-border);
+  --bs-card-border-radius: var(--cn-radius-lg);
+  --bs-card-cap-bg: transparent;
+}
+
+.alert { --bs-alert-border-radius: var(--cn-radius); }

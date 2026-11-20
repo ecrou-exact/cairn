@@ -1,0 +1,38 @@
+{
+  "_comment": "Front-end libraries vendored in app/static/vendor. Update with the versions and tarball hashes here; see docs/DECISIONS.md D-008.",
+  "bootstrap": {
+    "version": "5.3.9",
+    "source": "npm bootstrap@5.3.9",
+    "sha256_tgz": "06bdf78289c3c12ea99d40df84eedf6278c724c73eebf38f11f3a65b44ec8c94",
+    "license": "MIT",
+    "files": [
+      "bootstrap.min.css",
+      "bootstrap.bundle.min.js"
+    ]
+  },
+  "fontawesome": {
+    "version": "7.3.1",
+    "source": "npm @fortawesome/fontawesome-free@7.3.1",
+    "sha256_tgz": "ca4e32843bd81711894385c2466fb19c55cfd32ef3c58830b2d1df7bd42e6571",
+    "license": "Icons CC BY 4.0, fonts SIL OFL 1.1, code MIT",
+    "files": [
+      "css/fontawesome.min.css",
+      "css/solid.min.css",
+      "css/regular.min.css",
+      "css/brands.min.css",
+      "webfonts/*.woff2"
+    ]
+  },
+  "fonts": {
+    "version": "IBM Plex Sans / Mono via @fontsource 5.3.0",
+    "source": "npm @fontsource/ibm-plex-sans@5.3.0, @fontsource/ibm-plex-mono@5.3.0",
+    "sha256_tgz": {
+      "ibm-plex-sans": "232592af20ae413026cc705fc9c104135fb760432fd710f06a02c39e062d3213",
+      "ibm-plex-mono": "60d3c0cfa549cb06fcb8867ee83f994d78e212abfac3bef3275436acb5c4d029"
+    },
+    "license": "SIL OFL 1.1",
+    "files": [
+      "fonts/*.woff2"
+    ]
+  }
+}

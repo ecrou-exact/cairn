@@ -1,0 +1,32 @@
+{# Small shared UI pieces. Bigger reusable components get their own template in components/. #}
+
+{% macro brand_mark(class="cn-brand-mark") -%}
+<svg class="{{ class }}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+  <g fill="currentColor">
+    <rect x="10" y="44" width="44" height="12" rx="6"/>
+    <rect x="16" y="29" width="32" height="11" rx="5.5"/>
+    <rect x="23" y="15" width="18" height="10" rx="5"/>
+  </g>
+  <circle class="cn-mark-dot" cx="44" cy="10" r="4"/>
+</svg>
+{%- endmacro %}
+
+{% macro flashes() -%}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+    <div class="alert alert-{{ category if category in ['success', 'warning', 'danger', 'info'] else 'info' }}" role="{{ 'alert' if category == 'danger' else 'status' }}">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+{%- endmacro %}
+
+{% macro field(f, autocomplete=None, autofocus=False, inputmode=None) -%}
+<div class="mb-3">
+  {{ f.label(class="form-label") }}
+  {% set describedby = f.id ~ "-error" if f.errors else None %}
+  {{ f(class="form-control" ~ (" is-invalid" if f.errors else ""), autocomplete=autocomplete, autofocus=autofocus,
+       inputmode=inputmode, **({"aria-describedby": describedby, "aria-invalid": "true"} if describedby else {})) }}
+  {% for error in f.errors %}
+    <div class="invalid-feedback" id="{{ f.id }}-error">{{ error }}</div>
+  {% endfor %}
+</div>
+{%- endmacro %}

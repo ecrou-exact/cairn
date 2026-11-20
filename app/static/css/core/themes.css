@@ -1,0 +1,153 @@
+/*
+ * Colour themes. Selected by data-theme on <html> (stored per owner).
+ * "auto" follows the system: stone in light mode, basalt in dark mode.
+ * Text/background pairs are chosen for WCAG AA (4.5:1 for text, 3:1 for UI borders and icons).
+ */
+
+/* Stone — warm light, the default */
+:root,
+[data-theme="stone"] {
+  color-scheme: light;
+  --cn-bg: #f6f4f0;
+  --cn-surface: #fffdfa;
+  --cn-surface-sunken: #efece6;
+  --cn-surface-raised: #ffffff;
+  --cn-border: #dcd7ce;
+  --cn-border-strong: #a8a196;
+  --cn-text: #1d1b18;
+  --cn-text-muted: #5f5a52;
+  --cn-text-faint: #7b756c;
+  --cn-accent: #b9481f;
+  --cn-accent-hover: #9c3a15;
+  --cn-accent-soft: #f6e3d9;
+  --cn-on-accent: #ffffff;
+  --cn-mark: #e0663a;
+  --cn-success: #2f7a4a;
+  --cn-success-soft: #e0efe4;
+  --cn-warning: #94650a;
+  --cn-warning-soft: #f6ebd2;
+  --cn-danger: #b3261e;
+  --cn-danger-soft: #f7e0de;
+  --cn-info: #2b5f8a;
+  --cn-info-soft: #e0eaf3;
+  --cn-shadow: 0 1px 2px rgb(29 27 24 / 6%), 0 4px 14px rgb(29 27 24 / 6%);
+  --cn-focus: #b9481f;
+}
+
+/* Basalt — neutral dark */
+[data-theme="basalt"] {
+  color-scheme: dark;
+  --cn-bg: #141413;
+  --cn-surface: #1c1c1a;
+  --cn-surface-sunken: #111110;
+  --cn-surface-raised: #242421;
+  --cn-border: #33322e;
+  --cn-border-strong: #5a5851;
+  --cn-text: #ecebe6;
+  --cn-text-muted: #a9a69d;
+  --cn-text-faint: #8a877e;
+  --cn-accent: #f08a5d;
+  --cn-accent-hover: #f6a27d;
+  --cn-accent-soft: #3a2519;
+  --cn-on-accent: #1a0f09;
+  --cn-mark: #f08a5d;
+  --cn-success: #6fc28d;
+  --cn-success-soft: #1d3125;
+  --cn-warning: #e2b250;
+  --cn-warning-soft: #352a14;
+  --cn-danger: #f0827a;
+  --cn-danger-soft: #3a1d1b;
+  --cn-info: #7fb2de;
+  --cn-info-soft: #1b2a37;
+  --cn-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 6px 18px rgb(0 0 0 / 30%);
+  --cn-focus: #f08a5d;
+}
+
+/* Moss — calm green light, for long sessions */
+[data-theme="moss"] {
+  color-scheme: light;
+  --cn-bg: #eef1ea;
+  --cn-surface: #fbfcf8;
+  --cn-surface-sunken: #e3e8dd;
+  --cn-surface-raised: #ffffff;
+  --cn-border: #cfd6c6;
+  --cn-border-strong: #949e88;
+  --cn-text: #18201a;
+  --cn-text-muted: #4d5a4f;
+  --cn-text-faint: #6b776c;
+  --cn-accent: #3c6b3f;
+  --cn-accent-hover: #2f5632;
+  --cn-accent-soft: #dce9d9;
+  --cn-on-accent: #ffffff;
+  --cn-mark: #c4683a;
+  --cn-success: #2f7a4a;
+  --cn-success-soft: #dcecdf;
+  --cn-warning: #8a5f09;
+  --cn-warning-soft: #f1e7cf;
+  --cn-danger: #ab2b22;
+  --cn-danger-soft: #f3dedb;
+  --cn-info: #2d5d84;
+  --cn-info-soft: #dce7f0;
+  --cn-shadow: 0 1px 2px rgb(24 32 26 / 6%), 0 4px 14px rgb(24 32 26 / 6%);
+  --cn-focus: #3c6b3f;
+}
+
+/* Ember — warm dark, high focus */
+[data-theme="ember"] {
+  color-scheme: dark;
+  --cn-bg: #17110e;
+  --cn-surface: #201814;
+  --cn-surface-sunken: #120d0b;
+  --cn-surface-raised: #2a201b;
+  --cn-border: #3d2f27;
+  --cn-border-strong: #6b574b;
+  --cn-text: #f3e9e1;
+  --cn-text-muted: #c0ad9f;
+  --cn-text-faint: #9c8a7d;
+  --cn-accent: #ff9a62;
+  --cn-accent-hover: #ffb184;
+  --cn-accent-soft: #432617;
+  --cn-on-accent: #1c0e06;
+  --cn-mark: #ff9a62;
+  --cn-success: #79c796;
+  --cn-success-soft: #1f3226;
+  --cn-warning: #ebbd5c;
+  --cn-warning-soft: #3a2c13;
+  --cn-danger: #ff8a80;
+  --cn-danger-soft: #3f1d1a;
+  --cn-info: #8cbbe3;
+  --cn-info-soft: #1d2b37;
+  --cn-shadow: 0 1px 2px rgb(0 0 0 / 45%), 0 6px 18px rgb(0 0 0 / 35%);
+  --cn-focus: #ff9a62;
+}
+
+/* Same values as basalt: keep both blocks identical (checked by tests/test_themes.py). */
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] {
+    color-scheme: dark;
+    --cn-bg: #141413;
+    --cn-surface: #1c1c1a;
+    --cn-surface-sunken: #111110;
+    --cn-surface-raised: #242421;
+    --cn-border: #33322e;
+    --cn-border-strong: #5a5851;
+    --cn-text: #ecebe6;
+    --cn-text-muted: #a9a69d;
+    --cn-text-faint: #8a877e;
+    --cn-accent: #f08a5d;
+    --cn-accent-hover: #f6a27d;
+    --cn-accent-soft: #3a2519;
+    --cn-on-accent: #1a0f09;
+    --cn-mark: #f08a5d;
+    --cn-success: #6fc28d;
+    --cn-success-soft: #1d3125;
+    --cn-warning: #e2b250;
+    --cn-warning-soft: #352a14;
+    --cn-danger: #f0827a;
+    --cn-danger-soft: #3a1d1b;
+    --cn-info: #7fb2de;
+    --cn-info-soft: #1b2a37;
+    --cn-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 6px 18px rgb(0 0 0 / 30%);
+    --cn-focus: #f08a5d;
+  }
+}

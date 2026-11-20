@@ -1,0 +1,74 @@
+"""Cairn application factory."""
+
+from __future__ import annotations
+
+import logging
+
+from dotenv import load_dotenv
+from flask import Flask
+
+from app.config import ROOT_DIR, get_config
+
+
+def create_app(env: str | None = None) -> Flask:
+    load_dotenv(ROOT_DIR / ".env")
+    config = get_config(env)
+
+    app = Flask(__name__)
+    app.config.from_object(config)
+    app.config["SQLALCHEMY_DATABASE_URI"] = config.database_uri()
+    app.config["CAIRN_DATA_DIR"] = config.data_dir()
+    if not app.config.get("SECRET_KEY"):
+        raise RuntimeError("CAIRN_SECRET_KEY is not set. Run `python manage.py setup` first.")
+
+    logging.basicConfig(level=logging.DEBUG if app.debug else logging.INFO)
+
+    _init_extensions(app)
+    _init_vault(app)
+    _register_blueprints(app)
+
+    from app.core.security.headers import register_security_headers
+    from app.core.utils.decorators import register_access_rules
+    from app.core.utils.static_versions import register_static_versions
+
+    register_access_rules(app)
+    register_security_headers(app)
+    register_static_versions(app)
+    return app
+
+
+def _init_extensions(app: Flask) -> None:
+    from app.core import db_class  # noqa: F401  (registers every model)
+    from app.core.extensions import csrf, db, limiter, login_manager, migrate
+
+    db.init_app(app)
+    migrate.init_app(app, db, directory=str(ROOT_DIR / "migrations"))
+    csrf.init_app(app)
+    limiter.init_app(app)
+    login_manager.init_app(app)
+    login_manager.login_view = "account.login"
+    login_manager.session_protection = "strong"
+
+    from app.features.account.account_core import load_owner_from_session_id
+
+    login_manager.user_loader(load_owner_from_session_id)
+
+
+def _init_vault(app: Flask) -> None:
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    from app.core.security.vault import Cipher, load_master_key
+
+    if app.testing:
+        key = AESGCM.generate_key(bit_length=256)
+    else:
+        key = load_master_key(app.config["CAIRN_DATA_DIR"], create=False).key
+    app.extensions["cairn.cipher"] = Cipher(key)
+
+
+def _register_blueprints(app: Flask) -> None:
+    from app.features.account.account import account
+    from app.features.home.home import health, home
+
+    for blueprint in (account, home, health):
+        app.register_blueprint(blueprint)

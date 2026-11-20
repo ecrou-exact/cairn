@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import brand_mark, flashes %}
+
+{% block body %}
+<main class="cn-auth" id="main">
+  <div class="cn-auth-card">
+    <div class="cn-brand">{{ brand_mark() }}<span>Cairn</span></div>
+    {{ flashes() }}
+    {% block content %}{% endblock %}
+  </div>
+</main>
+{% endblock %}

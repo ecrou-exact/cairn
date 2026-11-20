@@ -1,0 +1,15 @@
+{% extends "layout/auth.html" %}
+{% from "macros/ui.html" import field %}
+{% block title %}Set up{% endblock %}
+{% block content %}
+<h1 class="h4">Create the owner account</h1>
+<p class="text-body-secondary">Cairn has a single owner. This account controls every project, credential and agent run.</p>
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  {{ field(form.username, autocomplete="username", autofocus=True) }}
+  {{ field(form.password, autocomplete="new-password") }}
+  {{ field(form.confirm, autocomplete="new-password") }}
+  <p class="form-text">At least 12 characters. A passphrase is easier to remember.</p>
+  <button class="btn btn-primary w-100" type="submit">Create account</button>
+</form>
+{% endblock %}

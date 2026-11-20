@@ -1,0 +1,12 @@
+{% extends "layout/auth.html" %}
+{% from "macros/ui.html" import field %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<h1 class="h4">Sign in</h1>
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  {{ field(form.username, autocomplete="username", autofocus=True) }}
+  {{ field(form.password, autocomplete="current-password") }}
+  <button class="btn btn-primary w-100" type="submit">Sign in</button>
+</form>
+{% endblock %}

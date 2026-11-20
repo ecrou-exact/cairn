@@ -8,7 +8,7 @@
 ## 1. Processes
 
 ```
-                 Browser (Jinja + Vue 3 UMD + Pivotick + Vitrine)
+                 Browser (Jinja + Custom Elements + Pivotick + Vitrine)
                     │  HTTPS/HTTP on 127.0.0.1   ▲ SSE /events
                     ▼                            │
 ┌──────────────────────────── web ─────────────────────────────┐
@@ -59,8 +59,8 @@ app/
   modules/                     built-in automation + action modules (plugin registry)
   templates/<feature>/
   static/{css,js}/{components,<feature>}/
-  static/vendor/               bootstrap, fontawesome, vue, pivotick, vitrine (pinned)
-  config/<key>.json            settings defaults (statuses, types, weights, ports…)
+  static/vendor/               bootstrap, fontawesome, fonts, pivotick, vitrine (pinned, see vendor.json)
+  settings/<key>.json          settings defaults (statuses, types, weights, ports…)
 worker.py  manage.py  launch.sh  wsgi.py
 migrations/  tests/  docs/
 ```

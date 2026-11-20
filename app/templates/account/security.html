@@ -1,0 +1,48 @@
+{% extends "layout/shell.html" %}
+{% from "macros/ui.html" import field %}
+{% block title %}Security{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow">Account</div>
+  <h1>Security</h1>
+  <p>Sign-in protection for the owner account. Every change here is written to the activity log.</p>
+</header>
+
+<section class="cn-panel" aria-labelledby="totp-title">
+  <h2 id="totp-title">Two-factor sign-in</h2>
+  {% if current_user.totp_enabled %}
+    <p class="cn-panel-lead">On. Sign-in asks for a code from your authenticator app.</p>
+    <form method="post" action="{{ url_for('account.totp_disable') }}" class="row g-2 align-items-end">
+      {{ totp_form.hidden_tag() }}
+      <div class="col-sm-5">{{ field(totp_form.code, autocomplete="one-time-code", inputmode="numeric") }}</div>
+      <div class="col-sm-auto mb-3"><button class="btn btn-outline-secondary" type="submit">Turn off</button></div>
+    </form>
+  {% elif enrolling %}
+    <p class="cn-panel-lead">Scan this code with an authenticator app, then enter the 6-digit code it shows.</p>
+    <div class="cn-qr mb-3"><img src="{{ url_for('account.totp_qr') }}" alt="QR code to add Cairn to an authenticator app" width="205" height="205"></div>
+    <form method="post" action="{{ url_for('account.totp_confirm') }}" class="row g-2 align-items-end">
+      {{ totp_form.hidden_tag() }}
+      <div class="col-sm-5">{{ field(totp_form.code, autocomplete="one-time-code", inputmode="numeric", autofocus=True) }}</div>
+      <div class="col-sm-auto mb-3"><button class="btn btn-primary" type="submit">Confirm</button></div>
+    </form>
+  {% else %}
+    <p class="cn-panel-lead">Off. Turn it on so a stolen password is not enough to reach your projects and keys.</p>
+    <form method="post" action="{{ url_for('account.totp_start') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary" type="submit">Set up two-factor sign-in</button>
+    </form>
+  {% endif %}
+</section>
+
+<section class="cn-panel" aria-labelledby="password-title">
+  <h2 id="password-title">Password</h2>
+  <p class="cn-panel-lead">Changing it signs out every other session.</p>
+  <form method="post" action="{{ url_for('account.change_password') }}" class="cn-form-narrow">
+    {{ password_form.hidden_tag() }}
+    {{ field(password_form.current, autocomplete="current-password") }}
+    {{ field(password_form.new, autocomplete="new-password") }}
+    {{ field(password_form.confirm, autocomplete="new-password") }}
+    <button class="btn btn-primary" type="submit">Change password</button>
+  </form>
+</section>
+{% endblock %}

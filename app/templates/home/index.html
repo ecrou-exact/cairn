@@ -1,0 +1,28 @@
+{% extends "layout/shell.html" %}
+{% block title %}Today{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow">{{ current_user.username }}</div>
+  <h1>Today</h1>
+  {% if current_user.last_login_at %}<p>Signed in {{ current_user.last_login_at.strftime("%d %b %Y, %H:%M") }} UTC.</p>{% endif %}
+</header>
+{% if not current_user.totp_enabled %}
+<section class="cn-panel">
+  <h2>Secure your account</h2>
+  <p class="cn-panel-lead mb-3">Two-factor sign-in is off. Turn it on before adding API keys or GitHub tokens.</p>
+  <a class="btn btn-primary" href="{{ url_for('account.security') }}">Set up two-factor sign-in</a>
+</section>
+{% endif %}
+<section class="cn-panel" aria-labelledby="activity-title">
+  <h2 id="activity-title">Recent activity</h2>
+  <ul class="cn-activity">
+    {% for entry in activity %}
+      <li class="cn-level-{{ entry.level }}">
+        <time datetime="{{ entry.created_at.isoformat() }}">{{ entry.created_at.strftime("%d %b, %H:%M") }}</time>
+        <code>{{ entry.action }}</code>
+        <span class="cn-actor">{{ entry.actor }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

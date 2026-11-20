@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" data-theme="{{ current_user.theme if current_user.is_authenticated else 'auto' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}{% endblock %} · Cairn</title>
+  <link rel="icon" href="{{ url_for('static', filename='image/favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/fontawesome.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/solid.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/regular.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/core/tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/core/themes.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/core/bridges.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/core/base.css') }}">
+  {% block styles %}{% endblock %}
+</head>
+<body>
+  {% block body %}{% endblock %}
+  <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

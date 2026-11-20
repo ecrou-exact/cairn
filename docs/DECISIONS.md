@@ -47,7 +47,7 @@
 - **Compared:** Anthropic `frontend-design` (official, Apache-2.0, guardrails against the generic AI look, fast); UI/UX Pro Max (style/palette/font database, heavy on tokens and time); Impeccable (audit/critique/polish commands for an existing UI). Third-party skills can carry prompt injection (Snyk: 36% of analysed skills) → read before install.
 - **Choice:** `frontend-design` as the base for creating screens; Impeccable as a review pass on finished screens (after reading its source). Both installed as project skills in `.claude/skills/`, switchable from the app's Skills page.
 
-## D-011 · 2026-11-21 · proposed — Start from the owner's flask-launchpad
+## D-011 · 2026-11-21 · superseded by D-015 — Start from the owner's flask-launchpad
 - **Context:** `ecrou-exact/flask-launchpad` is the owner's own Flask template: auth, roles, per-user settings, seven themes + Theme Studio, structured `log_action`, Flask-RESTX API, DB job runner with pause/resume/cancel/retry, data table, pagination, toasts, confirm modal, tests per feature.
 - **Options:** start from scratch · copy flask-launchpad as the skeleton and adapt it.
 - **Choice:** copy flask-launchpad's structure and the pieces that fit (app factory, decorators, logger, settings, jobs, themes, components), then harden (TOTP, vault, CSP, single-owner auth). Not a git fork: history starts here. Licence check of flask-launchpad needed (no LICENSE file seen) — it is the owner's own code, so the owner decides.
@@ -70,7 +70,7 @@
 |---|---|---|
 | Name | **Cairn** (repo `ecrou-exact/cairn`) | short, vendor-neutral, matches the plan/graph idea (`docs/IDENTITY.md`) |
 | Logo | **Direction A — Cairn** (`docs/brand/logo-a-cairn.svg`) | pairs with the name, legible at 16 px |
-| Skeleton | start from **flask-launchpad** patterns (D-011) → accepted | owner's own template, avoids rebuilding auth/themes/jobs |
+| Skeleton | see D-015 | |
 | D-002 to D-013 | accepted as written | |
 | Context file in managed projects | **app-managed by default** (passed to runs, not committed); per-project setting "commit `CLAUDE.md`" | never pollutes upstream repos without consent |
 | Default Claude permissions | auto-approve **read + edit inside the run's worktree**; shell commands from a per-project allowlist (tests, lint, build); everything else asks in the UI | fast for normal work, safe by default |
@@ -80,3 +80,26 @@
 | Instance port range | **8100–8199** (setting) | away from 7009/7010 and common dev ports (3000, 5000, 5173, 8000, 8080) |
 | Working hours | Mon–Fri 09:00–18:00, local time zone (setting) | sensible default, editable |
 | Default app port | `127.0.0.1:7010` | |
+
+## D-015 · 2026-11-21 · accepted — Build the skeleton from scratch
+- **Context:** owner: "you don't have to use flask-launchpad, do what's best".
+- **Choice:** new code written for Cairn's needs (single owner, strict CSP, vault, agent runs, SSE), following the conventions in `docs/OWNER_CONVENTIONS.md` (route → core, `log_action`, JSON settings, Vue 3 UMD, component folders). flask-launchpad and Rulezet are used as references for ideas only, no code copied.
+- **Reason:** flask-launchpad is multi-user (registration, roles, comments, profanity filter); stripping it would leave dead code, which the brief forbids (§15).
+- **Python:** project pinned to **3.12** via `.python-version` (Ubuntu 24.04 LTS default), `requires-python = ">=3.12"`, tested on 3.12 and latest in CI.
+
+## D-016 · 2026-11-21 · accepted — Front end: native Web Components instead of Vue (supersedes the Vue part of D-008)
+- **Context:** the owner's apps use Vue 3 UMD with in-DOM templates. Vue compiles those templates at runtime with `new Function`, which needs `'unsafe-eval'` in the CSP. The brief requires a strict CSP (§11), and Vue 3 has no CSP-safe runtime compiler.
+- **Options:** Vue with `'unsafe-eval'` (rejected: weakens XSS protection) · Vue SFCs precompiled by a Vite build (adds a Node build to every install) · **framework-free Custom Elements** (ES modules, no build).
+- **Choice:** Custom Elements written as ES modules (`static/js/components/cn-*.js`), DOM built with `document.createElement`/`textContent` (no `innerHTML` with data), styles in `static/css/components/`. Same model as Vitrine (the owner's own library) and Pivotick (vanilla TS), so the three fit together. Server-rendered Jinja stays the base of every page (progressive enhancement).
+
+## D-017 · 2026-11-21 · accepted — Licence AGPL-3.0-or-later
+- Same as Rulezet and Flowintel; a self-hosted web app should share its improvements when offered as a service.
+
+## D-018 · 2026-11-21 · accepted — Layout details fixed while building the skeleton
+- Settings defaults live in `app/settings/<key>.json` (not `app/config/`, which would clash with `app/config.py`).
+- Fonts: **IBM Plex Sans** (UI) and **IBM Plex Mono** (code), self-hosted (SIL OFL). Technical yet warm, not the overused Inter/Roboto.
+- Accent colour: terracotta (`#b9481f` on light themes, `#f08a5d` on dark) from the logo's dot.
+- Trusted Types sent as **report-only** until Bootstrap, Pivotick and Vitrine are verified under enforcement (Phase 11).
+- One `Activity` table serves as audit log, entity history (diff + batch for undo) and activity feed: one implementation (§15).
+- Flask-Login's `UserMixin` is not used on SQLAlchemy models (its `__eq__` on `get_id()` interferes with the identity map); `get_id()` embeds `session_version` so a password change signs out every other session.
+- Production server: gunicorn on Linux/macOS, waitress on Windows (`manage.py serve` picks).

@@ -29,20 +29,20 @@ Goal: owner approves architecture + design direction.
 - [x] Architecture and design direction approved (D-014)
 
 ## Phase 2 — Foundations  *(current)*
-- [ ] Repo skeleton (Flask app factory, `features/` component layout like Rulezet, uv, pyproject, ruff, pytest, pre-commit)
-- [ ] Cross-platform base: `pathlib` everywhere, `platformdirs` for data/config dirs, no shell=True, CI matrix ubuntu / macos / windows
-- [ ] Config (env + settings table), SQLAlchemy + Alembic, SQLite dev / PostgreSQL prod
-- [ ] Base entity mixin: UUID, timestamps, `created_by`, history/audit table + diff + undo service
-- [ ] Auth: owner account, Argon2, TOTP (WebAuthn optional), CSRF, rate limiting, secure cookies, localhost bind
-- [ ] Secrets vault (AES-GCM; master key from OS keyring, fallback env/key file with 0600 perms on headless Ubuntu)
-- [ ] Security headers + strict CSP, Trusted Types (Vitrine policy)
-- [ ] Design tokens + themes (light, dark, 1–2 distinctive) mapped to Bootstrap, `--pvt-*`, `--vt-*`
+- [x] Repo skeleton (app factory, `features/` layout, uv + `uv.lock`, ruff, bandit, pytest, `manage.py`) — pre-commit still to add
+- [x] Cross-platform base: `pathlib`, `platformdirs` data dir, argv-only subprocess, CI matrix ubuntu / macos / windows × Python 3.12 / 3.13
+- [~] Config from env/.env, SQLAlchemy + Alembic (first migration), SQLite dev / PostgreSQL extra — JSON settings (`app/settings/`) + admin overrides still to do
+- [~] `BaseEntity` (UUID, timestamps, `created_by`, soft delete), `Activity` log with actor + diff + batch — undo service comes with the first editable entities (Phase 3)
+- [x] Auth: single owner, Argon2id, TOTP with replay protection, CSRF, rate limits, Strict cookies, session version (password change signs out others), deny-by-default access, localhost bind — WebAuthn optional later
+- [x] Secrets vault (AES-256-GCM bound to the secret name; master key from env, OS keyring or 0600 key file)
+- [x] Security headers + strict CSP (no inline, no eval); Trusted Types report-only (D-018)
+- [~] Design tokens + 4 themes + Auto, mapped to Bootstrap — theme picker UI, `--pvt-*` and `--vt-*` bridges still to do
 - [ ] Component library (table/card list, filter bar, pagination, form fields, modal, side panel, badge, status pill, empty/loading/error, toast, confirm dialog)
 - [ ] Server-side list engine (filter/search/sort/paginate on full dataset, URL state, saved views)
 - [ ] Vitrine wrapper component (single config point)
 - [ ] Job queue (lanes, retries/backoff, timeouts, cancellation) + Jobs page
 - [ ] Realtime channel (SSE) + client event bus
-- [ ] Packaging skeleton: `install.sh` (Ubuntu), systemd units (web + worker), Docker Compose, dev launcher that also works on macOS/Windows
+- [~] `manage.py` works on all OS (setup / start / serve with gunicorn or waitress) — `install.sh`, systemd units, Docker Compose still to do
 - **Done when:** login, theme switch, empty app shell, jobs page and live push work end to end, tests green on all three OS in CI.
 
 ## Phase 3 — Core planning
