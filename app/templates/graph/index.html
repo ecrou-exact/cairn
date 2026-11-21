@@ -9,7 +9,6 @@
 <script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>
 {% endblock %}
 {% block content %}
-{% set closed = request.args.get('closed') == '1' %}
 <header class="cn-page-header cn-page-header-actions">
   <div>
     <nav class="cn-graph-crumbs" aria-label="Where you are in the plan" data-graph-crumbs></nav>
@@ -32,11 +31,22 @@
       <label class="btn btn-sm" title="Every task at once"><input class="visually-hidden" type="radio" name="level" value="all" {% if level == 'all' %}checked{% endif %}><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span>Everything</span></label>
     </div>
     {% endif %}
+    <label class="visually-hidden" for="graph-state">Show</label>
+    <select class="form-select" id="graph-state" name="state">
+      <option value="">Every open task</option>
+      {% for key, label in states.items() %}<option value="{{ key }}" {% if state == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    {% if tags %}
+    <label class="visually-hidden" for="graph-tag">Tag</label>
+    <select class="form-select" id="graph-tag" name="tag">
+      <option value="">Any tag</option>
+      {% for name in tags %}<option value="{{ name }}" {% if tag == name %}selected{% endif %}>#{{ name }}</option>{% endfor %}
+    </select>
+    {% endif %}
     <label class="cn-switch"><input type="checkbox" name="closed" value="1" {% if closed %}checked{% endif %}><span>Done tasks</span></label>
     <button class="btn btn-outline-secondary btn-sm" type="submit">Show</button>
   </div>
 </form>
 
-{% set q = {'project': project.id if project and not root else None, 'root': root.id if root else None, 'closed': '1' if closed else None, 'level': level if not root and level == 'all' else None} %}
-{{ graph_stage(q | dictsort | selectattr(1) | map('join', '=') | join('&')) }}
+{{ graph_stage(graph_query) }}
 {% endblock %}

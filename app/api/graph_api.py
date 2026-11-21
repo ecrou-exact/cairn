@@ -24,12 +24,15 @@ def _uuid(name: str) -> uuid.UUID | None:
 
 @graph_api.get("/graph")
 def get_graph():
-    """`project`, `root` (a task: its subtasks, or its neighbourhood), `closed=1`, `level=all`."""
+    """`project`, `root` (a task: its subtasks, or its neighbourhood), `closed=1`, `level=all`,
+    `state` (actionable, blocked, late, soon) and `tag` filters."""
     return jsonify(
         graph_core.graph_data(
             _uuid("project"),
             root_id=_uuid("root"),
             include_closed=request.args.get("closed") == "1",
             level="all" if request.args.get("level") == "all" else "top",
+            state=request.args.get("state", "") if request.args.get("state") in graph_core.STATES else "",
+            tag=request.args.get("tag", "")[:32],
         )
     )

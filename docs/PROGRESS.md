@@ -78,7 +78,8 @@ Goal: owner approves architecture + design direction.
 - [ ] Layout switch remembered per view; write-path hooks → API; context menus; side panel editing
 - [ ] Filters, search/focus, collapse/expand, clustering, legend, data table; encodings (status, priority, deadline, blocked, running agent, instance)
 - [x] Edit from the graph's side panel: move to an allowed status, link to another card (blocks, blocked by, comes after, relates); the graph and the panel follow live
-- [ ] Link by dragging between cards, filters by state / tag, 300+ node tuning
+- [x] Link mode (L or the link button): touch what comes first, then what it blocks; works by touch on phones; filters by state (ready, blocked, late, due soon) and tag, a case kept when a subtask matches
+- [ ] 300+ node tuning
 
 ## Phase 5 — Claude
 - [ ] App MCP server (typed tools, `describe_schema`, changeset tool, authz per scope)

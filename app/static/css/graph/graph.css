@@ -255,3 +255,27 @@
 .cn-gpanel-link { display: grid; grid-template-columns: auto 1fr auto; gap: var(--cn-space-1); }
 .cn-gpanel-link .form-select { min-width: 0; }
 .cn-gpanel-note { margin: var(--cn-space-1) 0 0; font-size: var(--cn-text-xs); color: var(--cn-text-muted); min-height: 1em; }
+
+/* Link mode */
+.cn-graph-link-toggle[aria-pressed="true"] { background: var(--cn-mark); color: var(--cn-on-accent); }
+.cn-graph-linking .cn-gcard { cursor: crosshair; }
+.cn-graph-linking .cn-gcard:hover { box-shadow: 0 0 0 2px var(--cn-mark), 0 10px 24px -10px color-mix(in srgb, var(--cn-mark) 60%, transparent); }
+.cn-graph-hint {
+  position: absolute;
+  top: var(--cn-space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  max-width: min(36rem, calc(100% - 10rem));
+  margin: 0;
+  padding: var(--cn-space-2) var(--cn-space-4);
+  background: var(--cn-chrome-bg);
+  color: var(--cn-chrome-text);
+  border-radius: var(--cn-radius-pill);
+  box-shadow: var(--cn-slab-hover);
+  font-size: var(--cn-text-sm);
+  text-align: center;
+}
+.cn-graph-hint[hidden] { display: none; }
+.cn-graph-hint[data-tone="ok"] { box-shadow: 0 0 0 2px var(--cn-success), var(--cn-slab-hover); }
+.cn-graph-hint[data-tone="warn"] { box-shadow: 0 0 0 2px var(--cn-warning), var(--cn-slab-hover); }

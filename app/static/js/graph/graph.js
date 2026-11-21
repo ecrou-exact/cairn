@@ -104,6 +104,10 @@ function mount(stage) {
   let current = { nodes: [], edges: [], critical: { nodes: [] } };
   let criticalOn = false;
   let selected = null; // id of the task shown in the side panel
+  let linking = false; // link mode: first touch = what comes first, second = what it blocks
+  let linkFrom = null;
+  const hint = stage.querySelector('[data-graph-hint]');
+  const linkButton = stage.querySelector('[data-graph-action="link"]');
   let message = ''; // last edit result, kept when the panel is redrawn with fresh data
 
   const byId = () => new Map(current.nodes.map((n) => [n.id, n.data]));
@@ -287,14 +291,59 @@ function mount(stage) {
         edgeStyleMap: edgeStyles(),
       },
       callbacks: {
-        onNodeClick: (_event, node) => showPanel(node.getData(), node.id),
-        onNodeDbclick: (_event, node) => open(node.getData()),
+        onNodeClick: (_event, node) => (linking ? pickForLink(node) : showPanel(node.getData(), node.id)),
+        onNodeDbclick: (_event, node) => { if (!linking) open(node.getData()); },
         onNodeHoverIn: (event, node) => showPeek(event, node),
         onNodeHoverOut: hidePeek,
         onCanvasClick: () => { hidePanel(); hidePeek(); },
         onCanvasMousemove: movePeek,
       },
     };
+  }
+
+  // -- link mode -----------------------------------------------------------------------
+
+  function say(text, tone = '') {
+    hint.textContent = text;
+    hint.dataset.tone = tone;
+    hint.hidden = !text;
+  }
+
+  function setLinking(on) {
+    linking = on;
+    linkFrom = null;
+    stage.classList.toggle('cn-graph-linking', on);
+    linkButton?.setAttribute('aria-pressed', String(on));
+    if (on) {
+      hidePanel();
+      say('Link mode: touch the task that must come first. Esc to stop.');
+    } else {
+      graph?.deselectAll();
+      say('');
+    }
+  }
+
+  async function pickForLink(node) {
+    if (!linkFrom) {
+      linkFrom = node;
+      graph.selectElement(node);
+      say(`“${node.getData().label}” comes first. Now touch the task it blocks.`);
+      return;
+    }
+    if (linkFrom.id === node.id) {
+      say('Pick another task: a task cannot block itself.', 'warn');
+      return;
+    }
+    const first = linkFrom;
+    linkFrom = null;
+    graph.deselectAll();
+    try {
+      await api('/dependencies', { method: 'POST', body: { from_task_id: first.id, to_task_id: node.id, kind: 'blocks' } });
+      say(`Linked: “${first.getData().label}” blocks “${node.getData().label}”. Touch the next pair, or Esc.`, 'ok');
+      later();
+    } catch (error) {
+      say(`${error.message} Touch another pair, or Esc.`, 'warn');
+    }
   }
 
   // -- view ----------------------------------------------------------------------------
@@ -414,13 +463,22 @@ function mount(stage) {
       if (action === 'in') graph.renderer.zoomIn();
       else if (action === 'out') graph.renderer.zoomOut();
       else if (action === 'fit') graph.renderer.fitAndCenter();
+      else if (action === 'link') setLinking(!linking);
       else openView(true);
     });
   });
   stage.querySelector('[data-graph-critical]')?.addEventListener('change', (event) => lightCritical(event.target.checked));
   stage.addEventListener('mouseleave', hidePeek);
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') { hidePanel(); hidePeek(); }
+    if (event.key === 'Escape') {
+      hidePanel();
+      hidePeek();
+      if (linking) setLinking(false);
+    }
+    const typing = event.composedPath()[0]?.matches?.('input, textarea, select, [contenteditable]');
+    if (!typing && !compact && event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      setLinking(!linking);
+    }
   });
 
   const later = debounce(() => refresh().catch(() => window.location.reload()), 400);

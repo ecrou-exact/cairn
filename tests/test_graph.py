@@ -120,3 +120,26 @@ def test_cards_carry_the_workflow_moves(ctx):
     keys = [move["key"] for move in card["next"]]
     assert "done" in keys and card["status"] not in keys
     assert all({"key", "label", "kind"} <= set(move) for move in card["next"])
+
+
+def test_filters_keep_cases_leading_to_a_match(ctx):
+    from datetime import date, timedelta
+
+    phase = _task("Phase")
+    _task("Late step", parent_id=phase.id, due_on=date.today() - timedelta(days=2), tags=["ops"])
+    _task("Calm case")
+    blocker = _task("Blocker")
+    blocked = _task("Blocked one")
+    _block(blocker, blocked)
+
+    labels = lambda **kw: {n["data"]["label"] for n in graph_core.graph_data(**kw)["nodes"]}  # noqa: E731
+    assert labels(state="late") == {"Phase"}  # kept: one of its subtasks is late
+    assert labels(state="blocked") == {"Blocked one"}
+    assert "Blocker" in labels(state="actionable") and "Blocked one" not in labels(state="actionable")
+    assert labels(tag="ops") == {"Phase"} and labels(tag="#OPS") == {"Phase"}
+    assert graph_core.tags_in_use() == ["ops"]
+
+
+def test_graph_page_filters(app, signed_in):
+    page = signed_in.get("/graph?state=late&tag=a+b")
+    assert page.status_code == 200 and b"state=late" in page.data and b"tag=a+b" in page.data

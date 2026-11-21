@@ -242,12 +242,69 @@ def _breadcrumb(project, root: Task | None) -> list[dict[str, str]]:
     return trail
 
 
+STATES = {
+    "actionable": "Ready to do",
+    "blocked": "Blocked or waiting",
+    "late": "Late",
+    "soon": "Due within 7 days",
+}
+
+
+def _matcher(state: str, tag: str, children: dict[uuid.UUID, list[Task]]):
+    """Which cards a filter keeps. A case is kept when it or one of its subtasks matches, so
+    filtering never hides the way to a matching task."""
+    today = date.today()
+    waiting = set(workflow.keys_of_kinds("waiting"))
+    tag = tag.strip().lstrip("#").lower()
+
+    def matches(task: Task) -> bool:
+        if tag and tag not in task.tags:
+            return False
+        if state == "actionable":
+            return task.is_open and task.blocked_by_count == 0 and task.status not in waiting
+        if state == "blocked":
+            return task.is_open and (task.blocked_by_count > 0 or task.status in waiting)
+        if state == "late":
+            return task.is_open and task.due_on is not None and task.due_on < today
+        if state == "soon":
+            return task.is_open and task.due_on is not None and 0 <= (task.due_on - today).days <= 7
+        return True
+
+    if not state and not tag:
+        return lambda task: True
+
+    def keep(task: Task) -> bool:
+        stack, seen = [task], set()
+        while stack:
+            node = stack.pop()
+            if node.id in seen:
+                continue
+            seen.add(node.id)
+            if matches(node):
+                return True
+            stack.extend(children[node.id])
+        return False
+
+    return keep
+
+
+def tags_in_use() -> list[str]:
+    found: set[str] = set()
+    for tags in db.session.scalars(
+        select(Task.tags).where(Task.deleted_at.is_(None), Task.is_open.is_(True))
+    ):
+        found.update(tags or [])
+    return sorted(found)
+
+
 def graph_data(
     project_id: uuid.UUID | None = None,
     *,
     root_id: uuid.UUID | None = None,
     include_closed: bool = False,
     level: str = "top",
+    state: str = "",
+    tag: str = "",
 ) -> dict[str, Any]:
     """The plan at one level, as Pivotick data.
 
@@ -303,7 +360,10 @@ def graph_data(
         shown_ids = [
             t.id for t in tasks.values() if visible(t) and (t.parent_id is None or t.parent_id not in tasks)
         ]
-    shown = {tid: tasks[tid] for tid in shown_ids}
+    keep = _matcher(state, tag, children)
+    shown = {
+        tid: tasks[tid] for tid in shown_ids if keep(tasks[tid]) or (root is not None and tid == root.id)
+    }
 
     def rep(task_id: uuid.UUID) -> uuid.UUID | None:
         """The card standing for a task at this level: itself, or its nearest shown ancestor."""
