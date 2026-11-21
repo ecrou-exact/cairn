@@ -16,7 +16,7 @@ from app.features.projects import projects_core
 from app.features.resources import resources_core, storage_core
 from app.features.resources.resources_forms import (
     KIND_FIELDS,
-    parse_target,
+    parse_link,
     values_from_form,
     values_from_resource,
 )
@@ -84,7 +84,7 @@ def create():
     kind = request.form.get("kind", "")
     if kind not in CREATABLE_KINDS:
         abort(400)
-    target = parse_target(request.form.get("attach"))
+    target = parse_link(request.form.get("attach"))
     try:
         with batch() as batch_id:
             resource = resources_core.create(
@@ -102,7 +102,7 @@ def create():
 def quick_link():
     """A web address pasted in a resources panel: a link (or GitHub item), attached at once."""
     url = (request.form.get("url") or "").strip()
-    target = parse_target(request.form.get("attach"))
+    target = parse_link(request.form.get("attach"))
     kind = "github" if url.lower().startswith(("https://github.com/", "http://github.com/")) else "url"
     try:
         with batch() as batch_id:
@@ -118,7 +118,7 @@ def quick_link():
 
 @resources.post("/resources/upload")
 def upload():
-    target = parse_target(request.form.get("attach"))
+    target = parse_link(request.form.get("attach"))
     try:
         files = [f for f in request.files.getlist("files") if f and f.filename]
     except RequestEntityTooLarge:
@@ -251,7 +251,7 @@ def use_title(resource_id: uuid.UUID):
 
 @resources.post("/resources/attach")
 def attach():
-    target = parse_target(f"{request.form.get('target_type', '')}:{request.form.get('target_id', '')}")
+    target = parse_link(f"{request.form.get('target_type', '')}:{request.form.get('target_id', '')}")
     try:
         resource_id = uuid.UUID(request.form.get("resource_id", ""))
     except ValueError:

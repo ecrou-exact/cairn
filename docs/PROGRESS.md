@@ -57,6 +57,8 @@ Goal: owner approves architecture + design direction.
 - [x] History with undo per action (D-024), trash with restore and delete for good, command palette (Ctrl/Cmd+K), keyboard shortcuts (`?` lists them)
 - [x] Cairn's own roadmap as a plan (`docs/roadmap.json`, `python manage.py roadmap`)
 - [x] Time tracking (start / stop, time spent vs estimate) (D-025)
+- [x] Comments thread and corrections log on tasks and projects (retire / reactivate, inherited from project and parent tasks); task brief for Claude shown, downloadable and in the API (D-028)
+- [ ] Recurrence, custom fields, external conditions (§2.2–2.3)
 - [~] JSON schema registry shared by API, forms and MCP tools — schemas exist per feature (`core/schema/`), registry/`describe_schema` comes with the MCP server (Phase 5)
 
 ## Phase 4 — Graph (Pivotick, full integration per §4)

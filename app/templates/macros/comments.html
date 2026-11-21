@@ -1,0 +1,64 @@
+{# Comments thread and corrections log (§2.2), on task and project pages. #}
+{% import "macros/form.html" as f %}
+
+{% macro comment_item(comment, here) -%}
+<li class="cn-comment cn-comment-{{ comment.kind }}{% if comment.kind == 'correction' and not comment.active %} cn-comment-retired{% endif %}" id="comment-{{ comment.id }}">
+  <div class="cn-comment-head">
+    <strong>{{ comment.created_by | author }}</strong>
+    {% if comment.kind == "correction" %}<span class="cn-badge {{ 'cn-badge-warning' if comment.active else '' }}">{{ "Correction" if comment.active else "Retired correction" }}</span>{% endif %}
+    <time datetime="{{ comment.created_at.isoformat() }}">{{ comment.created_at.strftime("%d %b %Y, %H:%M") }}</time>
+    {% if comment.edited_at %}<span class="cn-muted">· edited</span>{% endif %}
+    <div class="cn-comment-actions">
+      {% if comment.kind == "correction" %}
+      <form method="post" action="{{ url_for('comments.set_active', comment_id=comment.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}"><input type="hidden" name="active" value="{{ '0' if comment.active else '1' }}">
+        <button class="btn btn-link btn-sm" type="submit">{{ "Retire" if comment.active else "Give it to Claude again" }}</button>
+      </form>
+      {% endif %}
+      <a class="btn btn-link btn-sm" href="{{ url_for('comments.edit', comment_id=comment.id) }}">Edit</a>
+      <form method="post" action="{{ url_for('comments.delete', comment_id=comment.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+        <button class="btn btn-link btn-sm cn-remove" type="submit" title="Move to the trash"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Delete this comment</span></button>
+      </form>
+    </div>
+  </div>
+  <script type="application/json" id="comment-body-{{ comment.id }}">{{ comment.body_md | tojson }}</script>
+  <cn-vitrine kind="markdown" source="comment-body-{{ comment.id }}"></cn-vitrine>
+</li>
+{%- endmacro %}
+
+{% macro comments_panel(target_type, target, comments, inherited=[]) -%}
+{% set here = request.path ~ "#comments" %}
+{% set corrections = comments | selectattr("kind", "equalto", "correction") | list %}
+{% set active = corrections | selectattr("active") | list %}
+<section class="cn-panel cn-comments-panel" id="comments" data-live-target="{{ target_type }}:{{ target.id }}" data-live-events="comment.changed" aria-labelledby="comments-title">
+  <h2 id="comments-title">Comments and corrections{% if comments %} <span class="cn-muted">{{ comments | length }}</span>{% endif %}</h2>
+  <div class="cn-live-notice" data-live-notice hidden role="status"><span>New or changed comments.</span> <a href="{{ request.path }}#comments">Reload</a></div>
+  {% if active or inherited %}
+  <p class="cn-corrections-summary"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i>
+    Claude gets {{ active | length + inherited | length }} correction{{ "s" if active | length + inherited | length != 1 }} on every run here{% if inherited %}, {{ inherited | length }} of them from {{ inherited | map(attribute=0) | unique | join(", ") }}{% endif %}.
+  </p>
+  {% if inherited %}
+  <details class="cn-inherited"><summary>Corrections that apply from above</summary>
+    <ul>{% for source, comment in inherited %}<li><span class="cn-muted">{{ source }}:</span> {{ comment.body_md | truncate(200) }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+  {% endif %}
+  {% if comments %}
+  <ol class="cn-comments">{% for comment in comments %}{{ comment_item(comment, here) }}{% endfor %}</ol>
+  {% else %}
+  <p class="cn-muted">No comment yet. Write a note, or a correction for Claude: corrections are kept and given to every later run{% if target_type == "project" %} on this project's tasks{% endif %}.</p>
+  {% endif %}
+  <form class="cn-comment-form" method="post" action="{{ url_for('comments.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+    <input type="hidden" name="target" value="{{ target_type }}:{{ target.id }}">
+    {{ f.markdown("body_md", "New comment", {}, {}) }}
+    <fieldset class="cn-comment-kind">
+      <legend class="visually-hidden">Kind</legend>
+      <label><input class="form-check-input" type="radio" name="kind" value="comment" checked> Comment</label>
+      <label><input class="form-check-input" type="radio" name="kind" value="correction"> Correction for Claude <span class="cn-muted">(kept and given to every later run{% if target_type == "project" %} on this project{% endif %})</span></label>
+    </fieldset>
+    <button class="btn btn-outline-secondary" type="submit">Add</button>
+  </form>
+</section>
+{%- endmacro %}

@@ -74,6 +74,7 @@ def _init_vault(app: Flask) -> None:
 def _register_blueprints(app: Flask) -> None:
     from app import jobs as _handlers  # noqa: F401  (registers every job handler)
     from app.features.account.account import account
+    from app.features.comments.comments import comments
     from app.features.events.events import events
     from app.features.history.history import history
     from app.features.home.home import health, home
@@ -94,6 +95,7 @@ def _register_blueprints(app: Flask) -> None:
         projects,
         tasks,
         resources,
+        comments,
         trash,
         history,
     ):

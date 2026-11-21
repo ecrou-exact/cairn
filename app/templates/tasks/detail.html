@@ -1,10 +1,12 @@
 {% extends "layout/shell.html" %}
 {% from "macros/planning.html" import type_icon, priority, task_status, due, project_chip, quick_add, blocked_badge %}
 {% from "macros/resources.html" import resources_panel %}
+{% from "macros/comments.html" import comments_panel %}
 {% block title %}{{ task.title }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/comments/comments.css') }}">
 {% endblock %}
 {% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
@@ -12,7 +14,7 @@
 <script type="module" src="{{ url_for('static', filename='js/components/cn-quick-add.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/planning/live-task.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-upload.js') }}"></script>
-<script type="module" src="{{ url_for('static', filename='js/resources/live-resources.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/core/live-panels.js') }}"></script>
 {% endblock %}
 {% block content %}
 <nav class="cn-crumbs" aria-label="Breadcrumb">
@@ -188,6 +190,19 @@
       <cn-vitrine kind="markdown" source="task-claude"></cn-vitrine>
     </section>
     {% endif %}
+
+    {{ comments_panel("task", task, comments, inherited) }}
+
+    <section class="cn-panel" id="brief" aria-labelledby="brief-title">
+      <h2 id="brief-title"><i class="fa-solid fa-robot" aria-hidden="true"></i> Brief for Claude</h2>
+      <p class="cn-panel-lead">What a Claude run on this task receives: the task, its criteria, the instructions and corrections from the project and parent tasks, dependencies and resources. Fix it here before a run, not after.</p>
+      <details>
+        <summary>Show the brief</summary>
+        <script type="application/json" id="task-brief">{{ brief | tojson }}</script>
+        <cn-vitrine kind="markdown" source="task-brief" vt-variant="full" vt-tabs="true" vt-label="Brief for Claude"></cn-vitrine>
+      </details>
+      <p class="form-text"><a href="{{ url_for('tasks.brief', task_id=task.id) }}"><i class="fa-solid fa-download" aria-hidden="true"></i> Download as Markdown</a> — to paste into a Claude session by hand meanwhile.</p>
+    </section>
   </div>
 
   <aside class="cn-task-side">

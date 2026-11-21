@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import uuid
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, make_response, redirect, render_template, request, url_for
 
 from app.core.schema.planning import BulkEdit, DependencyCreate, TaskCreate, TaskUpdate
 from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, back_to, flash_undo, split_list, validate
+from app.features.comments import comments_core
 from app.features.projects import projects_core
 from app.features.resources import resources_core
 from app.features.tasks import (
+    brief_core,
     dependencies_core,
     quickadd_core,
     risk_core,
@@ -222,11 +224,12 @@ def detail(task_id: uuid.UUID):
     after = latest_event_id()
     task = _task_or_404(task_id)
     current = timer_core.running()
+    ancestors = tasks_core.ancestors(task)
     return render_template(
         "tasks/detail.html",
         task=task,
         events_after=after,
-        ancestors=tasks_core.ancestors(task),
+        ancestors=ancestors,
         subtasks=tasks_core.subtasks(task.id),
         dependencies=dependencies_core.for_task(task.id),
         chain=dependencies_core.blocking_chain(task.id) if task.is_blocked else [],
@@ -239,7 +242,23 @@ def detail(task_id: uuid.UUID):
         directions=DEPENDENCY_DIRECTIONS,
         resources=resources_core.for_target("task", task.id),
         max_mb=get_setting("resources.max_upload_mb"),
+        comments=comments_core.for_target("task", task.id),
+        inherited=[
+            (source, c)
+            for source, c in comments_core.corrections_for_task(task, ancestors)
+            if source != "this task"
+        ],
+        brief=brief_core.task_brief(task),
     )
+
+
+@tasks.get("/tasks/<uuid:task_id>/brief.md")
+def brief(task_id: uuid.UUID):
+    task = _task_or_404(task_id)
+    response = make_response(brief_core.task_brief(task))
+    response.mimetype = "text/markdown"
+    response.headers["Content-Disposition"] = f'attachment; filename="task-{task.id}.md"'
+    return response
 
 
 @tasks.post("/tasks/<uuid:task_id>/status")

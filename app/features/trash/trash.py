@@ -8,15 +8,31 @@ from flask import Blueprint, abort, flash, redirect, render_template, url_for
 
 from app.core.utils.history import batch
 from app.core.utils.web import flash_undo
+from app.features.comments import comments_core
 from app.features.projects import projects_core
 from app.features.resources import resources_core
 from app.features.tasks import tasks_core
 
 trash = Blueprint("trash", __name__)
 
-CORES = {"tasks": tasks_core, "projects": projects_core, "resources": resources_core}
-ERRORS = (tasks_core.TaskError, projects_core.ProjectError, resources_core.ResourceError)
-NOT_FOUND = (tasks_core.TaskNotFound, projects_core.ProjectNotFound, resources_core.ResourceNotFound)
+CORES = {
+    "tasks": tasks_core,
+    "projects": projects_core,
+    "resources": resources_core,
+    "comments": comments_core,
+}
+ERRORS = (
+    tasks_core.TaskError,
+    projects_core.ProjectError,
+    resources_core.ResourceError,
+    comments_core.CommentError,
+)
+NOT_FOUND = (
+    tasks_core.TaskNotFound,
+    projects_core.ProjectNotFound,
+    resources_core.ResourceNotFound,
+    comments_core.CommentNotFound,
+)
 
 
 @trash.get("/trash")
@@ -26,6 +42,7 @@ def index():
         tasks=tasks_core.deleted_tasks(),
         projects=projects_core.deleted_projects(),
         resources=resources_core.deleted_resources(),
+        comments=comments_core.deleted_comments(),
     )
 
 

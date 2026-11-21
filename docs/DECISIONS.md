@@ -158,3 +158,9 @@
 - Link previews are fetched by a job, never during a request: http(s) only also after redirects, 1 MB, 10 s, head only, as text; result in `meta`, the owner's title wins ("Use the page title" is a button). On by default (`resources.previews`), as the brief asks; it contacts only the sites the owner saved. GitHub addresses are parsed locally (repo, issue / PR number, file at commit); the GitHub integration (Phase 7) will enrich them.
 - A job queued inside a change batch is part of it (no separate commit); its queueing is undoable (cancel if not started).
 - Deferred: content snapshot for Claude and Claude-written image descriptions (Phase 5, they need the agent runner).
+
+## D-028 · 2026-11-21 · accepted — Comments, corrections log and the task brief
+- One `Comment` table for tasks and projects; kind `comment` or `correction`. A correction can be retired (kept in the log, no longer given to Claude) instead of deleted. Soft delete, trash, undo like the rest.
+- Corrections that apply to a task: its project's, then its parent tasks' (outermost first), then its own — the most specific last, so it reads as the final word.
+- **Task brief** (`tasks/brief_core.py`): one Markdown document with what to do, acceptance criteria, checklist, instructions (project → parents → task), active corrections, dependencies, subtasks and resources (task's, then the project's; notes and snippets inline, cut at 4 000 characters, fences longer than any backtick run inside). It is shown on the task page, downloadable (`/tasks/<id>/brief.md`) and in the API (`/api/tasks/<id>/brief`); the agent runner (Phase 5) will send this same text, so what the owner reads is what Claude gets. The hard rules (no attribution, no push) stay in the run's system prompt, not in the brief.
+- Live panels: `[data-live-target][data-live-events]` + `[data-live-notice]` (`static/js/core/live-panels.js`) for any panel that shows things attached to a task or project.

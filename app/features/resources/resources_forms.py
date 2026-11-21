@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import Mapping
 from typing import Any
 
 from app.core.db_class.resource import LINK_TARGETS, Resource
 from app.core.schema.resources import LinkCreate
-from app.core.utils.web import optional, split_list
+from app.core.utils.web import optional, parse_target, split_list
 
 # Fields each kind shows in the form (the others keep their defaults).
 KIND_FIELDS = {
@@ -48,12 +47,7 @@ def values_from_resource(resource: Resource) -> dict[str, Any]:
     }
 
 
-def parse_target(raw: str | None) -> LinkCreate | None:
+def parse_link(raw: str | None) -> LinkCreate | None:
     """`task:<uuid>` or `project:<uuid>` → a link target; None when empty or malformed."""
-    kind, _, value = (raw or "").partition(":")
-    if kind not in LINK_TARGETS:
-        return None
-    try:
-        return LinkCreate(target_type=kind, target_id=uuid.UUID(value))
-    except ValueError:
-        return None
+    found = parse_target(raw, LINK_TARGETS)
+    return LinkCreate(target_type=found[0], target_id=found[1]) if found else None

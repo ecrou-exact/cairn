@@ -56,3 +56,14 @@ def local_path(value: str | None) -> str:
 def back_to(default: str) -> str:
     """The `next` form field when it is a path on this site, else `default`."""
     return local_path(request.form.get("next")) or default
+
+
+def parse_target(raw: str | None, allowed: tuple[str, ...]) -> tuple[str, uuid.UUID] | None:
+    """`task:<uuid>` → ("task", UUID) when the kind is allowed; None when empty or malformed."""
+    kind, _, value = (raw or "").partition(":")
+    if kind not in allowed:
+        return None
+    try:
+        return kind, uuid.UUID(value)
+    except ValueError:
+        return None

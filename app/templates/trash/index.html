@@ -8,7 +8,7 @@
 <header class="cn-page-header">
   <div class="cn-eyebrow">Planning</div>
   <h1>Trash</h1>
-  <p>Deleted projects, tasks and resources stay here until you restore them or delete them for good. Nothing is ever deleted for good anywhere else.</p>
+  <p>Deleted projects, tasks, resources and comments stay here until you restore them or delete them for good. Nothing is ever deleted for good anywhere else.</p>
 </header>
 {% macro row(kind, item, title, extra="") %}
 <tr>
@@ -28,8 +28,8 @@
   </td>
 </tr>
 {% endmacro %}
-{% if not tasks and not projects and not resources %}
-<div class="cn-empty"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><h2>The trash is empty</h2><p>Deleted projects, tasks and resources come here first.</p></div>
+{% if not tasks and not projects and not resources and not comments %}
+<div class="cn-empty"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><h2>The trash is empty</h2><p>Deleted projects, tasks, resources and comments come here first.</p></div>
 {% endif %}
 {% if projects %}
 <section aria-labelledby="trash-projects"><h2 class="cn-section-title" id="trash-projects">Projects</h2>
@@ -45,5 +45,10 @@
 <section aria-labelledby="trash-resources"><h2 class="cn-section-title" id="trash-resources">Resources</h2>
 <div class="cn-table-wrap"><table class="table cn-table"><thead><tr><th scope="col">Resource</th><th scope="col">Deleted</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
 <tbody>{% for resource in resources %}{{ row("resources", resource, resource.title, resource.kind | kind_label) }}{% endfor %}</tbody></table></div></section>
+{% endif %}
+{% if comments %}
+<section aria-labelledby="trash-comments"><h2 class="cn-section-title" id="trash-comments">Comments and corrections</h2>
+<div class="cn-table-wrap"><table class="table cn-table"><thead><tr><th scope="col">Comment</th><th scope="col">Deleted</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+<tbody>{% for comment in comments %}{{ row("comments", comment, comment.body_md | truncate(80), comment.kind) }}{% endfor %}</tbody></table></div></section>
 {% endif %}
 {% endblock %}

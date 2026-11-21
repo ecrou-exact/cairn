@@ -21,9 +21,9 @@
 {% macro resources_panel(target_type, target, items, max_mb) -%}
 {% set here = request.full_path %}
 {% set attach = target_type ~ ":" ~ target.id %}
-<section class="cn-panel cn-resources-panel" id="resources" data-target="{{ attach }}" aria-labelledby="resources-title">
+<section class="cn-panel cn-resources-panel" id="resources" data-live-target="{{ attach }}" data-live-events="resource.changed" aria-labelledby="resources-title">
   <h2 id="resources-title">Resources{% if items %} <span class="cn-muted">{{ items | length }}</span>{% endif %}</h2>
-  <div class="cn-live-notice" id="resources-changed" hidden role="status"><span>These resources changed.</span> <a href="{{ request.path }}#resources">Reload</a></div>
+  <div class="cn-live-notice" data-live-notice hidden role="status"><span>These resources changed.</span> <a href="{{ request.path }}#resources">Reload</a></div>
   {% if items %}
   <ul class="cn-resource-list">
     {% for link, resource in items %}

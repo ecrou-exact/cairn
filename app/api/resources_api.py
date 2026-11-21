@@ -11,7 +11,7 @@ from app.core.schema.common import page_dict
 from app.core.schema.resources import LinkCreate, LinkOut, ResourceCreate, ResourceOut, ResourceUpdate
 from app.core.utils.history import batch
 from app.features.resources import resources_core, storage_core
-from app.features.resources.resources_forms import parse_target
+from app.features.resources.resources_forms import parse_link
 
 resources_api = api_blueprint("resources_api")
 
@@ -54,7 +54,7 @@ def upload_resource():
     if file is None or not file.filename:
         raise ApiError("Send the file in a multipart field named 'file'.", 400)
     raw_target = request.form.get("attach")
-    target = parse_target(raw_target)
+    target = parse_link(raw_target)
     if raw_target and target is None:
         raise ApiError("'attach' must be task:<id> or project:<id>.", 422)
     (resource, new), batch_id = _guard(resources_core.upload, file.stream, file.filename, target)

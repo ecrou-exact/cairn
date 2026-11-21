@@ -1,0 +1,28 @@
+{% extends "layout/shell.html" %}
+{% import "macros/form.html" as f %}
+{% block title %}Edit {{ comment.kind }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-form-guard.js') }}"></script>
+{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ back }}">{{ (target.title or target.name) if target else "Back" }}</a></div>
+  <h1>Edit {{ "correction" if comment.kind == "correction" else "comment" }}</h1>
+  <p>Written by {{ comment.created_by | author }} on {{ comment.created_at.strftime("%d %b %Y, %H:%M") }}.</p>
+</header>
+{{ f.form_error(errors) }}
+<form method="post" class="cn-panel" novalidate>
+  <cn-form-guard></cn-form-guard>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {{ f.markdown("body_md", "Text", values, errors) }}
+  {{ f.checkbox("kind", "Correction for Claude: kept and given to every later run", {"kind": "on" if values.get("kind") == "correction" else ""}, errors) }}
+  <div class="cn-form-actions">
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-link" href="{{ back }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

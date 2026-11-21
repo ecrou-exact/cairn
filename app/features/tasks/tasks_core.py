@@ -24,6 +24,7 @@ from app.core.utils.history import batch, register_undo
 from app.core.utils.listing import FilterSpec, ListPage, ListSpec, run_list
 from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
+from app.features.comments import comments_core
 from app.features.resources import resources_core
 from app.features.tasks import workflow
 from app.features.tasks.dependencies_core import refresh_derived
@@ -125,6 +126,8 @@ def update(task_id: uuid.UUID, data: TaskUpdate, *, force: bool = False) -> Task
     """Apply the fields set in `data`. `force` skips the workflow transition check (undo)."""
     task = get_task(task_id)
     fields = data.model_dump(exclude_unset=True)
+    if data.checklist is not None:  # exclude_unset also drops `done: false` inside each item
+        fields["checklist"] = [item.model_dump() for item in data.checklist]
     if "type" in fields:
         _check_type(fields["type"])
     if "status" in fields and fields["status"] != task.status:
@@ -250,8 +253,8 @@ def restore(task_id: uuid.UUID) -> int:
 
 
 def purge(task_id: uuid.UUID) -> None:
-    """Delete for good, from the trash only: the task, its subtasks, links, time entries and
-    resource attachments (the resources stay in the library)."""
+    """Delete for good, from the trash only: the task, its subtasks, links, time entries,
+    comments and resource attachments (the resources stay in the library)."""
     task = get_task(task_id, deleted=True)
     family = [task, *_descendants(task, deleted_at=task.deleted_at)]
     ids = [item.id for item in family]
@@ -265,6 +268,7 @@ def purge(task_id: uuid.UUID) -> None:
     )
     db.session.execute(sql_delete(TimeEntry).where(TimeEntry.task_id.in_(ids)))
     resources_core.forget_targets("task", ids)
+    comments_core.forget_targets("task", ids)
     for item in reversed(family):  # children first
         log_action(
             "task.purge", target_type="task", target_id=item.id, meta={"title": item.title}, level="warning"
