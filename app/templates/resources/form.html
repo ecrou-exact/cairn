@@ -1,0 +1,67 @@
+{% extends "layout/shell.html" %}
+{% import "macros/form.html" as f %}
+{% set label = kind | kind_label %}
+{% block title %}{{ "Edit " ~ resource.title if resource else "New " ~ label | lower }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-form-guard.js') }}"></script>
+{% endblock %}
+{% block content %}
+{% set cancel = url_for('resources.detail', resource_id=resource.id) if resource else (back or url_for('resources.index')) %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('resources.index') }}">Resources</a></div>
+  <h1>{{ "Edit " ~ label | lower if resource else "New " ~ label | lower }}</h1>
+  {% if attach and not resource %}<p>It is attached to the {{ attach.split(":")[0] }} you came from, and kept in the library.</p>{% endif %}
+</header>
+
+{% if not resource %}
+<nav class="cn-kind-links" aria-label="Kind of resource">
+  {% for value, text, icon in kinds %}
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('resources.new', kind=value, attach=attach or None, next=back or None) }}" {% if value == kind %}aria-current="page"{% endif %}><i class="fa-solid {{ icon }}" aria-hidden="true"></i><span class="ms-1">{{ text }}</span></a>
+  {% endfor %}
+  <span class="cn-muted">Files and images: drop them on the library or on a task.</span>
+</nav>
+{% endif %}
+
+{{ f.form_error(errors) }}
+<form method="post" class="cn-panel cn-resource-form" novalidate>
+  <cn-form-guard></cn-form-guard>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if not resource %}<input type="hidden" name="kind" value="{{ kind }}">{% endif %}
+  {% if attach %}<input type="hidden" name="attach" value="{{ attach }}">{% endif %}
+  {% if back %}<input type="hidden" name="next" value="{{ back }}">{% endif %}
+
+  {% if "url" in fields %}
+  {{ f.text("url", "Address" if kind != "tool" else "Address (optional)", values, errors, type="url", required=kind != "tool",
+            hint={"github": "An issue, pull request, discussion, file or repository on github.com.", "tool": "Where the tool lives, if it has a web page."}.get(kind, "The page is fetched once in the background to show its title and description."),
+            attrs={"maxlength": 2000, "inputmode": "url", "placeholder": "https://…"}) }}
+  {% endif %}
+  {{ f.text("title", "Title", values, errors, required=kind not in ("url", "github"),
+            hint="Left empty, it is made from the address; you can switch to the page title later." if kind in ("url", "github") else None,
+            attrs={"maxlength": 200}) }}
+  {% if kind == "note" %}
+  {{ f.markdown("body", "Note", values, errors) }}
+  {% elif kind == "snippet" %}
+  <div class="cn-form-grid">
+    {{ f.text("language", "Language", values, errors, hint="For highlighting: python, bash, sql, yaml… Empty for plain text.", attrs={"list": "languages", "maxlength": 30}) }}
+  </div>
+  <datalist id="languages">{% for name in ["bash", "shell", "python", "javascript", "typescript", "json", "yaml", "toml", "sql", "html", "css", "go", "rust", "java", "c", "cpp", "dockerfile", "ini", "markdown", "diff", "plaintext"] %}<option value="{{ name }}">{% endfor %}</datalist>
+  {{ f.code("body", "Code", values, errors, language=values.get("language")) }}
+  {% elif kind == "tool" %}
+  {{ f.code("body", "Command (optional)", values, errors, language="shell", hint="How you start it, e.g. docker compose up -d. Shown with a copy button; Cairn never runs it.") }}
+  {{ f.text("icon", "Icon", values, errors, hint="A Font Awesome solid icon name, e.g. fa-terminal, fa-database, fa-chart-line.", attrs={"maxlength": 40}) }}
+  {% elif kind == "file" and not (resource and resource.has_file) %}
+  {{ f.text("path", "Path", values, errors, required=True, hint="Where the file is: an absolute path on this machine, or a path inside a project's repository.", attrs={"maxlength": 500}) }}
+  {% endif %}
+  {{ f.text("tags", "Tags", values, errors, hint="Separated by commas.") }}
+  {{ f.markdown("description_md", "Notes", values, errors, hint="Why it matters, how to use it. Shown with the resource and given to Claude with it.") }}
+  <div class="cn-form-actions">
+    <button class="btn btn-primary" type="submit">{{ "Save" if resource else ("Add and attach" if attach else "Add to the library") }}</button>
+    <a class="btn btn-link" href="{{ cancel }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

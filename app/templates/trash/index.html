@@ -8,7 +8,7 @@
 <header class="cn-page-header">
   <div class="cn-eyebrow">Planning</div>
   <h1>Trash</h1>
-  <p>Deleted projects and tasks stay here until you restore them or delete them for good. Nothing is ever deleted for good anywhere else.</p>
+  <p>Deleted projects, tasks and resources stay here until you restore them or delete them for good. Nothing is ever deleted for good anywhere else.</p>
 </header>
 {% macro row(kind, item, title, extra="") %}
 <tr>
@@ -19,7 +19,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i><span class="ms-1">Restore</span></button>
     </form>
-    <cn-confirm message="Delete “{{ title }}” for good?" detail="This cannot be undone{% if kind == 'projects' %}: its tasks in the trash are deleted too{% endif %}." confirm-label="Delete for good" danger>
+    <cn-confirm message="Delete “{{ title }}” for good?" detail="This cannot be undone{% if kind == 'projects' %}: its tasks in the trash are deleted too{% elif kind == 'resources' %}: it is detached everywhere{% if item.has_file %} and its file is erased{% endif %}{% endif %}." confirm-label="Delete for good" danger>
       <form method="post" action="{{ url_for('trash.purge', kind=kind, item_id=item.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn btn-sm btn-outline-secondary" type="submit">Delete for good</button>
@@ -28,8 +28,8 @@
   </td>
 </tr>
 {% endmacro %}
-{% if not tasks and not projects %}
-<div class="cn-empty"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><h2>The trash is empty</h2><p>Deleted projects and tasks come here first.</p></div>
+{% if not tasks and not projects and not resources %}
+<div class="cn-empty"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><h2>The trash is empty</h2><p>Deleted projects, tasks and resources come here first.</p></div>
 {% endif %}
 {% if projects %}
 <section aria-labelledby="trash-projects"><h2 class="cn-section-title" id="trash-projects">Projects</h2>
@@ -40,5 +40,10 @@
 <section aria-labelledby="trash-tasks"><h2 class="cn-section-title" id="trash-tasks">Tasks</h2>
 <div class="cn-table-wrap"><table class="table cn-table"><thead><tr><th scope="col">Task</th><th scope="col">Deleted</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
 <tbody>{% for task in tasks %}{{ row("tasks", task, task.title, ("in " ~ task.project.name) if task.project else "") }}{% endfor %}</tbody></table></div></section>
+{% endif %}
+{% if resources %}
+<section aria-labelledby="trash-resources"><h2 class="cn-section-title" id="trash-resources">Resources</h2>
+<div class="cn-table-wrap"><table class="table cn-table"><thead><tr><th scope="col">Resource</th><th scope="col">Deleted</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+<tbody>{% for resource in resources %}{{ row("resources", resource, resource.title, resource.kind | kind_label) }}{% endfor %}</tbody></table></div></section>
 {% endif %}
 {% endblock %}

@@ -1,4 +1,4 @@
-/* Command palette (cn-palette), task picker (cn-task-picker), header timer (cn-timer), undo flash. */
+/* Command palette (cn-palette), picker (cn-picker), header timer (cn-timer), undo flash. */
 
 .cn-palette { width: min(94vw, 38rem); padding: var(--cn-space-3); margin-top: 12vh; }
 .cn-palette-input { font-size: var(--cn-text-lg); }
@@ -16,7 +16,7 @@
 .cn-palette-button kbd { font-size: var(--cn-text-xs); background: var(--cn-surface-sunken); color: var(--cn-text-muted); }
 @media (max-width: 768px) { .cn-palette-button span, .cn-palette-button kbd { display: none; } }
 
-cn-task-picker { position: relative; display: block; }
+cn-picker { position: relative; display: block; }
 .cn-picker-list {
   position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + var(--cn-space-1));
   list-style: none; margin: 0; padding: var(--cn-space-1);

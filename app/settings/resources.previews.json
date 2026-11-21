@@ -1,0 +1,6 @@
+{
+  "label": "Link previews",
+  "category": "Resources",
+  "description": "Fetch the title and description of the pages you save as links, in the background. The page is read once from this machine; turn it off to never contact the sites.",
+  "value": true
+}

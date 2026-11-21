@@ -23,6 +23,7 @@ from app.core.schema.planning import (
 from app.core.utils import history
 from app.core.utils.history import batch
 from app.features.projects import projects_core
+from app.features.resources import resources_core
 from app.features.search import search_core
 from app.features.tasks import dependencies_core, quickadd_core, tasks_core, timer_core, workflow
 
@@ -232,6 +233,16 @@ def search():
                 "url": url_for("tasks.detail", task_id=t.id),
             }
             for t in found["tasks"]
+        ],
+        resources=[
+            {
+                "id": str(r.id),
+                "title": r.title,
+                "kind": resources_core.KIND_LABELS[r.kind],
+                "icon": resources_core.icon_of(r),
+                "url": url_for("resources.detail", resource_id=r.id),
+            }
+            for r in found["resources"]
         ],
     )
 

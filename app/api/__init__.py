@@ -34,9 +34,10 @@ def body[M: BaseModel](schema: type[M]) -> M:
 def register_api(app: Flask) -> None:
     from app.api.jobs_api import jobs_api
     from app.api.planning_api import planning_api
+    from app.api.resources_api import resources_api
     from app.api.settings_api import settings_api
 
-    for blueprint in (jobs_api, settings_api, planning_api):
+    for blueprint in (jobs_api, settings_api, planning_api, resources_api):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(ApiError)

@@ -1,0 +1,97 @@
+{% extends "layout/shell.html" %}
+{% from "macros/list.html" import toolbar, sort_header, pagination, empty_state %}
+{% from "macros/resources.html" import resource_icon, resource_summary, open_link %}
+{% block title %}Resources{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/components/cn-upload.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/resources/live-resources.js') }}"></script>
+{% endblock %}
+{% block content %}
+<header class="cn-page-header cn-page-header-actions">
+  <div>
+    <div class="cn-eyebrow">Library</div>
+    <h1>Resources</h1>
+    <p>Links, files, images, snippets, tools and notes you use often. Each one is kept once and can be attached to any number of projects and tasks.</p>
+  </div>
+</header>
+
+<section class="cn-panel cn-library-add" aria-label="Add to the library">
+  <nav class="cn-kind-links" aria-label="New resource">
+    {% for kind, label, icon in kinds %}
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('resources.new', kind=kind) }}"><i class="fa-solid {{ icon }}" aria-hidden="true"></i><span class="ms-1">{{ label }}</span></a>
+    {% endfor %}
+  </nav>
+  <cn-upload max-mb="{{ max_mb }}" paste="page" label="Upload files and images" hint="Drop files here, choose them, or paste a screenshot anywhere on this page. Up to {{ max_mb }} MB each; a file already in the library is not stored twice.">
+    <form method="post" action="{{ url_for('resources.upload') }}" enctype="multipart/form-data" class="cn-inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+      <label class="visually-hidden" for="library-upload">Files to upload</label>
+      <input class="form-control" id="library-upload" type="file" name="files" multiple>
+      <button class="btn btn-outline-secondary" type="submit" data-upload-submit>Upload</button>
+    </form>
+  </cn-upload>
+</section>
+
+<div class="cn-live-notice" id="list-changed" data-resource-library hidden role="status">
+  <span>The library changed since this page loaded.</span> <a href="{{ page.url() }}">Reload the list</a>
+</div>
+
+{{ toolbar(page, "Search titles, addresses, contents, file names") }}
+
+{% if page.items %}
+  {% if page.view == "table" %}
+  <div class="cn-table-wrap">
+    <table class="table cn-table">
+      <caption class="visually-hidden">Resources, {{ page.total }} in all</caption>
+      <thead><tr>
+        {{ sort_header(page, "title", "Resource") }}
+        {{ sort_header(page, "kind", "Kind") }}
+        <th scope="col">Details</th>
+        {{ sort_header(page, "uses", "Used in") }}
+        {{ sort_header(page, "updated", "Changed") }}
+        <th scope="col"><span class="visually-hidden">Open</span></th>
+      </tr></thead>
+      <tbody>
+        {% for resource in page.items %}
+        <tr>
+          <td>{{ resource_icon(resource) }} <a href="{{ url_for('resources.detail', resource_id=resource.id) }}">{{ resource.title }}</a>{% for tag in resource.tags %} <span class="cn-tag">#{{ tag }}</span>{% endfor %}</td>
+          <td>{{ resource.kind | kind_label }}</td>
+          <td class="cn-muted">{{ resource_summary(resource) }}</td>
+          <td>{{ uses.get(resource.id, 0) }}</td>
+          <td><time datetime="{{ resource.updated_at.isoformat() }}">{{ resource.updated_at.strftime("%d %b %Y") }}</time></td>
+          <td class="cn-row-actions">{{ open_link(resource) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <ul class="cn-cards cn-resource-cards">
+    {% for resource in page.items %}
+    <li class="cn-card">
+      {% if resource.kind == "image" %}
+      <a class="cn-resource-preview" href="{{ url_for('resources.detail', resource_id=resource.id) }}" tabindex="-1" aria-hidden="true"><img src="{{ url_for('resources.file', resource_id=resource.id) }}" alt="" loading="lazy" {% if resource.meta.image %}width="{{ resource.meta.image.width }}" height="{{ resource.meta.image.height }}"{% endif %}></a>
+      {% endif %}
+      <div class="cn-card-head">
+        <div>{{ resource_icon(resource) }} <a href="{{ url_for('resources.detail', resource_id=resource.id) }}">{{ resource.title }}</a></div>
+        {{ open_link(resource) }}
+      </div>
+      {% set preview = resource.meta.get("preview", {}) %}
+      {% if preview.description %}<p class="cn-resource-desc">{{ preview.description | truncate(160) }}</p>{% endif %}
+      <p class="cn-card-tags cn-muted">
+        <span>{{ resource.kind | kind_label }} · {{ resource_summary(resource) }}</span>
+        {% set count = uses.get(resource.id, 0) %}<span>{{ "used in " ~ count if count else "not attached" }}</span>
+        {% for tag in resource.tags %}<span class="cn-tag">#{{ tag }}</span>{% endfor %}
+      </p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {{ pagination(page) }}
+{% else %}
+  {{ empty_state(page, "The library is empty", "Add a link, a note or a snippet above, or drop a file. Resources you attach to tasks and projects also land here.") }}
+{% endif %}
+{% endblock %}

@@ -9,8 +9,10 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from app.core.schema.planning import BulkEdit, DependencyCreate, TaskCreate, TaskUpdate
 from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
-from app.core.utils.web import FormErrors, flash_undo, split_list, validate
+from app.core.utils.settings import get_setting
+from app.core.utils.web import FormErrors, back_to, flash_undo, split_list, validate
 from app.features.projects import projects_core
+from app.features.resources import resources_core
 from app.features.tasks import (
     dependencies_core,
     quickadd_core,
@@ -32,13 +34,6 @@ DEPENDENCY_DIRECTIONS = {
     "relates": ("relates", True),
     "duplicates": ("duplicates", True),
 }
-
-
-def _back(default: str) -> str:
-    target = request.form.get("next") or ""
-    if target.startswith("/") and not target.startswith("//") and "\\" not in target:
-        return target.rstrip("?")
-    return default
 
 
 def _task_or_404(task_id: uuid.UUID):
@@ -107,7 +102,7 @@ def bulk():
         data = validate(BulkEdit, values)
     except FormErrors as exc:
         flash("Select at least one task." if "task_ids" in exc.errors else str(exc), "danger")
-        return redirect(_back(url_for("tasks.index")))
+        return redirect(back_to(url_for("tasks.index")))
     with batch() as batch_id:
         changed, skipped = tasks_core.bulk_edit(data)
     if changed:
@@ -117,7 +112,7 @@ def bulk():
         flash(f"Skipped {reason}", "warning")
     if not changed and not skipped:
         flash("Nothing to change: the selected tasks already have it.", "info")
-    return redirect(_back(url_for("tasks.index")))
+    return redirect(back_to(url_for("tasks.index")))
 
 
 @tasks.post("/tasks/<uuid:task_id>/priority")
@@ -133,7 +128,7 @@ def change_priority(task_id: uuid.UUID):
         flash(str(exc), "danger")
     else:
         flash_undo(f"“{task.title}” is now {task.priority} priority.", batch_id)
-    return redirect(_back(url_for("tasks.detail", task_id=task_id)))
+    return redirect(back_to(url_for("tasks.detail", task_id=task_id)))
 
 
 @tasks.post("/tasks/from-template")
@@ -148,7 +143,7 @@ def from_template():
             )
     except (tasks_core.TaskError, ValueError) as exc:
         flash(str(exc).splitlines()[0], "danger")
-        return redirect(_back(url_for("tasks.index")))
+        return redirect(back_to(url_for("tasks.index")))
     flash_undo(f"Created “{task.title}” from a template.", batch_id)
     return redirect(url_for("tasks.detail", task_id=task.id))
 
@@ -169,7 +164,7 @@ def quick_add():
         flash(str(exc).splitlines()[0], "danger")
     else:
         flash_undo(f"Added “{task.title}”.", batch_id)
-    return redirect(_back(url_for("tasks.index")))
+    return redirect(back_to(url_for("tasks.index")))
 
 
 # -- full form -------------------------------------------------------------------------------
@@ -242,6 +237,8 @@ def detail(task_id: uuid.UUID):
         time_entries=timer_core.entries(task.id),
         timing=current is not None and current[1].id == task.id,
         directions=DEPENDENCY_DIRECTIONS,
+        resources=resources_core.for_target("task", task.id),
+        max_mb=get_setting("resources.max_upload_mb"),
     )
 
 
@@ -257,7 +254,7 @@ def change_status(task_id: uuid.UUID):
         flash(str(exc), "danger")
     else:
         flash_undo(f"“{task.title}” is now {workflow.label_of(task.status)}.", batch_id)
-    return redirect(_back(url_for("tasks.detail", task_id=task_id)))
+    return redirect(back_to(url_for("tasks.detail", task_id=task_id)))
 
 
 @tasks.post("/tasks/<uuid:task_id>/checklist/<int:index>")
@@ -280,7 +277,7 @@ def delete(task_id: uuid.UUID):
         abort(404)
     extra = f" with {count - 1} subtask{'s' if count > 2 else ''}" if count > 1 else ""
     flash_undo(f"Moved to the trash{extra}.", batch_id)
-    return redirect(_back(url_for("tasks.index")))
+    return redirect(back_to(url_for("tasks.index")))
 
 
 # -- dependencies ----------------------------------------------------------------------------
@@ -338,7 +335,7 @@ def start_timer(task_id: uuid.UUID):
         flash(str(exc), "danger")
     else:
         flash(f"Working on “{task.title}”. The timer runs until you stop it or close the task.", "success")
-    return redirect(_back(url_for("tasks.detail", task_id=task_id)))
+    return redirect(back_to(url_for("tasks.detail", task_id=task_id)))
 
 
 @tasks.post("/timer/stop")
@@ -346,4 +343,4 @@ def stop_timer():
     seconds = timer_core.stop()
     if seconds:
         flash(f"Timer stopped: {timer_core.format_duration(seconds)} added.", "success")
-    return redirect(_back(url_for("home.index")))
+    return redirect(back_to(url_for("home.index")))

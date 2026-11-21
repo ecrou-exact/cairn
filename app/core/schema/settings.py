@@ -140,6 +140,8 @@ SETTING_TYPES: dict[str, TypeAdapter] = {
     "tasks.attention": TypeAdapter(Attention),
     "tasks.capacity": TypeAdapter(Capacity),
     "tasks.templates": TypeAdapter(Annotated[dict[KEY, TaskTemplate], Field(max_length=50)]),
+    "resources.max_upload_mb": TypeAdapter(Annotated[int, Field(strict=True, ge=1, le=50)]),
+    "resources.previews": TypeAdapter(Annotated[bool, Field(strict=True)]),
     "jobs.retention_days": TypeAdapter(Annotated[int, Field(strict=True, ge=1, le=3650)]),
     "lists.per_page": TypeAdapter(
         Annotated[list[Annotated[int, Field(strict=True, ge=5, le=500)]], Field(min_length=1, max_length=6)]

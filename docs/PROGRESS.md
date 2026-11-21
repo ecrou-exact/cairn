@@ -49,10 +49,10 @@ Goal: owner approves architecture + design direction.
 - [x] Projects CRUD (§2.1): list (cards/table, stats), page with its tasks, form, colours, delete with its tasks, trash
 - [x] Tasks + subtasks (§2.2), configurable types / statuses / workflow transitions / default status (D-023)
 - [x] Dependencies (blocks, follows, relates, duplicates), cycle detection naming the loop, blocked state everywhere, "why blocked" chain — critical path left for the graph (Phase 4)
-- [ ] Resources + resource library
+- [x] Resources + resource library (D-027): links with background preview, GitHub items, notes, snippets, tools, file paths, uploads; attach anywhere, reuse identical files, trash, undo, API — snapshot for Claude and image descriptions come with Phase 5
 - [x] Quick add with natural-language parsing and live preview, duplicate detection; full tabbed form; Markdown editors through Vitrine; unsaved-changes guard
 - [x] Inline status / priority edit, bulk edit (status, priority, project, tags, trash) in one undoable batch, task templates (D-026)
-- [ ] File upload / paste (with resources)
+- [x] File upload: drop, choose or paste a screenshot anywhere on a task / project / library page (Vitrine `vt-upload`), images re-encoded without metadata, files served download-only
 - [x] Priority score (configurable weights, explanation), "What should I do now?", needs-attention radar, deadline risk on dependency chains against working time
 - [x] History with undo per action (D-024), trash with restore and delete for good, command palette (Ctrl/Cmd+K), keyboard shortcuts (`?` lists them)
 - [x] Cairn's own roadmap as a plan (`docs/roadmap.json`, `python manage.py roadmap`)

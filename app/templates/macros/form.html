@@ -42,6 +42,18 @@
 </div>
 {%- endmacro %}
 
+{% macro code(name, label, values, errors, language="plaintext", hint=None) -%}
+<div class="cn-field">
+  <span class="form-label d-block" id="{{ name }}-label">{{ label }}</span>
+  <cn-vitrine kind="code" vt-mode="edit" vt-variant="full" vt-download="false" vt-language="{{ language or 'plaintext' }}" vt-label="{{ label }}" vt-max-height="26rem" vt-line-numbers="true">
+    <label class="visually-hidden" for="{{ name }}">{{ label }}</label>
+    <textarea class="form-control cn-code-fallback" id="{{ name }}" name="{{ name }}" rows="8" {{ _aria(name, errors, hint) }}>{{ values.get(name, '') or '' }}</textarea>
+  </cn-vitrine>
+  {% if hint %}<div class="form-text" id="{{ name }}-hint">{{ hint }}</div>{% endif %}
+  {{ _error(name, errors) }}
+</div>
+{%- endmacro %}
+
 {% macro select(name, label, values, errors, choices, hint=None, empty=None) -%}
 {# choices: list of (value, label) #}
 <div class="cn-field">

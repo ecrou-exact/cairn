@@ -1,16 +1,21 @@
 {% extends "layout/shell.html" %}
 {% from "macros/list.html" import toolbar, pagination, empty_state %}
 {% from "macros/planning.html" import quick_add, task_rows, task_cards, bulk_bar, from_template %}
+{% from "macros/resources.html" import resources_panel %}
 {% block title %}{{ project.name }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
 {% endblock %}
 {% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-quick-add.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/planning/live-list.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/planning/list-actions.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-picker.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-upload.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/resources/live-resources.js') }}"></script>
 {% endblock %}
 {% block content %}
 <header class="cn-page-header cn-page-header-actions cn-color-{{ project.color }}">
@@ -56,6 +61,8 @@
   {% endif %}
 </section>
 {% endif %}
+
+{{ resources_panel("project", project, resources, max_mb) }}
 
 <h2 class="cn-section-title">Tasks</h2>
 {{ quick_add("Add a task to " ~ project.name ~ "…", project=project) }}

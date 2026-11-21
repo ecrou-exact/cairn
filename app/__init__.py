@@ -18,6 +18,7 @@ def create_app(env: str | None = None) -> Flask:
     app.config.from_object(config)
     app.config["SQLALCHEMY_DATABASE_URI"] = config.database_uri()
     app.config["CAIRN_DATA_DIR"] = config.data_dir()
+    app.config["CAIRN_UPLOAD_DIR"] = app.config["CAIRN_DATA_DIR"] / "uploads"
     if not app.config.get("SECRET_KEY"):
         raise RuntimeError("CAIRN_SECRET_KEY is not set. Run `python manage.py setup` first.")
 
@@ -78,9 +79,22 @@ def _register_blueprints(app: Flask) -> None:
     from app.features.home.home import health, home
     from app.features.jobs.jobs import jobs
     from app.features.projects.projects import projects
+    from app.features.resources.resources import resources
     from app.features.settings.settings import settings
     from app.features.tasks.tasks import tasks
     from app.features.trash.trash import trash
 
-    for blueprint in (account, home, health, jobs, settings, events, projects, tasks, trash, history):
+    for blueprint in (
+        account,
+        home,
+        health,
+        jobs,
+        settings,
+        events,
+        projects,
+        tasks,
+        resources,
+        trash,
+        history,
+    ):
         app.register_blueprint(blueprint)

@@ -19,8 +19,9 @@ PASSWORD = "correct horse battery staple"
 
 
 @pytest.fixture()
-def app():
+def app(tmp_path):
     app = create_app("testing")
+    app.config["CAIRN_UPLOAD_DIR"] = tmp_path / "uploads"
     with app.app_context():
         db.create_all()
     yield app

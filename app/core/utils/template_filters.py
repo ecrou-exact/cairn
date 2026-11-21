@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import date
 from typing import Any
+from urllib.parse import urlsplit
 
 from flask import Flask
 
@@ -33,10 +34,32 @@ def relative_day(day: date, today: date | None = None) -> str:
     return f"{day:%d %b}" if day.year == today.year else f"{day:%d %b %Y}"
 
 
+def filesize(size: int | None) -> str:
+    if size is None:
+        return ""
+    value = float(size)
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024 or unit == "GB":
+            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{size} B"
+
+
+def host(url: str | None) -> str:
+    """The site of an address, without `www.`: `github.com`."""
+    name = urlsplit(url or "").hostname or ""
+    return name.removeprefix("www.")
+
+
 def register_template_filters(app: Flask) -> None:
+    from app.features.resources import resources_core
     from app.features.tasks import timer_core, workflow
 
     app.add_template_filter(pretty_json)
+    app.add_template_filter(filesize)
+    app.add_template_filter(host)
+    app.add_template_filter(resources_core.icon_of, "resource_icon")
+    app.add_template_filter(resources_core.KIND_LABELS.get, "kind_label")
     app.add_template_filter(relative_day)
     app.add_template_filter(workflow.label_of, "status_label")
     app.add_template_filter(workflow.kind_of, "status_kind")

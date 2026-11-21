@@ -22,6 +22,7 @@ from app.core.jobs.context import JobCancelled, JobContext, append_log
 from app.core.jobs.registry import get_handler, handler_types
 from app.core.utils.actor import acting_as
 from app.core.utils.events import publish
+from app.core.utils.history import current_batch, register_undo
 from app.core.utils.listing import FilterSpec, ListPage, ListSpec, run_list
 from app.core.utils.logger import log_action
 
@@ -106,8 +107,15 @@ def enqueue(job_type: str, payload: dict[str, Any] | None = None, *, title: str 
     db.session.flush()
     log_action("job.enqueue", target_type="job", target_id=job.id, meta={"type": job_type})
     _announce(job)
-    db.session.commit()
+    _commit()
     return job
+
+
+def _commit() -> None:
+    """Commit, unless inside a change batch: then the job is queued (or cancelled) with the
+    change that asked for it, and undoing that change cancels the job if it has not started."""
+    if current_batch() is None:
+        db.session.commit()
 
 
 def enqueue_manual(job_type: str) -> Job:
@@ -214,7 +222,7 @@ def cancel(job_id: uuid.UUID) -> Job:
         append_log(job, "Cancellation requested.", "WARN")
     log_action("job.cancel", target_type="job", target_id=job.id, meta={"type": job.type})
     _announce(job)
-    db.session.commit()
+    _commit()
     return job
 
 
@@ -228,8 +236,26 @@ def retry(job_id: uuid.UUID) -> Job:
     append_log(job, "Retried by the owner.")
     log_action("job.retry", target_type="job", target_id=job.id, meta={"type": job.type})
     _announce(job)
-    db.session.commit()
+    _commit()
     return job
+
+
+def _undo_queueing(row) -> None:
+    """Undo of a queued job: cancel it if it has not started (a finished job stays finished)."""
+    job = db.session.get(Job, uuid.UUID(row.target_id))
+    if job is not None and job.status == "queued" and not job.cancel_requested:
+        cancel(job.id)
+
+
+def _undo_cancel(row) -> None:
+    job = db.session.get(Job, uuid.UUID(row.target_id))
+    if job is not None and job.status == "cancelled" and job.started_at is None:
+        retry(job.id)
+
+
+register_undo("job.enqueue", _undo_queueing)
+register_undo("job.retry", _undo_queueing)
+register_undo("job.cancel", _undo_cancel)
 
 
 # -- worker housekeeping ---------------------------------------------------------------------

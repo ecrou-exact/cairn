@@ -151,3 +151,10 @@
 - **Templates** live in the `tasks.templates` setting (typed); `sequential` chains subtasks with `follows`.
 - **Plan import** (`plan_import_core`, `manage.py roadmap [file]`): a project and tasks with parents and `blocked_by`, matched by slug and title so re-importing only adds what is new; all or nothing. Cairn's own roadmap is `docs/roadmap.json` — Cairn plans itself. The intake (Phase 6) will reuse this path.
 - **Shortcuts:** `n`, `/`, `g`+letter, `?`; ignored while typing, including inside Vitrine editors (composed path).
+
+## D-027 · 2026-11-21 · accepted — Resources: one library, links, safe file storage
+- A resource exists once (`Resource`) and is attached through `ResourceLink` rows to projects and tasks; detaching never deletes it. Uploading content already in the library (same SHA-256) reuses and attaches the existing resource.
+- Uploads: Vitrine's `vt-upload` (owner's library) wrapped by `<cn-upload>`; a plain file field without JavaScript. Files are stored under random names in one folder, path checked to stay inside it; size checked while reading (`resources.max_upload_mb`, ≤ 50 MB). PNG / JPEG / GIF / WebP are decoded and re-encoded with **Pillow** (new dependency): EXIF and GPS go away, a fake image is kept as a plain download-only file; > 40 Mpx refused. SVG is never shown inline.
+- Link previews are fetched by a job, never during a request: http(s) only also after redirects, 1 MB, 10 s, head only, as text; result in `meta`, the owner's title wins ("Use the page title" is a button). On by default (`resources.previews`), as the brief asks; it contacts only the sites the owner saved. GitHub addresses are parsed locally (repo, issue / PR number, file at commit); the GitHub integration (Phase 7) will enrich them.
+- A job queued inside a change batch is part of it (no separate commit); its queueing is undoable (cancel if not started).
+- Deferred: content snapshot for Claude and Claude-written image descriptions (Phase 5, they need the agent runner).

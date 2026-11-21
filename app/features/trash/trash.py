@@ -9,18 +9,23 @@ from flask import Blueprint, abort, flash, redirect, render_template, url_for
 from app.core.utils.history import batch
 from app.core.utils.web import flash_undo
 from app.features.projects import projects_core
+from app.features.resources import resources_core
 from app.features.tasks import tasks_core
 
 trash = Blueprint("trash", __name__)
 
-CORES = {"tasks": tasks_core, "projects": projects_core}
-ERRORS = (tasks_core.TaskError, projects_core.ProjectError)
+CORES = {"tasks": tasks_core, "projects": projects_core, "resources": resources_core}
+ERRORS = (tasks_core.TaskError, projects_core.ProjectError, resources_core.ResourceError)
+NOT_FOUND = (tasks_core.TaskNotFound, projects_core.ProjectNotFound, resources_core.ResourceNotFound)
 
 
 @trash.get("/trash")
 def index():
     return render_template(
-        "trash/index.html", tasks=tasks_core.deleted_tasks(), projects=projects_core.deleted_projects()
+        "trash/index.html",
+        tasks=tasks_core.deleted_tasks(),
+        projects=projects_core.deleted_projects(),
+        resources=resources_core.deleted_resources(),
     )
 
 
@@ -30,7 +35,7 @@ def restore(kind: str, item_id: uuid.UUID):
     try:
         with batch() as batch_id:
             core.restore(item_id)
-    except (tasks_core.TaskNotFound, projects_core.ProjectNotFound):
+    except NOT_FOUND:
         abort(404)
     except ERRORS as exc:
         flash(str(exc), "danger")
@@ -44,7 +49,7 @@ def purge(kind: str, item_id: uuid.UUID):
     core = CORES.get(kind) or abort(404)
     try:
         core.purge(item_id)
-    except (tasks_core.TaskNotFound, projects_core.ProjectNotFound):
+    except NOT_FOUND:
         abort(404)
     except ERRORS as exc:
         flash(str(exc), "danger")

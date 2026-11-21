@@ -23,6 +23,7 @@ from app.core.utils.events import publish
 from app.core.utils.history import batch, register_undo
 from app.core.utils.listing import FilterSpec, ListPage, ListSpec, run_list
 from app.core.utils.logger import log_action
+from app.features.resources import resources_core
 from app.features.tasks import tasks_core
 from app.features.tasks.dependencies_core import refresh_derived
 
@@ -187,6 +188,7 @@ def purge(project_id: uuid.UUID) -> None:
         meta={"name": project.name},
         level="warning",
     )
+    resources_core.forget_targets("project", [project.id])
     db.session.delete(project)
     db.session.commit()
 

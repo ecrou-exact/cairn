@@ -14,6 +14,7 @@ from app.core.jobs.registry import register_handler
 from app.core.security.secret_core import delete_secret, get_secret, put_secret
 from app.core.utils.events import prune_events
 from app.core.utils.settings import get_setting
+from app.features.resources.storage_core import remove_orphan_files
 
 MIN_FREE_BYTES = 1024**3
 
@@ -28,8 +29,9 @@ def prune(context: JobContext, payload: dict) -> dict:
     context.progress(50)
     events = prune_events()
     db.session.commit()
-    context.log(f"Deleted {jobs} jobs and {events} realtime events.")
-    return {"jobs_deleted": jobs, "events_deleted": events}
+    files = remove_orphan_files()
+    context.log(f"Deleted {jobs} jobs, {events} realtime events and {files} unused uploaded files.")
+    return {"jobs_deleted": jobs, "events_deleted": events, "files_deleted": files}
 
 
 @register_handler(

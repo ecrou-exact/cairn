@@ -33,8 +33,13 @@ function syncTheme() {
 syncTheme();
 new MutationObserver(syncTheme).observe(document.documentElement, { attributeFilter: ['data-theme'] });
 
-function load(kind) {
-  if (!loading.has(kind)) loading.set(kind, import(`../../vendor/vitrine/esm/vt-${kind}.js`));
+/** Load one Vitrine element module once (`vt-<kind>.js`); also used by cn-upload. */
+export function load(kind) {
+  if (!loading.has(kind)) {
+    const module = import(`../../vendor/vitrine/esm/vt-${kind}.js`);
+    module.catch(() => loading.delete(kind)); // the next element may try again
+    loading.set(kind, module);
+  }
   return loading.get(kind);
 }
 
@@ -68,7 +73,6 @@ export class CnVitrine extends HTMLElement {
     try {
       await load(kind);
     } catch {
-      loading.delete(kind); // the next element may try again
       if (status) {
         status.className = 'cn-load-error';
         status.textContent = 'This content could not be displayed: the viewer failed to load. Reload the page.';

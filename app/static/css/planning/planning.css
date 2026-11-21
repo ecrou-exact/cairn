@@ -113,7 +113,7 @@
 .cn-remove { color: var(--cn-text-faint); padding: 0 var(--cn-space-1); }
 .cn-dep-form { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: start; }
 .cn-dep-form .form-select { width: auto; }
-.cn-dep-form cn-task-picker { flex: 1 1 16rem; }
+.cn-dep-form cn-picker { flex: 1 1 16rem; }
 
 .cn-unblocks { color: var(--cn-success); margin-bottom: var(--cn-space-3); }
 .cn-explain { width: 100%; font-size: var(--cn-text-sm); }

@@ -1,0 +1,81 @@
+{# Resources (§2.4): icon, one-line summary, and the panel shown on task and project pages. #}
+
+{% macro resource_icon(resource) -%}
+<i class="fa-solid {{ resource | resource_icon }} cn-resource-icon cn-kind-{{ resource.kind }}" aria-hidden="true"></i>
+{%- endmacro %}
+
+{% macro resource_summary(resource) -%}
+{% if resource.kind == "github" and resource.meta.github %}{{ resource.meta.github.item | capitalize }} in {{ resource.meta.github.repo }}
+{%- elif resource.url %}{{ resource.url | host }}
+{%- elif resource.has_file %}{{ resource.size_bytes | filesize }}{% if resource.meta.image %} · {{ resource.meta.image.width }}×{{ resource.meta.image.height }}{% endif %}
+{%- elif resource.kind == "snippet" %}{{ resource.language or "text" }} · {{ resource.body.count("\n") + 1 }} line{{ "s" if resource.body.count("\n") }}
+{%- elif resource.path %}{{ resource.path }}
+{%- else %}{{ resource.kind | kind_label }}{% endif %}
+{%- endmacro %}
+
+{% macro open_link(resource, small=True) -%}
+{% if resource.url %}<a class="btn {{ 'btn-sm' if small }} btn-outline-secondary" href="{{ resource.url }}" target="_blank" rel="noopener noreferrer" title="Open {{ resource.url | host }} in a new tab"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span class="visually-hidden">Open {{ resource.title }}</span></a>
+{%- elif resource.has_file %}<a class="btn {{ 'btn-sm' if small }} btn-outline-secondary" href="{{ url_for('resources.file', resource_id=resource.id, download=1) }}" title="Download"><i class="fa-solid fa-download" aria-hidden="true"></i><span class="visually-hidden">Download {{ resource.title }}</span></a>{% endif %}
+{%- endmacro %}
+
+{% macro resources_panel(target_type, target, items, max_mb) -%}
+{% set here = request.full_path %}
+{% set attach = target_type ~ ":" ~ target.id %}
+<section class="cn-panel cn-resources-panel" id="resources" data-target="{{ attach }}" aria-labelledby="resources-title">
+  <h2 id="resources-title">Resources{% if items %} <span class="cn-muted">{{ items | length }}</span>{% endif %}</h2>
+  <div class="cn-live-notice" id="resources-changed" hidden role="status"><span>These resources changed.</span> <a href="{{ request.path }}#resources">Reload</a></div>
+  {% if items %}
+  <ul class="cn-resource-list">
+    {% for link, resource in items %}
+    <li>
+      {% if resource.kind == "image" %}
+      <a class="cn-resource-thumb" href="{{ url_for('resources.detail', resource_id=resource.id) }}"><img src="{{ url_for('resources.file', resource_id=resource.id) }}" alt="" loading="lazy" {% if resource.meta.image %}width="{{ resource.meta.image.width }}" height="{{ resource.meta.image.height }}"{% endif %}></a>
+      {% else %}{{ resource_icon(resource) }}{% endif %}
+      <div class="cn-resource-text">
+        <a href="{{ url_for('resources.detail', resource_id=resource.id) }}">{{ resource.title }}</a>
+        <small>{{ resource_summary(resource) }}{% if link.note %} — {{ link.note }}{% endif %}</small>
+      </div>
+      {{ open_link(resource) }}
+      <form method="post" action="{{ url_for('resources.detach', link_id=link.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+        <button class="btn btn-link btn-sm cn-remove" type="submit" title="Detach (it stays in the library)"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="visually-hidden">Detach {{ resource.title }}</span></button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="cn-muted">Nothing attached. Paste a link, drop a file or a screenshot, or pick something from the library.</p>
+  {% endif %}
+
+  <div class="cn-resource-add">
+    <form class="cn-inline-form" method="post" action="{{ url_for('resources.quick_link') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}"><input type="hidden" name="attach" value="{{ attach }}">
+      <label class="visually-hidden" for="quick-link-{{ target.id }}">Web address to attach</label>
+      <input class="form-control" id="quick-link-{{ target.id }}" name="url" type="url" inputmode="url" maxlength="2000" required placeholder="Paste a link: https://…">
+      <button class="btn btn-outline-secondary" type="submit">Attach link</button>
+    </form>
+
+    <form class="cn-inline-form" method="post" action="{{ url_for('resources.attach') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+      <input type="hidden" name="target_type" value="{{ target_type }}"><input type="hidden" name="target_id" value="{{ target.id }}">
+      <cn-picker kind="resources" name="resource_id" label="Resource from the library"></cn-picker>
+      <button class="btn btn-outline-secondary" type="submit">Attach</button>
+    </form>
+
+    <cn-upload max-mb="{{ max_mb }}" paste="page" label="Files and images" hint="Drop files here, choose them, or paste a screenshot anywhere on this page. Up to {{ max_mb }} MB each.">
+      <form method="post" action="{{ url_for('resources.upload') }}" enctype="multipart/form-data" class="cn-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}"><input type="hidden" name="attach" value="{{ attach }}">
+        <label class="visually-hidden" for="upload-{{ target.id }}">Files to attach</label>
+        <input class="form-control" id="upload-{{ target.id }}" type="file" name="files" multiple>
+        <button class="btn btn-outline-secondary" type="submit" data-upload-submit>Upload</button>
+      </form>
+    </cn-upload>
+
+    <p class="cn-resource-new">New:
+      {% for kind, label in [("note", "Note"), ("snippet", "Snippet or command"), ("tool", "Tool"), ("file", "File on disk")] %}
+      <a href="{{ url_for('resources.new', kind=kind, attach=attach, next=here) }}">{{ label }}</a>{{ " · " if not loop.last }}
+      {% endfor %}
+    </p>
+  </div>
+</section>
+{%- endmacro %}

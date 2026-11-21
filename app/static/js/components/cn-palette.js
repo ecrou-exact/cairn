@@ -2,7 +2,7 @@
  * <cn-palette>: the command palette (PROJECT_BRIEF.md §5), opened with Ctrl/Cmd+K or any
  * [data-open-palette] button.
  *
- * - Type to filter pages and actions, and to search projects and tasks.
+ * - Type to filter pages and actions, and to search projects, tasks and resources.
  * - "Add task: …" creates the typed text through quick add (same parser as the page).
  * - Arrows move, Enter runs, Escape closes. Everything is built with DOM methods.
  */
@@ -13,6 +13,7 @@ import { showHelp } from '../core/shortcuts.js';
 const ACTIONS = [
   { label: 'New task (full form)', icon: 'fa-pen-to-square', url: '/tasks/new' },
   { label: 'New project', icon: 'fa-folder-plus', url: '/projects/new' },
+  { label: 'New resource (link, note, snippet…)', icon: 'fa-paperclip', url: '/resources/new' },
   { label: 'Actionable tasks', icon: 'fa-bolt', url: '/tasks?state=actionable' },
   { label: 'Blocked tasks', icon: 'fa-link-slash', url: '/tasks?state=blocked' },
   { label: 'Overdue tasks', icon: 'fa-calendar-xmark', url: '/tasks?state=overdue' },
@@ -120,6 +121,7 @@ class CnPalette extends HTMLElement {
         group: 'Tasks',
         meta: [t.project, t.status].filter(Boolean).join(' · '),
       })),
+      ...(data.resources || []).map((r) => ({ label: r.title, icon: r.icon, url: r.url, group: 'Resources', meta: r.kind })),
     ];
     this.#refresh(found);
   }

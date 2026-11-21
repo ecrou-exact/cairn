@@ -24,6 +24,7 @@ from app.core.utils.history import batch, register_undo
 from app.core.utils.listing import FilterSpec, ListPage, ListSpec, run_list
 from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
+from app.features.resources import resources_core
 from app.features.tasks import workflow
 from app.features.tasks.dependencies_core import refresh_derived
 from app.features.tasks.risk_core import deadline_risks
@@ -249,7 +250,8 @@ def restore(task_id: uuid.UUID) -> int:
 
 
 def purge(task_id: uuid.UUID) -> None:
-    """Delete for good, from the trash only: the task, its subtasks, links and time entries."""
+    """Delete for good, from the trash only: the task, its subtasks, links, time entries and
+    resource attachments (the resources stay in the library)."""
     task = get_task(task_id, deleted=True)
     family = [task, *_descendants(task, deleted_at=task.deleted_at)]
     ids = [item.id for item in family]
@@ -262,6 +264,7 @@ def purge(task_id: uuid.UUID) -> None:
         sql_delete(Dependency).where(or_(Dependency.from_task_id.in_(ids), Dependency.to_task_id.in_(ids)))
     )
     db.session.execute(sql_delete(TimeEntry).where(TimeEntry.task_id.in_(ids)))
+    resources_core.forget_targets("task", ids)
     for item in reversed(family):  # children first
         log_action(
             "task.purge", target_type="task", target_id=item.id, meta={"title": item.title}, level="warning"

@@ -77,7 +77,7 @@ All entities inherit `BaseEntity`: `id UUID`, `created_at`, `updated_at`, `creat
 | `Task` | title, description_md, type, status, priority, importance, urgency, start/due/do_on/completed dates, hard_deadline, estimate, actual, acceptance_md, claude_instructions_md, assignee, recurrence, branch, worktree_path, score (cached) + score_explain (json) | project, parent (self), checklist_items, corrections, comments, tags, custom_values, resources, github_links, runs |
 | `Dependency` | kind (`blocks`, `relates`, `duplicates`, `follows`), from_task, to_task | cycle check on write (blocks/follows) |
 | `ExternalCondition` | kind (review, upstream release, date, PR merged, free), payload json, resolved_at, auto_resolver | task |
-| `Resource` | type (url, file, image, snippet, tool, note, github), title, payload json, snapshot (for Claude, sandboxed), description (image) | many-to-many with projects/tasks (library) |
+| `Resource` | kind (url, file, image, snippet, tool, note, github), title, description_md, url, body (note / code / command), language, path, icon, tags, stored file (random name, original name, mime, size, sha256), meta json (page preview, GitHub reference, image size) — snapshot for Claude and image description come in Phase 5 | `ResourceLink` (resource, target_type project/task, target_id, note): one resource in the library, attached anywhere |
 | `AgentRun` | status, account_id, model, skills[], modules[], prompt, session_id, worktree, branch, cost_usd, tokens json, started/ended, summary_md, scheduled_for | tasks (m2m), events, file_changes, permission_requests |
 | `RunEvent` | run, seq, type, payload json | streamed to UI |
 | `ChangeSet` / `ChangeSetItem` | origin (run/intake/module), status, op (create/update/delete/link), target, diff json, decision | applied atomically by core |
@@ -107,14 +107,20 @@ Configurable lists (types, statuses, workflow transitions, priorities, score wei
 - `GET /events?topics=job,setting` (SSE), one connection per tab (`static/js/core/events.js`), authenticated by session, filtered server-side by topic prefix.
 - Producer: `events.publish(type, payload)` adds an `event` row in the caller's transaction; the stream polls it every second (D-020). `Last-Event-ID` (or `?after=`) resumes; id gaps are waited on for 5 s so nothing is skipped.
 - Live pages pass the last event id read before their data (`<meta name="cn-events-after">`); `<cn-live-status>` in the header shows the connection state.
-- Event types so far: `job.changed`, `job.progress`, `job.log`, `setting.changed`.
+- Event types so far: `job.changed`, `job.progress`, `job.log`, `setting.changed`, `task.changed`, `project.changed`, `resource.changed` (with the `kind:id` targets it is attached to).
 
 ## 3b. Planning (Phase 3)
 - Code: `features/projects/` and `features/tasks/` (`tasks_core`, `dependencies_core` with `refresh_derived`, `score_core`, `quickadd_core`, `timer_core`, `workflow`), `features/trash/`, `features/history/`; API in `api/planning_api.py`; schemas in `core/schema/planning.py`.
 - **Score** (`score_core.py`): `project weight × Σ weight × value`, each value in 0..1 — priority (critical 1, high .7, medium .4, low .1), importance and urgency ((n−1)/4), deadline (1 when due or late, down to 0 at `deadline_horizon_days`), hard deadline (the deadline value again), unblocks (open tasks waiting on it transitively, /5, max 1), quick win (1/(1+h/4), .5 without estimate), age (days/30, max 1). Weights: setting `tasks.score_weights`. Every task keeps the breakdown shown on its page.
 - **What should I do now?** open, not blocked, not waiting, `do_on`/`start_on` not in the future, by score.
 - **History:** one batch per owner action, undo per batch (D-024). Soft delete everywhere; hard delete only from `/trash`.
-- **Front end:** `cn-quick-add` (live parse preview), `cn-task-picker` (combobox over `/api/search`), `cn-palette` (Ctrl/Cmd+K), `cn-timer`, `cn-form-guard` (unsaved changes), `cn-confirm`.
+- **Front end:** `cn-quick-add` (live parse preview), `cn-picker` (combobox over `/api/search`, tasks or resources), `cn-upload` (Vitrine `vt-upload`: drop, choose or paste files), `cn-palette` (Ctrl/Cmd+K), `cn-timer`, `cn-form-guard` (unsaved changes), `cn-confirm`.
+
+## 3c. Resources (Phase 3)
+- Code: `features/resources/` — `resources_core` (create, upload with SHA-256 reuse, attach / detach, trash, undo), `storage_core` (upload folder, random names, size check while reading, images re-encoded by Pillow, orphan clean-up in `system.prune`), `preview_core` (page head parser, GitHub address parser); job `resources.preview` (lane io); API `api/resources_api.py`; schemas `core/schema/resources.py`.
+- Files live in `<data dir>/uploads/ab/ab…` (`CAIRN_UPLOAD_DIR`). Served by `/resources/<id>/file`: images inline as their re-encoded type, everything else `application/octet-stream` as an attachment; always `CSP: default-src 'none'; sandbox` and `nosniff`.
+- Pages: `/resources` library (cards/table, kind and "used" filters, sort by uses), resource page, form per kind; a resources panel on task and project pages (paste a link, pick from the library, drop / paste files, new note / snippet / tool / path). Settings `resources.max_upload_mb`, `resources.previews`.
+- Jobs queued inside a change batch join it: undoing the change cancels the job if it has not started (`job.enqueue` / `job.cancel` / `job.retry` have inverses).
 
 ## 5b. Lists, settings, display
 - **Lists:** a feature declares a `ListSpec` (sortable, searchable, filters, tiebreak) and calls `run_list(spec, query, request.args)`; anything undeclared in the URL is ignored. Macros in `templates/macros/list.html`, styles in `css/components/list.css`. The API returns the same page as JSON (`schema/common.page_dict`).

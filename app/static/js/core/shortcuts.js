@@ -3,7 +3,7 @@
  * Never active while typing in a field or an editor (including Vitrine's shadow DOM).
  */
 
-const GO = { h: '/', t: '/tasks', p: '/projects', j: '/jobs', s: '/settings', x: '/trash' };
+const GO = { h: '/', t: '/tasks', p: '/projects', r: '/resources', j: '/jobs', s: '/settings', x: '/trash' };
 const HELP = [
   ['Ctrl K', 'Search, go to a page, add a task'],
   ['n', 'New task (quick add)'],
@@ -11,6 +11,7 @@ const HELP = [
   ['g then h', 'Today'],
   ['g then t', 'Tasks'],
   ['g then p', 'Projects'],
+  ['g then r', 'Resources'],
   ['g then j', 'Jobs'],
   ['g then x', 'Trash'],
   ['g then s', 'Settings'],

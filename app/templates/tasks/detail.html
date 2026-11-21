@@ -1,14 +1,18 @@
 {% extends "layout/shell.html" %}
 {% from "macros/planning.html" import type_icon, priority, task_status, due, project_chip, quick_add, blocked_badge %}
+{% from "macros/resources.html" import resources_panel %}
 {% block title %}{{ task.title }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
 {% endblock %}
 {% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
-<script type="module" src="{{ url_for('static', filename='js/components/cn-task-picker.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-picker.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-quick-add.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/planning/live-task.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-upload.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/resources/live-resources.js') }}"></script>
 {% endblock %}
 {% block content %}
 <nav class="cn-crumbs" aria-label="Breadcrumb">
@@ -170,10 +174,12 @@
           <option value="relates">relates to</option>
           <option value="duplicates">duplicates</option>
         </select>
-        <cn-task-picker name="other_id" exclude="{{ task.id }}" label="Task to link"></cn-task-picker>
+        <cn-picker kind="tasks" name="other_id" exclude="{{ task.id }}" label="Task to link"></cn-picker>
         <button class="btn btn-outline-secondary" type="submit">Link</button>
       </form>
     </section>
+
+    {{ resources_panel("task", task, resources, max_mb) }}
 
     {% if task.claude_instructions_md %}
     <section class="cn-panel" aria-labelledby="claude-title">

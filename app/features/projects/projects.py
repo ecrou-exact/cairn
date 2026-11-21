@@ -8,9 +8,11 @@ from app.core.db_class.planning import PROJECT_COLORS, PROJECT_STATUSES
 from app.core.schema.planning import ProjectCreate, ProjectUpdate
 from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
+from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, flash_undo, validate
 from app.features.projects import projects_core
 from app.features.projects.projects_forms import values_from_form, values_from_project
+from app.features.resources import resources_core
 from app.features.tasks import tasks_core
 from app.features.tasks.tasks import list_context
 
@@ -75,6 +77,8 @@ def detail(slug: str):
         page=page,
         stats=projects_core.stats([project.id])[project.id],
         events_after=after,
+        resources=resources_core.for_target("project", project.id),
+        max_mb=get_setting("resources.max_upload_mb"),
         **list_context(),
     )
 

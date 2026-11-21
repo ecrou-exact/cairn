@@ -1,0 +1,6 @@
+{
+  "label": "Largest upload",
+  "category": "Resources",
+  "description": "The largest file you can upload, in MB (at most 50, the server's own limit). Files are kept in Cairn's data folder.",
+  "value": 25
+}

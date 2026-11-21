@@ -1,35 +1,49 @@
 /**
- * <cn-task-picker name="other_id" exclude="<task id>" label="…">: a search field that
- * finds tasks by title (GET /api/search) and puts the chosen task's id in a hidden input
- * named `name`. Keyboard: arrows move, Enter picks, Escape closes (ARIA combobox).
+ * <cn-picker kind="tasks|resources" name="other_id" exclude="<id>" label="…">: a search
+ * field that finds tasks or resources by title (GET /api/search) and puts the chosen one's
+ * id in a hidden input named `name`. Keyboard: arrows move, Enter picks, Escape closes
+ * (ARIA combobox).
  */
 
 import { api, debounce } from '../core/api.js';
 
+const KINDS = {
+  tasks: { placeholder: 'Search a task…', empty: 'No task matches.', meta: (item) => [item.project, item.status] },
+  resources: { placeholder: 'Search the library…', empty: 'No resource matches.', meta: (item) => [item.kind] },
+};
+
 let counter = 0;
 
-class CnTaskPicker extends HTMLElement {
+class CnPicker extends HTMLElement {
   #input;
   #hidden;
   #list;
   #items = [];
   #active = -1;
 
+  get #kind() {
+    return KINDS[this.getAttribute('kind')] || KINDS.tasks;
+  }
+
+  get #source() {
+    return KINDS[this.getAttribute('kind')] ? this.getAttribute('kind') : 'tasks';
+  }
+
   connectedCallback() {
     if (this.#input) return;
-    const id = `task-picker-${++counter}`;
+    const id = `picker-${++counter}`;
     const label = document.createElement('label');
     label.className = 'visually-hidden';
     label.htmlFor = id;
-    label.textContent = this.getAttribute('label') || 'Task';
+    label.textContent = this.getAttribute('label') || 'Search';
     this.#input = document.createElement('input');
-    Object.assign(this.#input, { id, type: 'search', className: 'form-control', placeholder: 'Search a task…', autocomplete: 'off' });
+    Object.assign(this.#input, { id, type: 'search', className: 'form-control', placeholder: this.#kind.placeholder, autocomplete: 'off' });
     this.#input.setAttribute('role', 'combobox');
     this.#input.setAttribute('aria-expanded', 'false');
     this.#input.setAttribute('aria-controls', `${id}-list`);
     this.#input.setAttribute('aria-autocomplete', 'list');
     this.#hidden = document.createElement('input');
-    Object.assign(this.#hidden, { type: 'hidden', name: this.getAttribute('name') || 'task_id' });
+    Object.assign(this.#hidden, { type: 'hidden', name: this.getAttribute('name') || 'id' });
     this.#list = document.createElement('ul');
     this.#list.id = `${id}-list`;
     this.#list.className = 'cn-picker-list';
@@ -46,23 +60,23 @@ class CnTaskPicker extends HTMLElement {
   async #search() {
     const q = this.#input.value.trim();
     if (q.length < 2) return this.#close();
-    const data = await api(`/search?${new URLSearchParams({ q })}`).catch(() => ({ tasks: [] }));
+    const data = await api(`/search?${new URLSearchParams({ q })}`).catch(() => ({}));
     const exclude = this.getAttribute('exclude');
-    this.#items = data.tasks.filter((task) => task.id !== exclude);
+    this.#items = (data[this.#source] || []).filter((item) => item.id !== exclude);
     this.#active = this.#items.length ? 0 : -1;
     this.#render();
   }
 
   #render() {
-    const rows = this.#items.map((task, index) => {
+    const rows = this.#items.map((item, index) => {
       const li = document.createElement('li');
       li.id = `${this.#list.id}-${index}`;
       li.setAttribute('role', 'option');
       li.setAttribute('aria-selected', String(index === this.#active));
       const title = document.createElement('span');
-      title.textContent = task.title;
+      title.textContent = item.title;
       const meta = document.createElement('small');
-      meta.textContent = [task.project, task.status].filter(Boolean).join(' · ');
+      meta.textContent = this.#kind.meta(item).filter(Boolean).join(' · ');
       li.append(title, meta);
       li.addEventListener('mousedown', (event) => {
         event.preventDefault();
@@ -73,7 +87,7 @@ class CnTaskPicker extends HTMLElement {
     if (!rows.length) {
       const empty = document.createElement('li');
       empty.className = 'cn-picker-empty';
-      empty.textContent = 'No task matches.';
+      empty.textContent = this.#kind.empty;
       rows.push(empty);
     }
     this.#list.replaceChildren(...rows);
@@ -98,9 +112,9 @@ class CnTaskPicker extends HTMLElement {
   }
 
   #pick(index) {
-    const task = this.#items[index];
-    this.#hidden.value = task.id;
-    this.#input.value = task.title;
+    const item = this.#items[index];
+    this.#hidden.value = item.id;
+    this.#input.value = item.title;
     this.#close();
   }
 
@@ -110,4 +124,4 @@ class CnTaskPicker extends HTMLElement {
   }
 }
 
-if (!customElements.get('cn-task-picker')) customElements.define('cn-task-picker', CnTaskPicker);
+if (!customElements.get('cn-picker')) customElements.define('cn-picker', CnPicker);

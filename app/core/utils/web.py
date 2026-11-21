@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Mapping
 from typing import Any
 
-from flask import flash
+from flask import flash, request
 from pydantic import BaseModel, ValidationError
 
 
@@ -43,3 +43,16 @@ def split_list(raw: str | None, separator: str = ",") -> list[str]:
 def flash_undo(message: str, batch_id: uuid.UUID) -> None:
     """A success message with an Undo button for the change made in `batch_id`."""
     flash({"text": message, "batch": str(batch_id)}, "undo")
+
+
+def local_path(value: str | None) -> str:
+    """`value` when it is a path on this site (`/tasks?…`), else "" (no open redirect)."""
+    target = value or ""
+    if target.startswith("/") and not target.startswith("//") and "\\" not in target:
+        return target.rstrip("?")
+    return ""
+
+
+def back_to(default: str) -> str:
+    """The `next` form field when it is a path on this site, else `default`."""
+    return local_path(request.form.get("next")) or default

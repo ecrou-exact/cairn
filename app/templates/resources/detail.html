@@ -1,0 +1,175 @@
+{% extends "layout/shell.html" %}
+{% from "macros/resources.html" import resource_icon, resource_summary, open_link %}
+{% from "macros/planning.html" import project_chip, task_status %}
+{% block title %}{{ resource.title }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-picker.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/resources/live-resources.js') }}"></script>
+{% endblock %}
+{% block content %}
+{% set preview = resource.meta.get("preview", {}) %}
+{% set github = resource.meta.get("github") %}
+<nav class="cn-crumbs" aria-label="Breadcrumb"><a href="{{ url_for('resources.index') }}">Resources</a></nav>
+
+<header class="cn-task-header" data-resource-id="{{ resource.id }}">
+  <h1>{{ resource_icon(resource) }} {{ resource.title }}</h1>
+  <div class="cn-task-meta">
+    <span class="cn-badge">{{ resource.kind | kind_label }}</span>
+    <span class="cn-muted">{{ resource_summary(resource) }}</span>
+    {% for tag in resource.tags %}<span class="cn-tag">#{{ tag }}</span>{% endfor %}
+  </div>
+  <div class="cn-task-actions">
+    {% if resource.url %}<a class="btn btn-primary" href="{{ resource.url }}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span class="ms-2">Open {{ resource.url | host }}</span></a>{% endif %}
+    {% if resource.has_file %}<a class="btn btn-primary" href="{{ url_for('resources.file', resource_id=resource.id, download=1) }}"><i class="fa-solid fa-download" aria-hidden="true"></i><span class="ms-2">Download</span></a>{% endif %}
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('resources.edit', resource_id=resource.id) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="ms-1">Edit</span></a>
+    <cn-confirm message="Move “{{ resource.title }}” to the trash?" detail="{% if usages %}It is attached to {{ usages | length }} place{{ 's' if usages | length > 1 }}; it disappears from {{ 'them' if usages | length > 1 else 'it' }} until restored. {% endif %}You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
+      <form method="post" action="{{ url_for('resources.delete', resource_id=resource.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
+      </form>
+    </cn-confirm>
+  </div>
+  <div class="cn-live-notice" id="resource-changed" hidden role="status"><span>This resource changed{% if resource.url %} (the link preview may have arrived){% endif %}.</span> <a href="{{ request.path }}">Reload</a></div>
+</header>
+
+<div class="cn-task-layout">
+  <div class="cn-task-main">
+    {% if resource.kind == "image" %}
+    <section class="cn-panel cn-image-panel" aria-label="Image">
+      <img src="{{ url_for('resources.file', resource_id=resource.id) }}" alt="{{ resource.title }}" {% if resource.meta.image %}width="{{ resource.meta.image.width }}" height="{{ resource.meta.image.height }}"{% endif %}>
+    </section>
+    {% endif %}
+
+    {% if resource.kind in ("url", "github", "tool") and resource.url %}
+    <section class="cn-panel" aria-labelledby="preview-title">
+      <h2 id="preview-title">{{ "On GitHub" if github else "The page" }}</h2>
+      {% if github %}
+      <dl class="cn-facts">
+        <div><dt>Repository</dt><dd>{{ github.repo }}</dd></div>
+        <div><dt>Item</dt><dd>{{ github.item | capitalize }}{% if github.number %} #{{ github.number }}{% endif %}</dd></div>
+        {% if github.ref %}<div><dt>At</dt><dd><code>{{ github.ref[:40] }}</code></dd></div>{% endif %}
+        {% if github.path %}<div><dt>Path</dt><dd><code>{{ github.path }}</code></dd></div>{% endif %}
+      </dl>
+      {% endif %}
+      {% if preview.title or preview.description %}
+      <blockquote class="cn-preview">
+        {% if preview.site %}<small>{{ preview.site }}</small>{% endif %}
+        {% if preview.title %}<strong>{{ preview.title }}</strong>{% endif %}
+        {% if preview.description %}<p>{{ preview.description }}</p>{% endif %}
+      </blockquote>
+      {% endif %}
+      <p class="form-text">
+        <code class="cn-url">{{ resource.url }}</code><br>
+        {% if preview.error %}Preview failed: {{ preview.error }}
+        {% elif preview.fetched_at %}Preview fetched {{ preview.fetched_at[:16].replace("T", " ") }} UTC.
+        {% elif previews_on %}The preview is being fetched in the background.
+        {% else %}Link previews are off (<a href="{{ url_for('settings.index', _anchor='resources.previews') }}">settings</a>).{% endif %}
+      </p>
+      <div class="cn-inline-actions">
+        {% if preview.title and preview.title != resource.title %}
+        <form method="post" action="{{ url_for('resources.use_title', resource_id=resource.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-secondary" type="submit">Use the page title</button>
+        </form>
+        {% endif %}
+        {% if previews_on %}
+        <form method="post" action="{{ url_for('resources.refresh_preview', resource_id=resource.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-solid fa-rotate" aria-hidden="true"></i><span class="ms-1">Fetch again</span></button>
+        </form>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if resource.body %}
+    <section class="cn-panel" aria-labelledby="content-title">
+      <h2 id="content-title">{{ {"note": "Note", "snippet": "Snippet", "tool": "Command"}.get(resource.kind, "Content") }}</h2>
+      <script type="application/json" id="resource-body">{{ resource.body | tojson }}</script>
+      {% if resource.kind == "note" %}
+      <cn-vitrine kind="markdown" source="resource-body"></cn-vitrine>
+      {% else %}
+      <cn-vitrine kind="code" source="resource-body" vt-variant="full" vt-language="{{ resource.language or ('shell' if resource.kind == 'tool' else 'plaintext') }}" vt-label="{{ resource.title }}"></cn-vitrine>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if resource.kind == "file" %}
+    <section class="cn-panel" aria-labelledby="file-title">
+      <h2 id="file-title">File</h2>
+      <dl class="cn-facts">
+        {% if resource.has_file %}
+        <div><dt>Name</dt><dd>{{ resource.original_name }}</dd></div>
+        <div><dt>Size</dt><dd>{{ resource.size_bytes | filesize }}</dd></div>
+        <div><dt>Type</dt><dd>{{ resource.mime }}</dd></div>
+        <div><dt>SHA-256</dt><dd><code class="cn-hash">{{ resource.sha256 }}</code></dd></div>
+        {% endif %}
+        {% if resource.path %}<div><dt>Path</dt><dd><code>{{ resource.path }}</code></dd></div>{% endif %}
+      </dl>
+      {% if resource.has_file %}<p class="form-text">Uploaded files are only downloaded, never opened in Cairn.</p>{% endif %}
+    </section>
+    {% endif %}
+
+    {% if resource.description_md %}
+    <section class="cn-panel" aria-labelledby="desc-title">
+      <h2 id="desc-title">Notes</h2>
+      <script type="application/json" id="resource-description">{{ resource.description_md | tojson }}</script>
+      <cn-vitrine kind="markdown" source="resource-description"></cn-vitrine>
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="cn-task-side">
+    <section class="cn-panel" aria-labelledby="used-title">
+      <h2 id="used-title">Used in{% if usages %} <span class="cn-muted">{{ usages | length }}</span>{% endif %}</h2>
+      {% if usages %}
+      <ul class="cn-resource-usages">
+        {% for link, target in usages %}
+        <li>
+          {% if link.target_type == "project" %}{{ project_chip(target) }}
+          {% else %}<a href="{{ url_for('tasks.detail', task_id=target.id) }}">{{ target.title }}</a> {{ task_status(target) }}{% endif %}
+          <form method="post" action="{{ url_for('resources.detach', link_id=link.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">
+            <button class="btn btn-link btn-sm cn-remove" type="submit" title="Detach"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="visually-hidden">Detach from {{ target.title or target.name }}</span></button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="cn-muted">Not attached anywhere yet.</p>
+      {% endif %}
+      <form class="cn-stack-form" method="post" action="{{ url_for('resources.attach') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">
+        <input type="hidden" name="resource_id" value="{{ resource.id }}"><input type="hidden" name="target_type" value="task">
+        <cn-picker kind="tasks" name="target_id" label="Task to attach it to"></cn-picker>
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Attach to this task</button>
+      </form>
+      {% if project_options %}
+      <form class="cn-stack-form" method="post" action="{{ url_for('resources.attach') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">
+        <input type="hidden" name="resource_id" value="{{ resource.id }}"><input type="hidden" name="target_type" value="project">
+        <label class="visually-hidden" for="attach-project">Project to attach it to</label>
+        <select class="form-select form-select-sm" id="attach-project" name="target_id" required>
+          <option value="">Choose a project…</option>
+          {% for project in project_options %}<option value="{{ project.id }}">{{ project.name }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Attach to this project</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="cn-panel" aria-labelledby="facts-title">
+      <h2 id="facts-title">About</h2>
+      <dl class="cn-facts">
+        <div><dt>Added</dt><dd><time datetime="{{ resource.created_at.isoformat() }}">{{ resource.created_at.strftime("%d %b %Y") }}</time> by {{ resource.created_by }}</dd></div>
+        <div><dt>Changed</dt><dd><time datetime="{{ resource.updated_at.isoformat() }}">{{ resource.updated_at.strftime("%d %b %Y, %H:%M") }}</time></dd></div>
+      </dl>
+    </section>
+  </aside>
+</div>
+{% endblock %}
