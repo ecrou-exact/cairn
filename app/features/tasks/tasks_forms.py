@@ -8,6 +8,7 @@ from typing import Any
 
 from app.core.db_class.planning import Task
 from app.core.utils.web import optional, split_list
+from app.features.tasks import workflow
 
 _CHECK = re.compile(r"^\s*(?:[-*]\s*)?\[( |x|X)\]\s*(.+)$")
 
@@ -52,6 +53,7 @@ def values_from_form(form: Mapping[str, str]) -> dict[str, Any]:
         "acceptance_md": form.get("acceptance_md", ""),
         "claude_instructions_md": form.get("claude_instructions_md", ""),
         "recurrence": recurrence_from_form(form),
+        "custom": {key: form.get(f"custom__{key}", "") for key in workflow.custom_fields()},
     }
 
 
@@ -91,4 +93,9 @@ def values_from_task(task: Task) -> dict[str, Any]:
         "repeat_unit": (task.recurrence or {}).get("unit", ""),
         "repeat_every": (task.recurrence or {}).get("every", 1),
         "repeat_anchor": (task.recurrence or {}).get("anchor", "due"),
+        **{f"custom__{key}": _shown(value) for key, value in task.custom.items()},
     }
+
+
+def _shown(value: Any) -> str:
+    return f"{value:g}" if isinstance(value, float) else str(value)

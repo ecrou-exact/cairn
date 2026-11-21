@@ -60,6 +60,7 @@ def _form_context(values, errors: dict | None = None, task=None) -> dict:
         "task": task,
         "project_choices": [(str(p.id), p.name) for p in projects_core.options()],
         "type_choices": [(key, info["label"]) for key, info in workflow.types().items()],
+        "custom_fields": workflow.custom_fields(),
         "status_choices": [
             (s["key"], s["label"]) for s in workflow.status_choices(task.status if task else None)
         ],
@@ -258,6 +259,7 @@ def detail(task_id: uuid.UUID):
         brief=brief_core.task_brief(task),
         related=related_core.related_for(task),
         conditions=conditions_core.for_task(task.id),
+        custom_fields=workflow.custom_fields(),
         condition_kinds=conditions_core.KIND_LABELS,
         condition_icons=conditions_core.KIND_ICONS,
     )

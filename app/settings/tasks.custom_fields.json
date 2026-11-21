@@ -1,0 +1,6 @@
+{
+  "label": "Custom task fields",
+  "category": "Tasks",
+  "description": "Your own fields on every task, shown in the Advanced tab of the task form, on the task page and in Claude's brief. Each key maps to a label and a type: text, number, date, url or select (select needs \"options\"). Example: {\"target_version\": {\"label\": \"Target version\", \"type\": \"text\"}, \"effort_source\": {\"label\": \"Estimated by\", \"type\": \"select\", \"options\": [\"me\", \"Claude\", \"reviewer\"]}}. Removing a field hides its values; they stay stored.",
+  "value": {}
+}

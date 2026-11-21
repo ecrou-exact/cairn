@@ -76,6 +76,21 @@
     <div class="tab-pane fade" id="pane-advanced" role="tabpanel" aria-labelledby="tab-advanced">
       {{ f.textarea("checklist", "Checklist", values, errors, rows=6, mono=True, hint="One step per line; start a line with [x] when it is done.") }}
       {{ f.markdown("acceptance_md", "Acceptance criteria", values, errors) }}
+      <h2 class="cn-form-section">Your fields</h2>
+      {% if custom_fields %}
+      <div class="cn-form-grid">
+        {% for key, spec in custom_fields.items() %}
+        {% set name = "custom__" ~ key %}
+        {% if spec.type == "select" %}
+        {{ f.select(name, spec.label, values, errors, spec.options | map("pair") | list, hint=spec.hint or None, empty="—") }}
+        {% else %}
+        {{ f.text(name, spec.label, values, errors, type={"number": "number", "date": "date", "url": "url"}.get(spec.type, "text"), hint=spec.hint or None, attrs={"step": "any"} if spec.type == "number" else {"maxlength": 500}) }}
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="form-text">No custom field yet. Add your own (text, number, date, link, list of choices) in <a href="{{ url_for('settings.index', _anchor='tasks.custom_fields') }}">Settings → Custom task fields</a>.</p>
+      {% endif %}
     </div>
   </div>
   <div class="cn-form-actions">

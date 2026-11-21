@@ -61,3 +61,8 @@ def keys_of_kinds(*kinds: str) -> list[str]:
 
 def types() -> dict[str, dict[str, Any]]:
     return dict(get_setting("tasks.types"))
+
+
+def custom_fields() -> dict[str, dict[str, Any]]:
+    """Owner-defined task fields (setting `tasks.custom_fields`), in their order."""
+    return get_setting("tasks.custom_fields")

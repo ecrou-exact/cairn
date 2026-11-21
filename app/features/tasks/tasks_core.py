@@ -6,6 +6,7 @@ publishes `task.changed` and refreshes the derived columns (blocked, score…).
 
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import Mapping
 from datetime import date, datetime, timedelta
@@ -62,6 +63,43 @@ def _check_type(task_type: str) -> None:
         raise TaskError(f"Unknown task type '{task_type}'.")
 
 
+def clean_custom(values: dict[str, Any]) -> dict[str, Any]:
+    """Custom field values checked against their definitions; empty ones are dropped."""
+    fields = workflow.custom_fields()
+    clean: dict[str, Any] = {}
+    for key, raw in values.items():
+        spec = fields.get(key)
+        if spec is None:
+            raise TaskError(f"There is no custom field '{key}' (see Settings → Custom task fields).")
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
+            continue
+        label, kind = spec["label"], spec["type"]
+        text = raw.strip() if isinstance(raw, str) else raw
+        if kind == "number":
+            try:
+                clean[key] = float(text)
+            except (TypeError, ValueError):
+                raise TaskError(f"{label} must be a number.") from None
+        elif kind == "date":
+            try:
+                clean[key] = date.fromisoformat(str(text)).isoformat()
+            except ValueError:
+                raise TaskError(f"{label} must be a date (YYYY-MM-DD).") from None
+        elif kind == "url":
+            if not re.fullmatch(r"https?://\S{1,1990}", str(text)):
+                raise TaskError(f"{label} must be a web address starting with http:// or https://.")
+            clean[key] = text
+        elif kind == "select":
+            if text not in spec.get("options", []):
+                raise TaskError(f"{label} must be one of: {', '.join(spec.get('options', []))}.")
+            clean[key] = text
+        else:
+            if len(str(text)) > 500:
+                raise TaskError(f"{label} is too long (500 characters at most).")
+            clean[key] = str(text)
+    return clean
+
+
 def _check_status(status: str) -> None:
     if status not in workflow.status_map():
         raise TaskError(f"Unknown status '{status}'.")
@@ -97,6 +135,7 @@ def _changed(task: Task) -> None:
 def create(data: TaskCreate) -> Task:
     values = data.model_dump()
     values["status"] = values["status"] or workflow.default_status()
+    values["custom"] = clean_custom(values.get("custom") or {})
     _check_type(values["type"])
     _check_status(values["status"])
     _check_project(values["project_id"])
@@ -131,6 +170,8 @@ def update(task_id: uuid.UUID, data: TaskUpdate, *, force: bool = False) -> Task
         fields["checklist"] = [item.model_dump() for item in data.checklist]
     if data.recurrence is not None:
         fields["recurrence"] = data.recurrence.model_dump()
+    if "custom" in fields:
+        fields["custom"] = clean_custom(fields["custom"] or {})
     if "type" in fields:
         _check_type(fields["type"])
     if "status" in fields and fields["status"] != task.status:
@@ -196,6 +237,7 @@ def _spawn_next_occurrence(task: Task) -> Task | None:
             acceptance_md=task.acceptance_md,
             claude_instructions_md=task.claude_instructions_md,
             recurrence=task.recurrence,
+            custom=task.custom,
             **dates,
         )
     )

@@ -104,6 +104,14 @@ def task_brief(task: Task) -> str:
         facts.append(f"- Repeats: {recurrence_core.describe(task.recurrence)}")
     if task.estimate_hours:
         facts.append(f"- Estimate: {task.estimate_hours:g} h")
+    fields = workflow.custom_fields()
+    facts += [
+        f"- {fields[key]['label']}: {value:g}"
+        if isinstance(value, float)
+        else f"- {fields[key]['label']}: {value}"
+        for key, value in task.custom.items()
+        if key in fields
+    ]
     if task.tags:
         facts.append("- Tags: " + ", ".join(task.tags))
     lines += [*facts, ""]

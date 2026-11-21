@@ -177,3 +177,7 @@
 ## D-031 · 2026-11-21 · accepted — External conditions block like tasks
 - `ExternalCondition` (task, kind review / release / pr / date / other, label, optional link, `until_on`, `resolved_at`): what a task waits for outside Cairn. An open one counts in `blocked_by_count`, so "blocked" means the same everywhere (badges, filters, "what should I do now", the brief). Resolved by hand ("It happened"); a `date` one lifts itself on its day through the daily recompute, with no write. Auto-resolution of PRs and releases comes with the GitHub sync (Phase 7).
 - Like dependencies, conditions are links: removed for good, kept in the activity log, undoable.
+
+## D-032 · 2026-11-21 · accepted — Custom task fields
+- Defined by the owner in the typed setting `tasks.custom_fields` (key → label, type text / number / date / url / select with options, hint); values in `Task.custom` (JSON). `tasks_core.clean_custom` is the one check for forms, API and future MCP tools: unknown keys refused, numbers parsed, dates ISO, links http(s) only, select within its options, empty values dropped.
+- Shown in the Advanced tab of the task form, on the task page and in the brief; carried to the next occurrence of a repeating task. Removing a definition hides its values (they stay stored). Filtering lists by custom fields is left for saved views.

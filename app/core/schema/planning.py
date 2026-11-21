@@ -53,6 +53,11 @@ class ChecklistItem(Strict):
     done: bool = False
 
 
+CustomValues = Annotated[
+    dict[Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,29}$")], str | float | None], Field(max_length=30)
+]
+
+
 class Recurrence(Strict):
     every: Annotated[int, Field(ge=1, le=365)] = 1
     unit: Literal["day", "week", "month", "year"]
@@ -152,6 +157,7 @@ class TaskCreate(Strict):
     acceptance_md: Markdown = ""
     claude_instructions_md: Markdown = ""
     recurrence: Recurrence | None = None
+    custom: CustomValues = Field(default_factory=dict)
 
     @field_validator("title")
     @classmethod
@@ -180,6 +186,7 @@ class TaskUpdate(Strict):
     acceptance_md: Markdown | None = None
     claude_instructions_md: Markdown | None = None
     recurrence: Recurrence | None = None  # sent as null: no longer repeats
+    custom: CustomValues | None = None  # replaces every custom value; checked by tasks_core
 
     @field_validator("title")
     @classmethod
@@ -221,6 +228,7 @@ class TaskOut(Output):
     acceptance_md: str
     claude_instructions_md: str
     recurrence: dict[str, Any] | None
+    custom: dict[str, Any]
     next_occurrence_id: uuid.UUID | None
     is_open: bool
     is_blocked: bool

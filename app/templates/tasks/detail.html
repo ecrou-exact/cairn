@@ -279,6 +279,10 @@
         {% if task.do_on %}<div><dt>Do on</dt><dd>{{ task.do_on | relative_day }}</dd></div>{% endif %}
         {% if task.due_on %}<div><dt>Due</dt><dd>{{ task.due_on | relative_day }}{% if task.hard_deadline %} (hard){% endif %}</dd></div>{% endif %}
         {% if task.recurrence %}<div><dt>Repeats</dt><dd><i class="fa-solid fa-repeat" aria-hidden="true"></i> {{ task.recurrence | recurrence }}{% if task.next_occurrence_id %} · <a href="{{ url_for('tasks.detail', task_id=task.next_occurrence_id) }}">next one</a>{% endif %}</dd></div>{% endif %}
+        {% for key, spec in custom_fields.items() if task.custom.get(key) is not none %}
+        {% set value = task.custom[key] %}
+        <div><dt>{{ spec.label }}</dt><dd>{% if spec.type == "url" %}<a href="{{ value }}" target="_blank" rel="noopener noreferrer">{{ value | host }}</a>{% elif spec.type == "date" %}{{ value }}{% elif spec.type == "number" %}{{ "%g" | format(value) }}{% else %}{{ value }}{% endif %}</dd></div>
+        {% endfor %}
         <div><dt>Estimate</dt><dd>{{ ("%g h" | format(task.estimate_hours)) if task.estimate_hours else "—" }}</dd></div>
         <div><dt>Time spent</dt><dd>{{ task.tracked_seconds | duration }}{% if task.estimate_hours and task.tracked_seconds > task.estimate_hours * 3600 %} <span class="cn-badge cn-badge-warning">over</span>{% endif %}</dd></div>
       </dl>

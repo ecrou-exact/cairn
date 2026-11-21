@@ -129,6 +129,21 @@ class TaskTemplate(Strict):
     sequential: bool
 
 
+class CustomField(Strict):
+    label: LABEL
+    type: Literal["text", "number", "date", "url", "select"]
+    options: list[Annotated[str, Field(min_length=1, max_length=60)]] = Field(
+        default_factory=list, max_length=50
+    )
+    hint: Annotated[str, Field(max_length=200)] = ""
+
+    @model_validator(mode="after")
+    def _options(self) -> CustomField:
+        if self.type == "select" and not self.options:
+            raise ValueError("a select field needs options")
+        return self
+
+
 THEME_NAMES = Literal["auto", "stone", "basalt", "moss", "ember"]
 
 # One type per settings file (checked by tests/test_settings.py). An override must fit it.
@@ -139,6 +154,7 @@ SETTING_TYPES: dict[str, TypeAdapter] = {
     "tasks.score_weights": TypeAdapter(ScoreWeights),
     "tasks.attention": TypeAdapter(Attention),
     "tasks.capacity": TypeAdapter(Capacity),
+    "tasks.custom_fields": TypeAdapter(Annotated[dict[KEY, CustomField], Field(max_length=30)]),
     "tasks.templates": TypeAdapter(Annotated[dict[KEY, TaskTemplate], Field(max_length=50)]),
     "resources.max_upload_mb": TypeAdapter(Annotated[int, Field(strict=True, ge=1, le=50)]),
     "resources.previews": TypeAdapter(Annotated[bool, Field(strict=True)]),

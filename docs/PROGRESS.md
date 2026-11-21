@@ -45,7 +45,7 @@ Goal: owner approves architecture + design direction.
 - [~] `manage.py` works on all OS (setup / start / serve threaded / worker) — `install.sh`, systemd units, Docker Compose still to do
 - **Done when:** login, theme switch, empty app shell, jobs page and live push work end to end, tests green on all three OS in CI.
 
-## Phase 3 — Core planning  *(current)*
+## Phase 3 — Core planning  *(done except the JSON schema registry, which comes with the MCP server in Phase 5)*
 - [x] Projects CRUD (§2.1): list (cards/table, stats), page with its tasks, form, colours, delete with its tasks, trash
 - [x] Tasks + subtasks (§2.2), configurable types / statuses / workflow transitions / default status (D-023)
 - [x] Dependencies (blocks, follows, relates, duplicates), cycle detection naming the loop, blocked state everywhere, "why blocked" chain — critical path left for the graph (Phase 4)
@@ -61,7 +61,7 @@ Goal: owner approves architecture + design direction.
 - [x] Related context per task: close tasks, matching resources, schedule fit — panel, brief, API; base of "Ask Claude to fill a task" (D-029, roadmap `fill-task`, Phase 6)
 - [x] Recurring tasks: form, quick add (`weekly`, `every 2 weeks`, `tous les mois`), next occurrence on done, undoable (D-030)
 - [x] External conditions (review, upstream release, PR merged, date, other) block the task until they happen; date ones lift themselves (D-031) — GitHub auto-resolution in Phase 7
-- [ ] Custom fields (§2.2)
+- [x] Custom task fields (text, number, date, link, choice list) defined in Settings, checked by the core (D-032)
 - [~] JSON schema registry shared by API, forms and MCP tools — schemas exist per feature (`core/schema/`), registry/`describe_schema` comes with the MCP server (Phase 5)
 
 ## Phase 4 — Graph (Pivotick, full integration per §4)
