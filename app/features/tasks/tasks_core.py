@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 import uuid
 from collections.abc import Mapping
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import case, func, or_, select
@@ -643,6 +643,28 @@ def needs_attention(today: date | None = None) -> list[tuple[str, str, Task]]:
         days = (utcnow() - task.updated_at).days
         add("stale", f"{workflow.label_of(task.status)}, untouched for {days} days", task)
     return found
+
+
+def pulse(today: date | None = None) -> dict[str, int]:
+    """Today's numbers: open, ready to do, blocked, late, and done in the last 7 days."""
+    today = today or date.today()
+    waiting = workflow.keys_of_kinds("waiting")
+    live = select(func.count()).select_from(Task).where(Task.deleted_at.is_(None))
+    is_open = Task.is_open.is_(True)
+    since = datetime.combine(today - timedelta(days=7), datetime.min.time(), tzinfo=UTC)
+    return {
+        "open": db.session.scalar(live.where(is_open)) or 0,
+        "ready": db.session.scalar(
+            live.where(is_open, Task.blocked_by_count == 0, Task.status.not_in(waiting))
+        )
+        or 0,
+        "blocked": db.session.scalar(
+            live.where(is_open, (Task.blocked_by_count > 0) | Task.status.in_(waiting))
+        )
+        or 0,
+        "late": db.session.scalar(live.where(is_open, Task.due_on < today)) or 0,
+        "done_week": db.session.scalar(live.where(Task.completed_at >= since)) or 0,
+    }
 
 
 def counts_by_state() -> dict[str, int]:

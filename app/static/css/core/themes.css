@@ -2,6 +2,7 @@
  * Colour themes. Selected by data-theme on <html> (stored per owner).
  * "auto" follows the system: stone in light mode, basalt in dark mode.
  * Text/background pairs are chosen for WCAG AA (4.5:1 for text, 3:1 for UI borders and icons).
+ * `--cn-chrome-*` colour the dark header band, the same in every theme: Cairn's signature.
  */
 
 /* Stone — warm light, the default */
@@ -32,6 +33,13 @@
   --cn-info-soft: #e0eaf3;
   --cn-shadow: 0 1px 2px rgb(29 27 24 / 6%), 0 4px 14px rgb(29 27 24 / 6%);
   --cn-focus: #b9481f;
+  --cn-chrome-bg: #1f1d1a;
+  --cn-chrome-text: #f3efe8;
+  --cn-chrome-muted: #b1a99c;
+  --cn-chrome-border: #36322c;
+  --cn-chrome-hover: #2c2925;
+  --cn-chrome-field: #292622;
+  --cn-chrome-line: rgb(243 239 232 / 16%);
 }
 
 /* Basalt — neutral dark */
@@ -61,6 +69,13 @@
   --cn-info-soft: #1b2a37;
   --cn-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 6px 18px rgb(0 0 0 / 30%);
   --cn-focus: #f08a5d;
+  --cn-chrome-bg: #0d0d0c;
+  --cn-chrome-text: #ecebe6;
+  --cn-chrome-muted: #99968d;
+  --cn-chrome-border: #2a2926;
+  --cn-chrome-hover: #1c1c1a;
+  --cn-chrome-field: #191917;
+  --cn-chrome-line: rgb(236 235 230 / 16%);
 }
 
 /* Moss — calm green light, for long sessions */
@@ -90,6 +105,13 @@
   --cn-info-soft: #dce7f0;
   --cn-shadow: 0 1px 2px rgb(24 32 26 / 6%), 0 4px 14px rgb(24 32 26 / 6%);
   --cn-focus: #3c6b3f;
+  --cn-chrome-bg: #1b291e;
+  --cn-chrome-text: #eef3ea;
+  --cn-chrome-muted: #a7b6a6;
+  --cn-chrome-border: #2e4032;
+  --cn-chrome-hover: #25362a;
+  --cn-chrome-field: #223226;
+  --cn-chrome-line: rgb(238 243 234 / 16%);
 }
 
 /* Ember — warm dark, high focus */
@@ -119,6 +141,13 @@
   --cn-info-soft: #1d2b37;
   --cn-shadow: 0 1px 2px rgb(0 0 0 / 45%), 0 6px 18px rgb(0 0 0 / 35%);
   --cn-focus: #ff9a62;
+  --cn-chrome-bg: #0f0a08;
+  --cn-chrome-text: #f3e9e1;
+  --cn-chrome-muted: #a8958a;
+  --cn-chrome-border: #2e221c;
+  --cn-chrome-hover: #1e1612;
+  --cn-chrome-field: #1b1410;
+  --cn-chrome-line: rgb(243 233 225 / 16%);
 }
 
 /* Same values as basalt: keep both blocks identical (checked by tests/test_themes.py). */
@@ -149,5 +178,12 @@
     --cn-info-soft: #1b2a37;
     --cn-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 6px 18px rgb(0 0 0 / 30%);
     --cn-focus: #f08a5d;
+    --cn-chrome-bg: #0d0d0c;
+    --cn-chrome-text: #ecebe6;
+    --cn-chrome-muted: #99968d;
+    --cn-chrome-border: #2a2926;
+    --cn-chrome-hover: #1c1c1a;
+    --cn-chrome-field: #191917;
+    --cn-chrome-line: rgb(236 235 230 / 16%);
   }
 }

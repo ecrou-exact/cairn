@@ -23,10 +23,14 @@
     {% for project in page.items %}{% set st = stats[project.id] %}
     <li class="cn-card cn-project-card cn-color-{{ project.color }}">
       <div class="cn-card-head">
-        <a href="{{ url_for('projects.detail', slug=project.slug) }}"><i class="fa-solid {{ project.icon }} cn-project-icon" aria-hidden="true"></i>{{ project.name }}</a>
+        <a class="cn-project-name" href="{{ url_for('projects.detail', slug=project.slug) }}"><span class="cn-project-tile" aria-hidden="true"><i class="fa-solid {{ project.icon }}"></i></span>{{ project.name }}</a>
         {% if project.status != "active" %}<span class="cn-badge">{{ project.status }}</span>{% endif %}
       </div>
       {% if project.github_repo %}<code class="cn-muted">{{ project.github_repo }}</code>{% endif %}
+      {% set intro = project.description_md.split("
+
+")[0] | replace("#", "") | trim %}
+      {% if intro %}<p class="cn-project-intro">{{ intro | truncate(140) }}</p>{% endif %}
       {% if st.open + st.closed %}<meter class="cn-project-meter" min="0" max="{{ st.open + st.closed }}" value="{{ st.closed }}" aria-label="{{ st.closed }} of {{ st.open + st.closed }} tasks done"></meter>{% endif %}
       <dl class="cn-card-meta">
         <div><dt>Open</dt><dd>{{ st.open }}</dd></div>

@@ -181,3 +181,11 @@
 ## D-032 · 2026-11-21 · accepted — Custom task fields
 - Defined by the owner in the typed setting `tasks.custom_fields` (key → label, type text / number / date / url / select with options, hint); values in `Task.custom` (JSON). `tasks_core.clean_custom` is the one check for forms, API and future MCP tools: unknown keys refused, numbers parsed, dates ISO, links http(s) only, select within its options, empty values dropped.
 - Shown in the Advanced tab of the task form, on the task page and in the brief; carried to the next occurrence of a repeating task. Removing a definition hides its values (they stay stored). Filtering lists by custom fields is left for saved views.
+
+## D-033 · 2026-11-21 · accepted — Visual identity: "a marked trail through stone"
+- Owner request: the header and the whole interface need a real identity.
+- **Signature:** a dark basalt header band in every theme (`--cn-chrome-*` tokens, defined by each theme like every other colour) with faint topographic contour lines (`static/img/contours.svg`, used as a CSS mask and coloured by `--cn-chrome-line`, so no colour lives in the asset) and a 3 px terracotta edge (`--cn-mark`, the logo's dot). The lowercase wordmark `cairn` sits beside the stone mark.
+- **Wayfinding:** the sidebar is split into Plan / System; the current page carries a terracotta trail marker. Page eyebrows start with a small stone of the mark colour.
+- **Today** greets by time of day and shows the plan at a glance as a row of stones (open, ready, blocked, late, done this week), each stone edged with its meaning's colour.
+- **Sign-in and setup:** the dark contour panel with the pitch ("Plan the path. Let the work follow.") beside the form.
+- Links read as text (coloured, underlined on hover); content width 92 rem for wide screens. Fonts unchanged (IBM Plex, vendored).

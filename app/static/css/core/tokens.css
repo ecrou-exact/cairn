@@ -46,8 +46,8 @@
 
   /* Layout */
   --cn-sidebar-width: 15rem;
-  --cn-header-height: 3.25rem;
-  --cn-content-max: 76rem;
+  --cn-header-height: 3.5rem;
+  --cn-content-max: 92rem;
 
   /* Motion */
   --cn-duration-fast: 120ms;

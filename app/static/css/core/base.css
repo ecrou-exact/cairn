@@ -9,7 +9,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4 { font-weight: var(--cn-weight-strong); letter-spacing: -0.01em; }
+h1, h2, h3, h4 { font-weight: var(--cn-weight-strong); letter-spacing: -0.015em; }
+
+/* Links read as text that can be followed: coloured, underlined on hover only. */
+a { color: var(--cn-text); text-decoration-color: var(--cn-border-strong); text-underline-offset: 0.2em; }
+.cn-main a:not(.btn):not(.cn-project-chip):not(.cn-nav-link) { text-decoration: none; }
+.cn-main a:not(.btn):not(.cn-project-chip):not(.cn-nav-link):hover { color: var(--cn-accent); text-decoration: underline; }
 h1 { font-size: var(--cn-text-2xl); }
 h2 { font-size: var(--cn-text-xl); }
 h3 { font-size: var(--cn-text-lg); }
@@ -39,7 +44,8 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
   color: var(--cn-text-faint);
 }
 
-/* App shell */
+/* App shell: a dark header band with contour lines (Cairn's signature), a trail-marked
+   sidebar, and the page. */
 .cn-shell {
   display: grid;
   grid-template-columns: var(--cn-sidebar-width) 1fr;
@@ -49,12 +55,26 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
 
 .cn-header {
   grid-column: 1 / -1;
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
-  gap: var(--cn-space-4);
-  padding: 0 var(--cn-space-4);
-  border-bottom: var(--cn-border-width) solid var(--cn-border);
-  background: var(--cn-surface);
+  gap: var(--cn-space-5);
+  padding: 0 var(--cn-space-4) 0 var(--cn-space-5);
+  background: var(--cn-chrome-bg);
+  color: var(--cn-chrome-text);
+  border-bottom: 3px solid var(--cn-mark);
+  isolation: isolate;
+  overflow: hidden;
+}
+.cn-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--cn-chrome-line);
+  mask: url("../../img/contours.svg") center / cover no-repeat;
 }
 
 .cn-brand {
@@ -65,19 +85,82 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
   font-weight: var(--cn-weight-strong);
   text-decoration: none;
 }
-.cn-brand-mark { width: 1.5rem; height: 1.5rem; color: var(--cn-text); }
+.cn-brand-mark { width: 1.5rem; height: 1.5rem; color: currentcolor; }
 .cn-brand-mark .cn-mark-dot { fill: var(--cn-mark); }
+.cn-brand-header { color: var(--cn-chrome-text); flex: none; width: calc(var(--cn-sidebar-width) - var(--cn-space-5)); }
+.cn-brand-header:hover { color: var(--cn-chrome-text); }
+.cn-brand-header .cn-brand-mark { width: 1.9rem; height: 1.9rem; }
+.cn-wordmark { font-size: 1.3rem; font-weight: var(--cn-weight-strong); letter-spacing: -0.03em; line-height: 1; }
 
-.cn-header-actions { margin-left: auto; display: flex; align-items: center; gap: var(--cn-space-2); }
-
-.cn-sidebar {
-  border-right: var(--cn-border-width) solid var(--cn-border);
-  background: var(--cn-surface);
-  padding: var(--cn-space-4) var(--cn-space-3);
+.cn-command {
+  flex: 0 1 34rem;
+  display: flex;
+  align-items: center;
+  gap: var(--cn-space-3);
+  min-width: 0;
+  height: 2.25rem;
+  padding: 0 var(--cn-space-2) 0 var(--cn-space-3);
+  background: var(--cn-chrome-field);
+  color: var(--cn-chrome-muted);
+  border: var(--cn-border-width) solid var(--cn-chrome-border);
+  border-radius: var(--cn-radius);
+  font-size: var(--cn-text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--cn-duration-fast) var(--cn-easing), color var(--cn-duration-fast) var(--cn-easing);
+}
+.cn-command span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-command:hover { border-color: var(--cn-chrome-muted); color: var(--cn-chrome-text); }
+.cn-command kbd {
+  background: var(--cn-chrome-hover);
+  color: var(--cn-chrome-muted);
+  border: var(--cn-border-width) solid var(--cn-chrome-border);
+  border-radius: var(--cn-radius-sm);
+  font-size: var(--cn-text-xs);
+  padding: 0 var(--cn-space-1);
 }
 
+.cn-header-actions { margin-left: auto; display: flex; align-items: center; gap: var(--cn-space-1); }
+.cn-header-actions form { margin: 0; }
+.cn-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 0;
+  border-radius: var(--cn-radius);
+  background: transparent;
+  color: var(--cn-chrome-muted);
+  text-decoration: none;
+  transition: background var(--cn-duration-fast) var(--cn-easing), color var(--cn-duration-fast) var(--cn-easing);
+}
+.cn-icon-button:hover { background: var(--cn-chrome-hover); color: var(--cn-chrome-text); }
+.cn-header .cn-live-status { color: var(--cn-chrome-muted); }
+.cn-header .cn-timer a { color: var(--cn-chrome-text); }
+
+.cn-sidebar {
+  position: sticky;
+  top: var(--cn-header-height);
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--cn-header-height));
+  padding: var(--cn-space-4) var(--cn-space-3);
+  border-right: var(--cn-border-width) solid var(--cn-border);
+  background: var(--cn-surface);
+}
+.cn-nav-group {
+  margin: var(--cn-space-4) var(--cn-space-3) var(--cn-space-1);
+  font-size: var(--cn-text-xs);
+  font-weight: var(--cn-weight-medium);
+  letter-spacing: var(--cn-tracking-caps);
+  text-transform: uppercase;
+  color: var(--cn-text-faint);
+}
+.cn-nav-group:first-child { margin-top: 0; }
 .cn-nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .cn-nav-link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--cn-space-3);
@@ -88,13 +171,34 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
   transition: background var(--cn-duration-fast) var(--cn-easing), color var(--cn-duration-fast) var(--cn-easing);
 }
 .cn-nav-link:hover { background: var(--cn-surface-sunken); color: var(--cn-text); }
+.cn-nav-link i { width: 1.1rem; text-align: center; color: var(--cn-text-faint); }
+/* The current page carries a trail marker: a small stone on the edge of the path. */
 .cn-nav-link[aria-current="page"] { background: var(--cn-accent-soft); color: var(--cn-text); font-weight: var(--cn-weight-medium); }
-.cn-nav-link i { width: 1.1rem; text-align: center; }
+.cn-nav-link[aria-current="page"] i { color: var(--cn-accent); }
+.cn-nav-link[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--cn-space-3) * -1);
+  top: 50%;
+  width: 6px;
+  height: 1.1rem;
+  border-radius: 0 var(--cn-radius-sm) var(--cn-radius-sm) 0;
+  background: var(--cn-mark);
+  transform: translateY(-50%);
+}
+.cn-sidebar-foot { margin-top: auto; padding: var(--cn-space-4) var(--cn-space-3) 0; color: var(--cn-text-faint); font-size: var(--cn-text-xs); }
+.cn-sidebar-foot p { margin: var(--cn-space-2) 0 0; }
+.cn-sidebar-mark { width: 1.6rem; height: 1.6rem; color: var(--cn-border-strong); }
+.cn-sidebar-mark .cn-mark-dot { fill: var(--cn-mark); }
+.cn-keys kbd { background: var(--cn-surface-sunken); color: var(--cn-text-muted); border-radius: var(--cn-radius-sm); padding: 0 var(--cn-space-1); font-size: var(--cn-text-xs); }
 
 .cn-main { padding: var(--cn-space-6) var(--cn-space-6) var(--cn-space-8); min-width: 0; }
 .cn-page { max-width: var(--cn-content-max); margin: 0 auto; }
 
 .cn-page-header { margin-bottom: var(--cn-space-5); }
+.cn-page-header h1 { font-size: 2rem; letter-spacing: -0.025em; margin: var(--cn-space-1) 0 0; }
+.cn-page-header .cn-eyebrow { display: inline-flex; align-items: center; gap: var(--cn-space-2); }
+.cn-page-header .cn-eyebrow::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 2px 2px 3px 3px; background: var(--cn-mark); }
 .cn-page-header p { color: var(--cn-text-muted); max-width: 40rem; margin: var(--cn-space-1) 0 0; }
 .cn-page-header-actions { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--cn-space-4); }
 .cn-eyebrow a { color: inherit; }
@@ -107,15 +211,45 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
   .cn-shell { grid-template-columns: 1fr; }
   .cn-sidebar { display: none; }
   .cn-main { padding: var(--cn-space-4); }
+  .cn-brand-header { width: auto; }
+  .cn-wordmark, .cn-command span { display: none; }
+  .cn-command { flex: none; }
 }
 
-/* Centered pages without the shell (sign-in, setup) */
+/* Pages without the shell (sign-in, setup): the dark contour band beside the form. */
 .cn-auth {
   min-height: 100vh;
   display: grid;
-  place-items: center;
-  padding: var(--cn-space-5);
+  grid-template-columns: minmax(20rem, 1.1fr) 1fr;
 }
+.cn-auth-brand {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--cn-space-6);
+  padding: var(--cn-space-6) var(--cn-space-7);
+  background: var(--cn-chrome-bg);
+  color: var(--cn-chrome-text);
+  border-right: 3px solid var(--cn-mark);
+}
+.cn-auth-brand::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--cn-chrome-line);
+  mask: url("../../img/contours.svg") 55% 100% / auto 70% no-repeat;
+}
+.cn-auth-logo { color: var(--cn-chrome-text); }
+.cn-auth-logo .cn-brand-mark { width: 2.4rem; height: 2.4rem; }
+.cn-auth-logo .cn-wordmark { font-size: 1.6rem; }
+.cn-auth-pitch { max-width: 28rem; color: var(--cn-chrome-muted); }
+.cn-auth-title { font-size: 2.4rem; font-weight: var(--cn-weight-strong); letter-spacing: -0.03em; line-height: 1.1; color: var(--cn-chrome-text); margin-bottom: var(--cn-space-4); }
+.cn-auth-foot { margin: 0; font-size: var(--cn-text-xs); letter-spacing: var(--cn-tracking-caps); text-transform: uppercase; color: var(--cn-chrome-muted); }
+.cn-auth-side { display: grid; place-items: center; padding: var(--cn-space-5); }
 .cn-auth-card {
   width: min(100%, 24rem);
   background: var(--cn-surface);
@@ -124,8 +258,12 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
   box-shadow: var(--cn-shadow);
   padding: var(--cn-space-6);
 }
-.cn-auth-card .cn-brand { margin-bottom: var(--cn-space-5); font-size: var(--cn-text-lg); }
-.cn-auth-card .cn-brand-mark { width: 2rem; height: 2rem; }
+.cn-auth-card h1 { margin-bottom: var(--cn-space-4); }
+@media (max-width: 768px) {
+  .cn-auth { grid-template-columns: 1fr; }
+  .cn-auth-brand { padding: var(--cn-space-5); border-right: 0; border-bottom: 3px solid var(--cn-mark); }
+  .cn-auth-pitch, .cn-auth-foot { display: none; }
+}
 
 .cn-panel {
   background: var(--cn-surface);

@@ -3,10 +3,19 @@
 
 {% block body %}
 <main class="cn-auth" id="main">
-  <div class="cn-auth-card">
-    <div class="cn-brand">{{ brand_mark() }}<span>Cairn</span></div>
-    {{ flashes() }}
-    {% block content %}{% endblock %}
+  <section class="cn-auth-brand" aria-label="Cairn">
+    <div class="cn-brand cn-auth-logo">{{ brand_mark() }}<span class="cn-wordmark">cairn</span></div>
+    <div class="cn-auth-pitch">
+      <p class="cn-auth-title">Plan the path.<br>Let the work follow.</p>
+      <p>Tasks resting on their dependencies, the next step always in sight, and coding agents working beside you — on your own machine.</p>
+    </div>
+    <p class="cn-auth-foot">Self-hosted · single owner · your data stays here</p>
+  </section>
+  <div class="cn-auth-side">
+    <div class="cn-auth-card">
+      {{ flashes() }}
+      {% block content %}{% endblock %}
+    </div>
   </div>
 </main>
 {% endblock %}

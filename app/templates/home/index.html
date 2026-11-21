@@ -9,10 +9,19 @@
 <script type="module" src="{{ url_for('static', filename='js/planning/live-list.js') }}"></script>
 {% endblock %}
 {% block content %}
-<header class="cn-page-header">
-  <div class="cn-eyebrow">{{ today().strftime("%A %d %B") }}</div>
-  <h1>Today</h1>
-  <p>{{ counts.get("open", 0) }} open task{{ "s" if counts.get("open", 0) != 1 }}{% if attention %}, {{ attention | length }} need{{ "s" if attention | length == 1 }} a look{% endif %}.</p>
+<header class="cn-page-header cn-today-header">
+  <div>
+    <div class="cn-eyebrow">{{ today().strftime("%A %d %B") }}</div>
+    <h1>{{ greeting }}.</h1>
+    <p>{% if pulse.ready %}{{ pulse.ready }} task{{ "s are" if pulse.ready != 1 else " is" }} ready to pick up{% else %}Nothing is ready to pick up{% endif %}{% if attention %}, {{ attention | length }} need{{ "s" if attention | length == 1 }} a look{% endif %}.</p>
+  </div>
+  <dl class="cn-cairn-stats" aria-label="Your plan at a glance">
+    <div><dt>Open</dt><dd>{{ pulse.open }}</dd></div>
+    <div><dt>Ready</dt><dd><a href="{{ url_for('tasks.index', state='actionable') }}">{{ pulse.ready }}</a></dd></div>
+    <div class="{{ 'cn-stat-warn' if pulse.blocked }}"><dt>Blocked</dt><dd><a href="{{ url_for('tasks.index', state='blocked') }}">{{ pulse.blocked }}</a></dd></div>
+    <div class="{{ 'cn-stat-bad' if pulse.late }}"><dt>Late</dt><dd><a href="{{ url_for('tasks.index', state='overdue') }}">{{ pulse.late }}</a></dd></div>
+    <div class="cn-stat-good"><dt>Done this week</dt><dd>{{ pulse.done_week }}</dd></div>
+  </dl>
 </header>
 
 {% if not current_user.totp_enabled %}

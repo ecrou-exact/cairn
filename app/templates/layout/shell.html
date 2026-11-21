@@ -2,48 +2,52 @@
 {% from "macros/ui.html" import brand_mark, flashes %}
 
 {% block body %}
-{% set nav_items = [
-  ("home.index", "fa-sun", "Today"),
-  ("tasks.index", "fa-list-check", "Tasks"),
-  ("projects.index", "fa-folder-tree", "Projects"),
-  ("resources.index", "fa-paperclip", "Resources"),
-  ("jobs.index", "fa-gears", "Jobs"),
-  ("trash.index", "fa-trash-can", "Trash"),
-  ("settings.index", "fa-sliders", "Settings"),
+{% set nav_groups = [
+  ("Plan", [
+    ("home.index", "fa-sun", "Today"),
+    ("tasks.index", "fa-list-check", "Tasks"),
+    ("projects.index", "fa-folder-tree", "Projects"),
+    ("resources.index", "fa-paperclip", "Resources"),
+  ]),
+  ("System", [
+    ("jobs.index", "fa-gears", "Jobs"),
+    ("trash.index", "fa-trash-can", "Trash"),
+    ("settings.index", "fa-sliders", "Settings"),
+  ]),
 ] %}
 {% set header_timer = running_timer() %}
 <a class="cn-skip-link" href="#main">Skip to content</a>
 <div class="cn-shell">
   <header class="cn-header">
-    <a class="cn-brand" href="{{ url_for('home.index') }}">{{ brand_mark() }}<span>Cairn</span></a>
+    <a class="cn-brand cn-brand-header" href="{{ url_for('home.index') }}" aria-label="Cairn, today">{{ brand_mark() }}<span class="cn-wordmark">cairn</span></a>
+    <button class="cn-command" type="button" data-open-palette>
+      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+      <span>Search tasks, projects, resources — or type a task to add</span>
+      <kbd>Ctrl K</kbd>
+    </button>
     <div class="cn-header-actions">
-      <button class="btn btn-sm btn-outline-secondary cn-palette-button" type="button" data-open-palette>
-        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="ms-2">Search or run…</span><kbd class="ms-2">Ctrl K</kbd>
-      </button>
       {% if header_timer %}{% set entry, timed = header_timer %}
       <cn-timer class="cn-timer" started="{{ entry.started_at.isoformat() }}">
         <a href="{{ url_for('tasks.detail', task_id=timed.id) }}" title="{{ timed.title }}"><i class="fa-solid fa-stopwatch" aria-hidden="true"></i><span class="cn-timer-title">{{ timed.title }}</span> <span data-elapsed></span></a>
         <form method="post" action="{{ url_for('tasks.stop_timer') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
-          <button class="btn btn-sm btn-link" type="submit" title="Stop the timer"><i class="fa-solid fa-pause" aria-hidden="true"></i><span class="visually-hidden">Stop the timer</span></button>
+          <button class="cn-icon-button" type="submit" title="Stop the timer"><i class="fa-solid fa-pause" aria-hidden="true"></i><span class="visually-hidden">Stop the timer</span></button>
         </form>
       </cn-timer>
       {% endif %}
       <cn-live-status class="cn-live-status" hidden></cn-live-status>
-      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('account.security') }}">
-        <i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span class="ms-2">Security</span>
-      </a>
+      <a class="cn-icon-button" href="{{ url_for('account.security') }}" title="Security"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span class="visually-hidden">Security</span></a>
       <form method="post" action="{{ url_for('account.logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-sm btn-outline-secondary" type="submit">
-          <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i><span class="ms-2">Sign out</span>
-        </button>
+        <button class="cn-icon-button" type="submit" title="Sign out"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i><span class="visually-hidden">Sign out</span></button>
       </form>
     </div>
   </header>
   <nav class="cn-sidebar" aria-label="Main">
-    <ul class="cn-nav">
-      {% for endpoint, icon, label in nav_items %}
+    {% for group, items in nav_groups %}
+    <p class="cn-nav-group" id="nav-{{ group | lower }}">{{ group }}</p>
+    <ul class="cn-nav" aria-labelledby="nav-{{ group | lower }}">
+      {% for endpoint, icon, label in items %}
         <li>
           <a class="cn-nav-link" href="{{ url_for(endpoint) }}" {% if request.blueprint == endpoint.split(".")[0] %}aria-current="page"{% endif %}>
             <i class="fa-solid {{ icon }}" aria-hidden="true"></i>{{ label }}
@@ -51,6 +55,12 @@
         </li>
       {% endfor %}
     </ul>
+    {% endfor %}
+    <div class="cn-sidebar-foot">
+      {{ brand_mark("cn-sidebar-mark") }}
+      <p>Every task rests on the ones below it.</p>
+      <p class="cn-keys"><kbd>?</kbd> shortcuts · <kbd>n</kbd> new task</p>
+    </div>
   </nav>
   <main class="cn-main" id="main" tabindex="-1">
     <div class="cn-page">
