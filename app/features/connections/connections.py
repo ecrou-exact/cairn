@@ -23,7 +23,7 @@ def index():
         "connections/index.html",
         items=core.connections(),
         providers=core.PROVIDERS,
-        chosen=request.args.get("provider", "github"),
+        chosen=request.args.get("provider", "claude_code"),
         events_after=after,
     )
 
@@ -34,15 +34,18 @@ def add():
     if provider not in core.PROVIDERS:
         abort(400)
     try:
-        connection = core.add(provider, request.form.get("label", ""), request.form.get("token", ""))
+        connection = core.add(
+            provider,
+            request.form.get("label", ""),
+            request.form.get("token", ""),
+            request.form.get("path", ""),
+        )
     except core.ConnectionError_ as exc:
         flash(str(exc), "danger")
         return redirect(url_for("connections.index", provider=provider))
-    flash(
-        f"“{connection.label}” saved in the vault."
-        + (" Checking it now…" if connection.state == "checking" else ""),
-        "success",
-    )
+    saved = "connected" if connection.provider == "claude_code" else "saved in the vault"
+    checking = " Checking it now…" if connection.state == "checking" else ""
+    flash(f"“{connection.label}” {saved}.{checking}", "success")
     return _back()
 
 

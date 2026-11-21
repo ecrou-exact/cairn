@@ -11,7 +11,7 @@
 <header class="cn-page-header">
   <div class="cn-eyebrow">Account</div>
   <h1>Connected accounts</h1>
-  <p>Tokens Cairn may act with. Each one goes straight to the encrypted vault and is never shown again — only its last characters. The default account of each service is the one Cairn uses.</p>
+  <p>The accounts Cairn may act with. Claude Code on this machine uses its own sign-in; tokens go straight to the encrypted vault and are never shown again — only their last characters. The default account of each service is the one Cairn uses.</p>
 </header>
 
 <section class="cn-connections" id="connections" data-live-target="connections" data-live-events="connection.changed" aria-label="Your accounts">
@@ -22,13 +22,14 @@
       <span class="cn-connection-icon cn-provider-{{ item.provider }}" aria-hidden="true"><i class="{{ provider.icon }}"></i></span>
       <div>
         <h2>{{ item.label }}{% if item.is_default %} <span class="cn-badge cn-badge-accent">default</span>{% endif %}</h2>
-        <p class="cn-muted">{{ provider.label }} · <code>{{ item.hint }}</code></p>
+        {% if item.label != provider.label or item.hint %}<p class="cn-muted">{{ provider.label if item.label != provider.label }}{% if item.hint %}{{ " · " if item.label != provider.label }}<code>{{ item.hint }}</code>{% endif %}</p>{% endif %}
       </div>
       <span class="cn-status cn-status-{{ {'ok': 'done', 'failed': 'failed', 'checking': 'running'}.get(item.state, 'open') }}">{{ {"ok": "connected", "failed": "not working", "checking": "checking", "unchecked": "stored"}[item.state] }}</span>
     </header>
     {% if item.state == "ok" %}
     <p class="cn-connection-facts">
-      {% if item.provider == "github" %}Signed in as <strong>{{ item.identity }}</strong>{% if item.facts.name %} ({{ item.facts.name }}){% endif %}{% if item.facts.scopes %} · scopes: {{ item.facts.scopes | join(", ") }}{% endif %}.
+      {% if item.provider == "claude_code" %}<strong>{{ item.identity }}</strong> at <code>{{ item.facts.path }}</code> — runs use its own sign-in.
+      {% elif item.provider == "github" %}Signed in as <strong>{{ item.identity }}</strong>{% if item.facts.name %} ({{ item.facts.name }}){% endif %}{% if item.facts.scopes %} · scopes: {{ item.facts.scopes | join(", ") }}{% endif %}.
       {% elif item.provider == "anthropic" %}The key works{% if item.facts.models %}: {{ item.facts.models | length }} models available, e.g. <code>{{ item.facts.models[0] }}</code>{% endif %}.{% endif %}
       {% if item.checked_at %}<span class="cn-muted">Checked {{ item.checked_at.strftime("%d %b, %H:%M") }} UTC.</span>{% endif %}
     </p>
@@ -44,27 +45,29 @@
       <form method="post" action="{{ url_for('connections.make_default', connection_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary" type="submit">Make default</button></form>
       {% endif %}
       <details class="cn-connection-more">
-        <summary class="btn btn-sm btn-outline-secondary">Rename or replace the token</summary>
+        <summary class="btn btn-sm btn-outline-secondary">{{ "Rename" if item.provider == "claude_code" else "Rename or replace the token" }}</summary>
         <form method="post" action="{{ url_for('connections.rename', connection_id=item.id) }}" class="cn-inline-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <label class="visually-hidden" for="rename-{{ item.id }}">Name</label>
           <input class="form-control" id="rename-{{ item.id }}" name="label" value="{{ item.label }}" maxlength="80" required>
           <button class="btn btn-sm btn-outline-secondary" type="submit">Rename</button>
         </form>
+        {% if item.provider != "claude_code" %}
         <form method="post" action="{{ url_for('connections.replace_token', connection_id=item.id) }}" class="cn-inline-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <label class="visually-hidden" for="token-{{ item.id }}">New {{ provider.token_label | lower }}</label>
           <input class="form-control" id="token-{{ item.id }}" name="token" type="password" autocomplete="off" spellcheck="false" required placeholder="New {{ provider.token_label | lower }}">
           <button class="btn btn-sm btn-outline-secondary" type="submit">Replace</button>
         </form>
+        {% endif %}
       </details>
-      <cn-confirm message="Remove “{{ item.label }}”?" detail="Its token is erased from the vault right away; this cannot be undone. You can add it again later." confirm-label="Remove" danger>
+      <cn-confirm message="Remove “{{ item.label }}”?" detail="{{ 'Cairn stops using it; Claude Code itself is not touched.' if item.provider == 'claude_code' else 'Its token is erased from the vault right away; this cannot be undone. You can add it again later.' }}" confirm-label="Remove" danger>
         <form method="post" action="{{ url_for('connections.remove', connection_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Remove</span></button></form>
       </cn-confirm>
     </div>
   </article>
   {% else %}
-  <div class="cn-empty"><i class="fa-solid fa-plug" aria-hidden="true"></i><h2>No account connected yet</h2><p>Add your GitHub token to read private issues and pull requests, and your Claude API key for the runs to come.</p></div>
+  <div class="cn-empty"><i class="fa-solid fa-plug" aria-hidden="true"></i><h2>No account connected yet</h2><p>Connect Claude Code on this machine for the runs to come, and your GitHub token to read private issues and pull requests.</p></div>
   {% endfor %}
 </section>
 
@@ -75,7 +78,7 @@
     <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('connections.index', provider=key, _anchor='add-title') }}" {% if key == chosen %}aria-current="page"{% endif %}><i class="{{ provider.icon }}" aria-hidden="true"></i><span class="ms-1">{{ provider.label }}</span></a>
     {% endfor %}
   </nav>
-  {% set provider = providers.get(chosen, providers.github) %}
+  {% set provider = providers.get(chosen, providers.claude_code) %}
   <p class="cn-muted">{{ provider.help }}</p>
   <form method="post" action="{{ url_for('connections.add') }}" class="cn-connection-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="provider" value="{{ provider.key }}">
@@ -83,12 +86,21 @@
       <label class="form-label" for="label">Name</label>
       <input class="form-control" id="label" name="label" maxlength="80" placeholder="{{ provider.label }}">
     </div>
+    {% if provider.key == "claude_code" %}
+    <div class="cn-field">
+      <label class="form-label" for="path">Path to <code>claude</code> (optional)</label>
+      <input class="form-control" id="path" name="path" maxlength="500" spellcheck="false" placeholder="Found automatically">
+      <div class="form-text">Leave empty to use the <code>claude</code> command on this machine's PATH.</div>
+    </div>
+    <button class="btn btn-primary" type="submit">Connect and check</button>
+    {% else %}
     <div class="cn-field">
       <label class="form-label" for="token">{{ provider.token_label }}</label>
       <input class="form-control" id="token" name="token" type="password" autocomplete="off" spellcheck="false" required>
       <div class="form-text">Sent once over this local connection, encrypted at rest (AES-256-GCM), never displayed again.</div>
     </div>
     <button class="btn btn-primary" type="submit">Save and check</button>
+    {% endif %}
   </form>
 </section>
 {% endblock %}

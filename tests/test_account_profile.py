@@ -141,3 +141,36 @@ def test_connections_page(app, signed_in, monkeypatch):
     with app.app_context():
         assert db.session.scalar(select(Connection)) is None
     assert signed_in.post("/connections", data={"provider": "nope", "token": "x"}).status_code == 400
+
+
+def test_claude_code_on_this_machine(ctx, monkeypatch, tmp_path):
+    import subprocess
+
+    fake = tmp_path / "claude.exe"
+    fake.write_text("not run")
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, stdout="2.1.330 (Claude Code)\n", stderr="")
+
+    monkeypatch.setattr(connections_core.subprocess, "run", run)
+    connection = connections_core.add("claude_code", "", "", str(fake))
+    assert (
+        connection.label == "Claude Code (this machine)" and connection.is_default and connection.hint == ""
+    )
+    _drain()
+    db.session.refresh(connection)
+    assert (connection.state, connection.identity) == ("ok", "2.1.330 (Claude Code)")
+    assert calls == [[str(fake), "--version"]]  # an argv list, never a shell
+    assert connections_core.claude_code_path() == str(fake)
+    with pytest.raises(connections_core.ConnectionError_, match="no token"):
+        connections_core.replace_token(connection.id, "x" * 20)
+    with pytest.raises(connections_core.ConnectionError_, match="No file"):
+        connections_core.add("claude_code", "", "", str(tmp_path / "missing"))
+    monkeypatch.setattr(connections_core.shutil, "which", lambda name: None)
+    other = connections_core.add("claude_code", "Second", "")
+    _drain()
+    db.session.refresh(other)
+    assert other.state == "failed" and "not found" in other.error
+    connections_core.remove(connection.id)

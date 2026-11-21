@@ -214,3 +214,8 @@
 - Cards with subtasks show "done/total subtasks" with a progress line and a stacked look; double click (or the side panel's button) opens `/graph?root=<id>`; the breadcrumb (All projects › project › parents › case) is computed by the server.
 - **Hover peek** (Cairn's, dark like the header) replaces Pivotick's tooltip: full title, project, status, type, priority, due date, what a double click will do.
 - The stage is one Jinja macro (`macros/graph.html`) mounted by `graph.js` on every `[data-graph]`: the Graph page and a compact stage on each task page (CSP for graphs applied there too).
+
+## D-037 · 2026-11-21 · accepted — Claude runs use the local Claude Code first
+- Owner request: not only the Claude API — the Claude Code installed on this machine must be usable from the app.
+- New connection provider **Claude Code (this machine)**: nothing stored; Cairn finds `claude` on PATH (or a path the owner gives) and checks it with `claude --version` (argv list, no shell, read-only, 20 s timeout). `connections_core.claude_code_path()` gives the executable to use.
+- **Phase 5 design:** the runner drives Claude Code through the Claude Agent SDK pointed at this executable, so runs use Claude Code's own sign-in (the owner's subscription or console login) and its settings; an Anthropic API key connection is a fallback only, passed per run through the SDK's `env`, never written to disk. To confirm when reading the Agent SDK pages (roadmap `sdk-read`): CLI path option, auth precedence when no key is given, per-run `env`.

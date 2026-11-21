@@ -1,6 +1,7 @@
-"""Connected accounts: GitHub, Anthropic (Claude) and other services Cairn may act with.
+"""Connected accounts: Claude Code on this machine, GitHub, Anthropic API and other services.
 
-The token itself is in the vault (`Secret` named `connection:<id>`), never in this table;
+A token, when there is one, is in the vault (`Secret` named `connection:<id>`), never in this table;
+Claude Code needs none: it uses its own sign-in on this machine;
 the table keeps what Cairn learned when it checked the token (login, scopes) and its hint.
 """
 
@@ -14,7 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db_class.base import BaseEntity, UTCDateTime
 
-CONNECTION_PROVIDERS = ("github", "anthropic", "other")
+CONNECTION_PROVIDERS = ("claude_code", "github", "anthropic", "other")
 CONNECTION_STATES = ("unchecked", "checking", "ok", "failed")
 
 

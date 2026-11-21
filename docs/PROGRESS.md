@@ -81,7 +81,7 @@ Goal: owner approves architecture + design direction.
 
 ## Phase 5 — Claude
 - [ ] App MCP server (typed tools, `describe_schema`, changeset tool, authz per scope)
-- [ ] Agent runner on Claude Agent SDK (`ClaudeSDKClient` per run, own asyncio loop in the worker)
+- [ ] Agent runner on Claude Agent SDK (`ClaudeSDKClient` per run, own asyncio loop in the worker), driving the local Claude Code by default (its own sign-in), API key as fallback (D-037) — Claude Code detection done in Accounts
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS
 - [ ] Git worktree per run, context files, hard rules via system prompt append

@@ -1,5 +1,9 @@
 """Connected accounts (PROJECT_BRIEF.md §2.7 accounts, §9 GitHub, §6 Claude).
 
+Claude can be reached two ways: **Claude Code on this machine** (default for runs: it uses
+its own sign-in, so the owner's subscription works, nothing stored here) or an Anthropic
+**API key** (fallback, kept in the vault).
+
 The owner pastes a token once; it goes straight to the vault and is never shown again
 (only its last characters). A job checks it with the service and records who it belongs
 to. Other features ask `token_for(provider)` for the default account's token:
@@ -15,10 +19,13 @@ are logged but do not go through history batches; removing an account erases its
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess  # nosec B404 (argv lists only, see _claude_code_identity)
 import urllib.error
 import urllib.request
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
@@ -46,6 +53,16 @@ class Provider:
 
 
 PROVIDERS = {
+    "claude_code": Provider(
+        "claude_code",
+        "Claude Code (this machine)",
+        "fa-solid fa-terminal",
+        "",
+        "Uses the Claude Code installed on this machine, signed in with your own account (subscription or "
+        "console). Nothing to paste: Cairn finds the `claude` command, or uses the path you give, and checks "
+        "its version. Sign in once in a terminal with `claude` if you have not yet.",
+        "Claude runs on your tasks go through it by default (Phase 5); an API key is only a fallback.",
+    ),
     "github": Provider(
         "github",
         "GitHub",
@@ -111,10 +128,12 @@ def _check_token(token: str) -> str:
     return token
 
 
-def add(provider: str, label: str, token: str) -> Connection:
+def add(provider: str, label: str, token: str, path: str = "") -> Connection:
     if provider not in CONNECTION_PROVIDERS:
         raise ConnectionError_("Unknown service.")
     label = " ".join(label.split())[:80] or PROVIDERS[provider].label
+    if provider == "claude_code":
+        return _add_claude_code(label, path)
     token = _check_token(token)
     has_default = db.session.scalar(
         select(Connection.id).where(
@@ -138,8 +157,51 @@ def add(provider: str, label: str, token: str) -> Connection:
     return connection
 
 
+def _add_claude_code(label: str, path: str) -> Connection:
+    """No secret: Claude Code signs in on its own. `path` overrides finding `claude` on PATH."""
+    path = path.strip()
+    if path and not Path(path).is_file():
+        raise ConnectionError_("No file at this path. Leave it empty to find `claude` automatically.")
+    exists = db.session.scalar(
+        select(Connection.id).where(Connection.provider == "claude_code", Connection.deleted_at.is_(None))
+    )
+    connection = Connection(
+        provider="claude_code",
+        label=label,
+        hint="",
+        is_default=exists is None,
+        facts={"path": path} if path else {},
+    )
+    db.session.add(connection)
+    db.session.flush()
+    log_action(
+        "connection.create",
+        target_type="connection",
+        target_id=connection.id,
+        meta={"provider": "claude_code", "label": label},
+    )
+    _queue_check(connection)
+    db.session.commit()
+    return connection
+
+
+def claude_code_path() -> str | None:
+    """The `claude` executable Claude runs use: the default connection's path, else PATH."""
+    connection = db.session.scalar(
+        select(Connection).where(
+            Connection.provider == "claude_code",
+            Connection.is_default.is_(True),
+            Connection.deleted_at.is_(None),
+        )
+    )
+    configured = (connection.facts or {}).get("path") if connection is not None else None
+    return configured or shutil.which("claude")
+
+
 def replace_token(connection_id: uuid.UUID, token: str) -> Connection:
     connection = _get(connection_id)
+    if connection.provider == "claude_code":
+        raise ConnectionError_("Claude Code has no token: it uses its own sign-in.")
     token = _check_token(token)
     put_secret(connection.secret_name, token)
     connection.hint = masked(token)
@@ -180,7 +242,8 @@ def make_default(connection_id: uuid.UUID) -> Connection:
 def remove(connection_id: uuid.UUID) -> None:
     """Removes the account and erases its token from the vault (not kept in the trash)."""
     connection = _get(connection_id)
-    delete_secret(connection.secret_name)
+    if connection.provider != "claude_code":
+        delete_secret(connection.secret_name)
     log_action(
         "connection.delete",
         target_type="connection",
@@ -265,6 +328,22 @@ def _github_identity(token: str) -> dict[str, Any]:
     return {"identity": data.get("login") or "", "facts": facts}
 
 
+def _claude_code_identity(path: str | None) -> dict[str, Any]:
+    """`claude --version`: read-only, no shell, short timeout."""
+    if not path:
+        raise ConnectionError_("Claude Code was not found on this machine (no `claude` command on PATH).")
+    try:
+        done = subprocess.run(  # noqa: S603  # nosec B603 (argv list, the owner's own executable)
+            [path, "--version"], capture_output=True, text=True, timeout=20, check=False
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ConnectionError_(f"Could not run Claude Code ({exc}).") from exc
+    version = (done.stdout or done.stderr).strip().splitlines()[0] if (done.stdout or done.stderr) else ""
+    if done.returncode != 0 or not version:
+        raise ConnectionError_(f"Claude Code did not answer (exit code {done.returncode}).")
+    return {"identity": version[:120], "facts": {"path": path}}
+
+
 def _anthropic_identity(token: str) -> dict[str, Any]:
     import anthropic
 
@@ -283,17 +362,20 @@ def _anthropic_identity(token: str) -> dict[str, Any]:
     return {"identity": "API key", "facts": {"models": models[:20]}}
 
 
-CHECKS = {"github": _github_identity, "anthropic": _anthropic_identity}
+CHECKS = {"claude_code": _claude_code_identity, "github": _github_identity, "anthropic": _anthropic_identity}
 
 
 def run_check(connection_id: uuid.UUID) -> Connection:
     """Called by the `connections.check` job: ask the service who the token belongs to."""
     connection = _get(connection_id)
-    token = get_secret(connection.secret_name)
-    if token is None:
-        raise ConnectionError_("The token is missing from the vault.")
+    if connection.provider == "claude_code":
+        argument = (connection.facts or {}).get("path") or shutil.which("claude")
+    else:
+        argument = get_secret(connection.secret_name)
+        if argument is None:
+            raise ConnectionError_("The token is missing from the vault.")
     try:
-        found = CHECKS[connection.provider](token)
+        found = CHECKS[connection.provider](argument)
     except ConnectionError_ as exc:
         connection.state, connection.error = "failed", str(exc)
     else:
