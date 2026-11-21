@@ -48,5 +48,19 @@
       "THIRD_PARTY_NOTICES.md"
     ],
     "notes": "Source maps and their sourceMappingURL comments removed. dist/vendor/ (ECharts, Mermaid, icons, maps) not included; see docs/DECISIONS.md D-019."
+  },
+  "pivotick": {
+    "version": "3.0.0",
+    "source": "npm pivotick@3.0.0 (source read at github.com/Pivotick/Pivotick ba83f2f7)",
+    "sha256_tgz": "37aaad599cf3aa943022b2661bbc0e87c4a884492de7f147e010d8baeb8593cb",
+    "license": "MIT",
+    "files": [
+      "pivotick.es.js",
+      "chunks/*.js",
+      "workers/*.js",
+      "pivotick.css",
+      "LICENSE"
+    ],
+    "notes": "ES build only (self-contained, no bare imports). Loaded on the graph page; see docs/DECISIONS.md D-035."
   }
 }

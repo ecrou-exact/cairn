@@ -70,11 +70,13 @@ Goal: owner approves architecture + design direction.
 - [x] Profile (display name, about, picture) and connected accounts (GitHub, Claude API key, others) in the vault, checked by a job; GitHub previews of private issues / PRs (D-034)
 - [ ] Multi-user system (later, on request)
 
-## Phase 4 — Graph (Pivotick, full integration per §4)
-- [ ] Graph wrapper + data adapter; node/edge type styling; `--pvt-*` theming
+## Phase 4 — Graph (Pivotick, full integration per §4)  *(current)*
+- [x] Pivotick vendored, data adapter (`graph_core`, `/api/graph`), task cards as nodes, edge styles per kind, `--pvt-*` mapped to Cairn tokens, Cairn chrome (D-035)
+- [x] Left-to-right plan layout computed by Cairn (steps as columns, pinned cards, straight lines), opening view on what to do now
+- [x] Critical path computed and lit; side panel on click; live updates through SSE
 - [ ] Layout switch remembered per view; write-path hooks → API; context menus; side panel editing
 - [ ] Filters, search/focus, collapse/expand, clustering, legend, data table; encodings (status, priority, deadline, blocked, running agent, instance)
-- [ ] Critical path & chain highlight; live updates via SSE + runtime API; 300+ node tuning
+- [ ] Edit from the graph (link tasks by dragging, change status from the panel), filters by state / tag, 300+ node tuning
 
 ## Phase 5 — Claude
 - [ ] App MCP server (typed tools, `describe_schema`, changeset tool, authz per scope)

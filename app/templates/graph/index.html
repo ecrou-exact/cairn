@@ -1,0 +1,60 @@
+{% extends "layout/shell.html" %}
+{% block title %}Graph{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/pivotick/pivotick.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/graph/graph.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>
+{% endblock %}
+{% block content %}
+<header class="cn-page-header cn-page-header-actions">
+  <div>
+    <div class="cn-eyebrow">Planning</div>
+    <h1>{{ project.name ~ " · graph" if project else "Graph" }}</h1>
+    <p>Your plan from left to right: what must come first on the left, what it opens up to its right. Click a card to see it, double-click to open it; scroll or pinch to zoom.</p>
+  </div>
+</header>
+
+<form class="cn-graph-toolbar" method="get" aria-label="What the graph shows">
+  <div class="cn-graph-group">
+    <label class="visually-hidden" for="graph-project">Project</label>
+    <select class="form-select" id="graph-project" name="project">
+      <option value="">All projects</option>
+      {% for p in projects %}<option value="{{ p.id }}" {% if project and project.id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+    </select>
+    <label class="cn-switch"><input type="checkbox" name="closed" value="1" {% if request.args.get('closed') == '1' %}checked{% endif %}><span>Done tasks</span></label>
+    <button class="btn btn-outline-secondary btn-sm" type="submit">Show</button>
+  </div>
+  <div class="cn-graph-group">
+    <label class="cn-switch cn-switch-critical"><input type="checkbox" id="graph-critical"><span><i class="fa-solid fa-route" aria-hidden="true"></i> Critical path <small id="graph-critical-summary"></small></span></label>
+  </div>
+</form>
+
+<section class="cn-graph cn-graph-loading" id="graph" aria-label="Task graph">
+  <div class="cn-graph-canvas" id="graph-canvas"></div>
+  <div class="cn-graph-zoom" role="group" aria-label="Zoom">
+    <button type="button" class="cn-icon-button" id="graph-zoom-in" title="Zoom in"><i class="fa-solid fa-plus" aria-hidden="true"></i><span class="visually-hidden">Zoom in</span></button>
+    <button type="button" class="cn-icon-button" id="graph-zoom-out" title="Zoom out"><i class="fa-solid fa-minus" aria-hidden="true"></i><span class="visually-hidden">Zoom out</span></button>
+    <button type="button" class="cn-icon-button" id="graph-now" title="Back to what to do now"><i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i><span class="visually-hidden">What to do now</span></button>
+    <button type="button" class="cn-icon-button" id="graph-fit" title="Fit the whole plan"><i class="fa-solid fa-expand" aria-hidden="true"></i><span class="visually-hidden">Fit</span></button>
+  </div>
+  <aside class="cn-gpanel" id="graph-panel" hidden aria-live="polite"></aside>
+  <div class="cn-graph-legend" aria-label="Legend">
+    <span class="cn-graph-count" id="graph-count"></span>
+    <span class="cn-graph-direction"><i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>first → later</span>
+    <span><i class="cn-lg cn-lg-blocks" aria-hidden="true"></i>blocks</span>
+    <span><i class="cn-lg cn-lg-follows" aria-hidden="true"></i>comes after</span>
+    <span><i class="cn-lg cn-lg-relates" aria-hidden="true"></i>related</span>
+    <span><i class="cn-lg cn-lg-subtask" aria-hidden="true"></i>subtask</span>
+  </div>
+  <div class="cn-graph-empty" id="graph-empty" hidden>
+    <i class="fa-solid fa-diagram-project" aria-hidden="true"></i>
+    <h2>Nothing to draw yet</h2>
+    <p>Add tasks and link them with dependencies; they appear here as a map.</p>
+  </div>
+  <div class="cn-graph-error" id="graph-error" hidden role="alert"><strong>The graph could not be drawn.</strong> <span data-error></span></div>
+  <p class="cn-graph-wait" role="status">Drawing the graph…</p>
+</section>
+{% endblock %}

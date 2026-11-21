@@ -30,6 +30,7 @@
     </p>
   </div>
   <div class="cn-inline-form">
+    <a class="btn btn-outline-secondary" href="{{ url_for('graph.index', project=project.id) }}"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span class="ms-2">Graph</span></a>
     <a class="btn btn-outline-secondary" href="{{ url_for('projects.edit', slug=project.slug) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="ms-2">Edit</span></a>
     <cn-confirm message="Move “{{ project.name }}” to the trash?" detail="Its {{ stats.open + stats.closed }} task{{ 's' if stats.open + stats.closed != 1 }} go with it. You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
       <form method="post" action="{{ url_for('projects.delete', slug=project.slug) }}">

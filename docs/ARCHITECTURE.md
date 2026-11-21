@@ -127,6 +127,10 @@ Configurable lists (types, statuses, workflow transitions, priorities, score wei
 - `brief_core.task_brief(task)` is the single source of what a run on a task receives (D-028).
 - `related_core.related_for(task)`: related tasks, resources and schedule fit with reasons (D-029); future MCP tool `find_related`.
 
+## 4b. Graph (Phase 4)
+- `features/graph/graph_core.py`: `graph_data(project, include_closed)` → Pivotick raw nodes (pinned `x/y/fx/fy` from `plan_layout`) and edges (dependencies + subtasks), the critical path and the number of steps; `/api/graph`; page `/graph` (CSP adds `style-src-attr` there only).
+- `static/js/graph/graph.js`: Pivotick in `viewer` mode, cards from `node.getData()`, Cairn chrome, live diffing; styles in `static/css/graph/graph.css` (`--pvt-*` bridge included). D-035.
+
 ## 5b. Lists, settings, display
 - **Lists:** a feature declares a `ListSpec` (sortable, searchable, filters, tiebreak) and calls `run_list(spec, query, request.args)`; anything undeclared in the URL is ignored. Macros in `templates/macros/list.html`, styles in `css/components/list.css`. The API returns the same page as JSON (`schema/common.page_dict`).
 - **Settings:** defaults in `app/settings/<key>.json`, overrides in `setting_override` (with the default they were made from, to flag "new default"). Typed by `SETTING_TYPES`; page `/settings`, API `/api/settings`.

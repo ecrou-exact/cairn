@@ -23,6 +23,10 @@ CSP = "; ".join(
         "form-action 'self'",
     ]
 )
+# Pivotick (graph page only) writes a few `style="…"` attributes in its own markup (D-035).
+# Style *attributes* are allowed there, never `<style>` elements: no selectors, so no CSS
+# that reads the page; scripts stay locked down.
+CSP_GRAPH = CSP.replace("style-src 'self'", "style-src 'self'; style-src-attr 'unsafe-inline'")
 TRUSTED_TYPES_REPORT_ONLY = "require-trusted-types-for 'script'; trusted-types vitrine cairn"
 
 HEADERS = {
