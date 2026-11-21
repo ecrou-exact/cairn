@@ -89,6 +89,8 @@
 @media (max-width: 1100px) { .cn-task-layout { grid-template-columns: 1fr; } }
 
 .cn-blocked-panel { border-color: var(--cn-warning); background: color-mix(in srgb, var(--cn-warning-soft) 60%, var(--cn-surface)); margin-bottom: var(--cn-space-4); }
+.cn-risk-panel { border-color: var(--cn-danger); background: color-mix(in srgb, var(--cn-danger-soft) 55%, var(--cn-surface)); margin-bottom: var(--cn-space-4); }
+.cn-risk-panel h2 { color: var(--cn-danger); }
 .cn-chain { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cn-space-1); }
 .cn-chain-depth-2 { padding-left: var(--cn-space-4); }
 .cn-chain-depth-3 { padding-left: var(--cn-space-6); }
@@ -180,7 +182,33 @@
 .cn-attention i { margin-top: 0.3rem; }
 .cn-attention-overdue i { color: var(--cn-danger); }
 .cn-attention-due_soon i { color: var(--cn-warning); }
+.cn-attention-at_risk i { color: var(--cn-danger); }
 .cn-attention-stale i { color: var(--cn-info); }
 .cn-attention-unblocked i { color: var(--cn-success); }
 .cn-now-panel { border-color: var(--cn-accent); margin-bottom: var(--cn-space-4); }
 .cn-notice-panel { margin-bottom: var(--cn-space-4); }
+
+/* Bulk edit and inline editing */
+.cn-bulk {
+  display: flex; flex-wrap: wrap; gap: var(--cn-space-2) var(--cn-space-4); align-items: center;
+  padding: var(--cn-space-2) var(--cn-space-3); margin-bottom: var(--cn-space-2);
+  border: var(--cn-border-width) dashed var(--cn-border); border-radius: var(--cn-radius);
+  font-size: var(--cn-text-sm); color: var(--cn-text-muted);
+}
+.cn-bulk-active { border-style: solid; border-color: var(--cn-accent); background: var(--cn-accent-soft); color: var(--cn-text); }
+.cn-bulk-count { font-weight: var(--cn-weight-medium); }
+.cn-bulk-actions { display: flex; flex-wrap: wrap; gap: var(--cn-space-1); align-items: center; }
+.cn-bulk-actions .form-select, .cn-bulk-tags { width: auto; max-width: 10rem; }
+.cn-select-cell { width: 2.5rem; }
+.cn-inline-edit { display: inline-flex; }
+.cn-inline-select {
+  appearance: none; border: var(--cn-border-width) solid transparent; cursor: pointer;
+  font: inherit; padding-right: var(--cn-space-2);
+}
+.cn-inline-select.cn-priority { background: transparent; }
+.cn-inline-select:hover, .cn-inline-select:focus-visible { border-color: var(--cn-border-strong); }
+.cn-inline-select option { background: var(--cn-surface-raised); color: var(--cn-text); }
+.cn-from-template { margin-bottom: var(--cn-space-3); font-size: var(--cn-text-sm); }
+.cn-from-template summary { cursor: pointer; color: var(--cn-text-muted); width: fit-content; }
+.cn-from-template form { margin-top: var(--cn-space-2); }
+.cn-from-template .form-control { flex: 1 1 14rem; }

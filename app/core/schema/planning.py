@@ -235,3 +235,16 @@ class DependencyOut(BaseModel):
     to_task_id: uuid.UUID
     kind: str
     note: str
+
+
+class BulkEdit(Strict):
+    """One change applied to many tasks (one history batch, one undo)."""
+
+    task_ids: Annotated[list[uuid.UUID], Field(min_length=1, max_length=500)]
+    status: Annotated[str, Field(max_length=30)] | None = None
+    priority: Literal[PRIORITIES] | None = None  # type: ignore[valid-type]
+    project_id: uuid.UUID | None = None
+    clear_project: bool = False
+    add_tags: Tags = Field(default_factory=list)
+    remove_tags: Tags = Field(default_factory=list)
+    delete: bool = False

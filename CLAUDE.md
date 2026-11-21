@@ -31,7 +31,7 @@ Self-hosted, single-owner developer workspace: planning (projects, tasks, depend
 - Before declaring done: tests (`python manage.py test`), `ruff`, `bandit -r app/`.
 
 ## Commands
-`uv sync` then `uv run python manage.py <command>`: `setup` (first run), `start` (dev server on 127.0.0.1:7010), `serve` (production), `worker` (background jobs), `upgrade` / `migrate "msg"` (Alembic), `test [pytest args]`, `check` (ruff + bandit + tests — run before declaring done).
+`uv sync` then `uv run python manage.py <command>`: `setup` (first run), `start` (dev server on 127.0.0.1:7010), `serve` (production), `worker` (background jobs), `roadmap [file]` (import a plan), `upgrade` / `migrate "msg"` (Alembic), `test [pytest args]`, `check` (ruff + bandit + tests — run before declaring done).
 
 ## Layout and patterns
 - See `docs/ARCHITECTURE.md` §2. Models in `app/core/db_class/<feature>.py` (add the module to `db_class/__init__.py`), all inherit `BaseEntity`.

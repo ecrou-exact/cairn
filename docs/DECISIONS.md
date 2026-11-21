@@ -144,3 +144,10 @@
 - **Unblock impact and blocking chain:** "finishing this unblocks N tasks" and the transitive chain of open blockers on a blocked task.
 - **Time tracking:** one running timer; "Start working" moves the task to the first active status; closing or deleting a task stops its timer; time spent vs estimate on the task.
 - Quick add understands French weekday names and "demain" as well as English.
+
+## D-026 · 2026-11-21 · accepted — Bulk edit, deadline risk, templates, roadmap as data
+- **Bulk edit** applies one change to many tasks in one batch (one undo). Tasks the workflow refuses are skipped and named; the others change. Inline status/priority selects in tables save on change (buttons without JavaScript).
+- **Deadline risk:** remaining work of the task and of every open task blocking it (estimate − time spent) against working time to the due date (`tasks.capacity`: hours per day, working days). Unestimated tasks are counted as unknown and reported, never guessed.
+- **Templates** live in the `tasks.templates` setting (typed); `sequential` chains subtasks with `follows`.
+- **Plan import** (`plan_import_core`, `manage.py roadmap [file]`): a project and tasks with parents and `blocked_by`, matched by slug and title so re-importing only adds what is new; all or nothing. Cairn's own roadmap is `docs/roadmap.json` — Cairn plans itself. The intake (Phase 6) will reuse this path.
+- **Shortcuts:** `n`, `/`, `g`+letter, `?`; ignored while typing, including inside Vitrine editors (composed path).

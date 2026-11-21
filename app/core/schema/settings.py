@@ -108,6 +108,27 @@ class Attention(Strict):
     stale_active_days: int = Field(ge=1, le=90)
 
 
+class Capacity(Strict):
+    hours_per_day: float = Field(gt=0, le=24)
+    work_days: list[Annotated[int, Field(ge=0, le=6)]] = Field(min_length=1, max_length=7)
+
+
+class TemplateSubtask(Strict):
+    title: Annotated[str, Field(min_length=1, max_length=200)]
+    type: KEY
+
+
+class TaskTemplate(Strict):
+    label: LABEL
+    type: KEY
+    priority: Literal["critical", "high", "medium", "low"]
+    tags: list[Annotated[str, Field(pattern=r"^[\w][\w.+-]{0,31}$")]] = Field(max_length=20)
+    checklist: list[Annotated[str, Field(min_length=1, max_length=300)]] = Field(max_length=100)
+    acceptance_md: Annotated[str, Field(max_length=20_000)]
+    subtasks: list[TemplateSubtask] = Field(max_length=50)
+    sequential: bool
+
+
 THEME_NAMES = Literal["auto", "stone", "basalt", "moss", "ember"]
 
 # One type per settings file (checked by tests/test_settings.py). An override must fit it.
@@ -117,6 +138,8 @@ SETTING_TYPES: dict[str, TypeAdapter] = {
     "tasks.types": TypeAdapter(Annotated[dict[KEY, TaskType], Field(min_length=1, max_length=40)]),
     "tasks.score_weights": TypeAdapter(ScoreWeights),
     "tasks.attention": TypeAdapter(Attention),
+    "tasks.capacity": TypeAdapter(Capacity),
+    "tasks.templates": TypeAdapter(Annotated[dict[KEY, TaskTemplate], Field(max_length=50)]),
     "jobs.retention_days": TypeAdapter(Annotated[int, Field(strict=True, ge=1, le=3650)]),
     "lists.per_page": TypeAdapter(
         Annotated[list[Annotated[int, Field(strict=True, ge=5, le=500)]], Field(min_length=1, max_length=6)]

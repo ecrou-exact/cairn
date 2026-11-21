@@ -56,6 +56,15 @@
   <div class="cn-live-notice" id="task-changed" hidden role="status"><span>This task was changed elsewhere.</span> <a href="{{ request.path }}">Reload</a></div>
 </header>
 
+{% if risk %}
+<section class="cn-panel cn-risk-panel" aria-labelledby="risk-title" role="note">
+  <h2 id="risk-title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> This deadline is at risk</h2>
+  <p>About <strong>{{ "%g" | format(risk.needed_hours) }} h</strong> of work are left{% if risk.chain_size > 1 %} on this task and the {{ risk.chain_size - 1 }} open task{{ "s" if risk.chain_size > 2 }} blocking it{% endif %}, for <strong>{{ "%g" | format(risk.available_hours) }} h</strong> of working time before {{ task.due_on | relative_day }} — short by {{ "%g" | format(risk.short_by) }} h.
+  {% if risk.unknown %}{{ risk.unknown }} of them {{ "has" if risk.unknown == 1 else "have" }} no estimate, so it may be worse.{% endif %}</p>
+  <p class="form-text">Cut scope, move the date, or adjust your <a href="{{ url_for('settings.index', _anchor='tasks.capacity') }}">working time</a>.</p>
+</section>
+{% endif %}
+
 {% if chain %}
 <section class="cn-panel cn-blocked-panel" aria-labelledby="chain-title">
   <h2 id="chain-title"><i class="fa-solid fa-link-slash" aria-hidden="true"></i> Why it is blocked</h2>

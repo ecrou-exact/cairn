@@ -65,7 +65,7 @@
     <ul class="cn-attention">
       {% for key, reason, task in attention %}
       <li class="cn-attention-{{ key }}">
-        <i class="fa-solid {{ {'overdue': 'fa-calendar-xmark', 'due_soon': 'fa-hourglass-half', 'stale': 'fa-snowflake', 'unblocked': 'fa-unlock'}[key] }}" aria-hidden="true"></i>
+        <i class="fa-solid {{ {'overdue': 'fa-calendar-xmark', 'at_risk': 'fa-triangle-exclamation', 'due_soon': 'fa-hourglass-half', 'stale': 'fa-snowflake', 'unblocked': 'fa-unlock'}[key] }}" aria-hidden="true"></i>
         <div><a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a><span>{{ reason }}</span></div>
       </li>
       {% endfor %}

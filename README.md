@@ -31,6 +31,7 @@ Open the URL, create the owner account, then turn on two-factor sign-in under **
 | `python manage.py start` | Development server with auto-reload |
 | `python manage.py serve` | Production server (gunicorn on Linux/macOS, waitress on Windows) |
 | `python manage.py worker` | Background job worker (one per SQLite database) |
+| `python manage.py roadmap [file]` | Import a plan; without a file, Cairn's own roadmap (`docs/roadmap.json`) |
 | `python manage.py upgrade` | Apply database migrations |
 | `python manage.py migrate "message"` | Create a migration after a model change |
 | `python manage.py test` | Run the test suite |

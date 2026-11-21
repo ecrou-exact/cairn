@@ -11,7 +11,8 @@ from app.core.utils.history import batch
 from app.core.utils.web import FormErrors, flash_undo, validate
 from app.features.projects import projects_core
 from app.features.projects.projects_forms import values_from_form, values_from_project
-from app.features.tasks import tasks_core, workflow
+from app.features.tasks import tasks_core
+from app.features.tasks.tasks import list_context
 
 projects = Blueprint("projects", __name__)
 
@@ -74,7 +75,7 @@ def detail(slug: str):
         page=page,
         stats=projects_core.stats([project.id])[project.id],
         events_after=after,
-        types=workflow.types(),
+        **list_context(),
     )
 
 

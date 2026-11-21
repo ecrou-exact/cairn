@@ -52,12 +52,66 @@
 </form>
 {%- endmacro %}
 
-{% macro task_rows(page, types, show_project=True) -%}
+{% macro bulk_bar(workflow_statuses, project_options) -%}
+<form id="bulk-form" class="cn-bulk" method="post" action="{{ url_for('tasks.bulk') }}" aria-label="Change the selected tasks">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="next" value="{{ request.full_path }}">
+  <span class="cn-bulk-count" data-selected-count aria-live="polite">Select tasks to change them together</span>
+  <div class="cn-bulk-actions">
+    <label class="visually-hidden" for="bulk-status">New status</label>
+    <select class="form-select form-select-sm" id="bulk-status" name="status">
+      {% for status in workflow_statuses %}<option value="{{ status.key }}">{{ status.label }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="status">Set status</button>
+    <label class="visually-hidden" for="bulk-priority">New priority</label>
+    <select class="form-select form-select-sm" id="bulk-priority" name="priority">
+      {% for p in ("critical", "high", "medium", "low") %}<option value="{{ p }}">{{ p | capitalize }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="priority">Set priority</button>
+    <label class="visually-hidden" for="bulk-project">Move to project</label>
+    <select class="form-select form-select-sm" id="bulk-project" name="project_id">
+      <option value="none">No project</option>
+      {% for project in project_options %}<option value="{{ project.id }}">{{ project.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="project">Move</button>
+    <label class="visually-hidden" for="bulk-tags">Tags to add</label>
+    <input class="form-control form-control-sm cn-bulk-tags" id="bulk-tags" name="add_tags" placeholder="add tags">
+    <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="tags">Tag</button>
+    <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="delete" data-confirm="Move the selected tasks to the trash? You can undo."><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Move to the trash</span></button>
+  </div>
+</form>
+{%- endmacro %}
+
+{% macro inline_status(task, workflow_statuses) -%}
+<form method="post" action="{{ url_for('tasks.change_status', task_id=task.id) }}" class="cn-inline-edit">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+  <label class="visually-hidden" for="status-{{ task.id }}">Status of {{ task.title }}</label>
+  <select class="cn-inline-select cn-status cn-status-{{ task.status | status_kind }}" id="status-{{ task.id }}" name="status" data-autosubmit>
+    <option value="{{ task.status }}" selected>{{ task.status | status_label }}</option>
+    {% for key in task.status | next_statuses %}<option value="{{ key }}">{{ key | status_label }}</option>{% endfor %}
+  </select>
+  <button class="visually-hidden-focusable btn btn-sm" type="submit">Save</button>
+</form>
+{%- endmacro %}
+
+{% macro inline_priority(task) -%}
+<form method="post" action="{{ url_for('tasks.change_priority', task_id=task.id) }}" class="cn-inline-edit">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+  <label class="visually-hidden" for="priority-{{ task.id }}">Priority of {{ task.title }}</label>
+  <select class="cn-inline-select cn-priority cn-priority-{{ task.priority }}" id="priority-{{ task.id }}" name="priority" data-autosubmit>
+    {% for p in ("critical", "high", "medium", "low") %}<option value="{{ p }}" {% if p == task.priority %}selected{% endif %}>{{ p }}</option>{% endfor %}
+  </select>
+  <button class="visually-hidden-focusable btn btn-sm" type="submit">Save</button>
+</form>
+{%- endmacro %}
+
+{% macro task_rows(page, types, show_project=True, workflow_statuses=[]) -%}
 {% from "macros/list.html" import sort_header %}
 <div class="cn-table-wrap">
   <table class="table cn-table cn-task-table">
     <thead>
       <tr>
+        <th scope="col" class="cn-select-cell"><input class="form-check-input" type="checkbox" data-select-all aria-label="Select every task on this page"></th>
         {{ sort_header(page, "title", "Task") }}
         {% if show_project %}<th scope="col">Project</th>{% endif %}
         {{ sort_header(page, "status", "Status") }}
@@ -69,6 +123,7 @@
     <tbody>
       {% for task in page.items %}
       <tr data-task-id="{{ task.id }}" class="{% if not task.is_open %}cn-task-closed{% endif %}">
+        <td class="cn-select-cell"><input class="form-check-input" type="checkbox" name="task_ids" value="{{ task.id }}" form="bulk-form" aria-label="Select {{ task.title }}"></td>
         <td class="cn-task-title-cell">
           {{ type_icon(task, types) }}
           <a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a>
@@ -76,8 +131,8 @@
           {% for tag in task.tags[:3] %}<span class="cn-tag">#{{ tag }}</span>{% endfor %}
         </td>
         {% if show_project %}<td>{{ project_chip(task.project) }}</td>{% endif %}
-        <td>{{ task_status(task) }}</td>
-        <td>{{ priority(task) }}</td>
+        <td>{{ inline_status(task, workflow_statuses) }}</td>
+        <td>{{ inline_priority(task) }}</td>
         <td>{{ due(task) }}</td>
         <td>{{ score(task) }}</td>
       </tr>
@@ -85,6 +140,26 @@
     </tbody>
   </table>
 </div>
+{%- endmacro %}
+
+{% macro from_template(templates, project=None) -%}
+{% if templates %}
+<details class="cn-from-template">
+  <summary><i class="fa-solid fa-clone" aria-hidden="true"></i> From a template</summary>
+  <form method="post" action="{{ url_for('tasks.from_template') }}" class="cn-inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    {% if project %}<input type="hidden" name="project_id" value="{{ project.id }}">{% endif %}
+    <label class="visually-hidden" for="template-key">Template</label>
+    <select class="form-select" id="template-key" name="template">
+      {% for key, template in templates.items() %}<option value="{{ key }}">{{ template.label }}{% if template.subtasks %} ({{ template.subtasks | length }} steps){% endif %}</option>{% endfor %}
+    </select>
+    <label class="visually-hidden" for="template-title">Title</label>
+    <input class="form-control" id="template-title" name="title" maxlength="200" placeholder="Title, e.g. Release 2.5">
+    <button class="btn btn-outline-secondary" type="submit">Create</button>
+  </form>
+</details>
+{% endif %}
 {%- endmacro %}
 
 {% macro task_cards(page, types, show_project=True) -%}

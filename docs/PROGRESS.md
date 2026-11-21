@@ -51,9 +51,11 @@ Goal: owner approves architecture + design direction.
 - [x] Dependencies (blocks, follows, relates, duplicates), cycle detection naming the loop, blocked state everywhere, "why blocked" chain — critical path left for the graph (Phase 4)
 - [ ] Resources + resource library
 - [x] Quick add with natural-language parsing and live preview, duplicate detection; full tabbed form; Markdown editors through Vitrine; unsaved-changes guard
-- [ ] Inline + bulk edit, file upload / paste, templates
-- [x] Priority score (configurable weights, explanation), "What should I do now?", needs-attention radar — deadline risk on dependency chains still to do
-- [x] History with undo per action (D-024), trash with restore and delete for good, command palette (Ctrl/Cmd+K) — keyboard shortcuts beyond the palette to do
+- [x] Inline status / priority edit, bulk edit (status, priority, project, tags, trash) in one undoable batch, task templates (D-026)
+- [ ] File upload / paste (with resources)
+- [x] Priority score (configurable weights, explanation), "What should I do now?", needs-attention radar, deadline risk on dependency chains against working time
+- [x] History with undo per action (D-024), trash with restore and delete for good, command palette (Ctrl/Cmd+K), keyboard shortcuts (`?` lists them)
+- [x] Cairn's own roadmap as a plan (`docs/roadmap.json`, `python manage.py roadmap`)
 - [x] Time tracking (start / stop, time spent vs estimate) (D-025)
 - [~] JSON schema registry shared by API, forms and MCP tools — schemas exist per feature (`core/schema/`), registry/`describe_schema` comes with the MCP server (Phase 5)
 

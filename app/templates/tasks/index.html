@@ -1,6 +1,6 @@
 {% extends "layout/shell.html" %}
 {% from "macros/list.html" import toolbar, pagination, empty_state %}
-{% from "macros/planning.html" import quick_add, task_rows, task_cards %}
+{% from "macros/planning.html" import quick_add, task_rows, task_cards, bulk_bar, from_template %}
 {% block title %}Tasks{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
@@ -9,6 +9,7 @@
 {% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-quick-add.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/planning/live-list.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/planning/list-actions.js') }}"></script>
 {% endblock %}
 {% block content %}
 <header class="cn-page-header cn-page-header-actions">
@@ -21,6 +22,7 @@
 </header>
 
 {{ quick_add() }}
+{{ from_template(templates) }}
 
 <div class="cn-live-notice" id="list-changed" hidden role="status">
   <span>Tasks changed since this page loaded.</span> <a href="{{ page.url() }}">Reload the list</a>
@@ -29,7 +31,7 @@
 {{ toolbar(page, "Search tasks") }}
 
 {% if page.items %}
-  {% if page.view == "cards" %}{{ task_cards(page, types) }}{% else %}{{ task_rows(page, types) }}{% endif %}
+  {% if page.view == "cards" %}{{ task_cards(page, types) }}{% else %}{{ bulk_bar(workflow_statuses, project_options) }}{{ task_rows(page, types, workflow_statuses=workflow_statuses) }}{% endif %}
   {{ pagination(page) }}
 {% else %}
   {{ empty_state(page, "No tasks yet", "Type one in the field above: plain words, a date, a #type, a !priority.") }}

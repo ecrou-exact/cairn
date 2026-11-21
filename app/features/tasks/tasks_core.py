@@ -17,7 +17,7 @@ from sqlalchemy import delete as sql_delete
 from app.core.db_class.base import utcnow
 from app.core.db_class.planning import PRIORITIES, Dependency, Project, Task, TimeEntry
 from app.core.extensions import db
-from app.core.schema.planning import TaskCreate, TaskUpdate
+from app.core.schema.planning import BulkEdit, TaskCreate, TaskUpdate
 from app.core.utils.actor import current_actor
 from app.core.utils.events import publish
 from app.core.utils.history import batch, register_undo
@@ -26,6 +26,7 @@ from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
 from app.features.tasks import workflow
 from app.features.tasks.dependencies_core import refresh_derived
+from app.features.tasks.risk_core import deadline_risks
 
 # Columns an edit may change, in form order (also the fields compared for the diff).
 EDITABLE = tuple(TaskUpdate.model_fields)
@@ -271,6 +272,44 @@ def purge(task_id: uuid.UUID) -> None:
     db.session.commit()
 
 
+def bulk_edit(data: BulkEdit) -> tuple[int, list[str]]:
+    """Apply one change to many tasks in one batch. Tasks the change cannot apply to (a
+    transition the workflow refuses, a task deleted meanwhile) are skipped and reported;
+    the others are changed. Returns (changed count, reasons for the skipped ones)."""
+    changed, skipped = 0, []
+    with batch():
+        for task_id in dict.fromkeys(data.task_ids):
+            task = db.session.get(Task, task_id)
+            if task is not None and task.is_deleted and data.delete:
+                continue  # a subtask already moved with its selected parent
+            if task is None or task.is_deleted:
+                skipped.append("A selected task no longer exists.")
+                continue
+            if data.delete:
+                changed += delete(task_id)
+                continue
+            fields: dict[str, Any] = {}
+            if data.status and data.status != task.status:
+                fields["status"] = data.status
+            if data.priority:
+                fields["priority"] = data.priority
+            if data.clear_project:
+                fields["project_id"] = None
+            elif data.project_id:
+                fields["project_id"] = data.project_id
+            if data.add_tags or data.remove_tags:
+                tags = [t for t in task.tags if t not in data.remove_tags]
+                fields["tags"] = tags + [t for t in data.add_tags if t not in tags]
+            if not any(getattr(task, key) != value for key, value in fields.items()):
+                continue
+            try:
+                update(task.id, TaskUpdate(**fields))
+                changed += 1
+            except TaskError as exc:
+                skipped.append(f"“{task.title}”: {exc}")
+    return changed, skipped
+
+
 # -- undo ------------------------------------------------------------------------------------
 
 
@@ -465,6 +504,18 @@ def needs_attention(today: date | None = None) -> list[tuple[str, str, Task]]:
     for task in db.session.scalars(open_tasks.where(Task.due_on < today).order_by(Task.due_on)):
         days = (today - task.due_on).days
         add("overdue", f"{days} day{'s' if days > 1 else ''} overdue", task)
+    for risk in deadline_risks(today):
+        unknown = f", {risk.unknown} without estimate" if risk.unknown else ""
+        chain = (
+            f" with {risk.chain_size - 1} blocking task{'s' if risk.chain_size > 2 else ''}"
+            if risk.chain_size > 1
+            else ""
+        )
+        add(
+            "at_risk",
+            f"needs ~{risk.needed_hours:g} h{chain}{unknown}, {risk.available_hours:g} h of work time left",
+            risk.task,
+        )
     waiting = workflow.keys_of_kinds("waiting")
     for task in db.session.scalars(open_tasks.where(Task.status.in_(waiting), Task.blocked_by_count == 0)):
         add("unblocked", "Marked blocked, but nothing blocks it any more", task)

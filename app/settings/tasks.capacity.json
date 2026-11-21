@@ -1,0 +1,6 @@
+{
+  "label": "Working time",
+  "category": "Tasks",
+  "description": "Hours you can give to tasks on a working day, and which days you work (0 = Monday … 6 = Sunday). Used to warn when a deadline cannot be met with the work still to do.",
+  "value": {"hours_per_day": 6, "work_days": [0, 1, 2, 3, 4]}
+}

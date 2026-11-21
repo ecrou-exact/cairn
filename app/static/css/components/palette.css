@@ -30,3 +30,7 @@ cn-task-picker { position: relative; display: block; }
 .cn-timer [data-elapsed] { font-family: var(--cn-font-mono); color: var(--cn-accent); }
 
 .cn-undo-flash { display: flex; align-items: center; justify-content: space-between; gap: var(--cn-space-3); }
+
+.cn-shortcuts dl { display: grid; grid-template-columns: auto 1fr; gap: var(--cn-space-2) var(--cn-space-4); margin: var(--cn-space-3) 0 0; font-size: var(--cn-text-sm); }
+.cn-shortcuts dd { margin: 0; color: var(--cn-text-muted); }
+.cn-shortcuts kbd { background: var(--cn-surface-sunken); color: var(--cn-text); border: var(--cn-border-width) solid var(--cn-border); }

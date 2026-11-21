@@ -4,6 +4,7 @@ python manage.py setup         first run: .env with a secret key, master key, da
 python manage.py start         development server (auto-reload) on 127.0.0.1:7010
 python manage.py serve         production server (gunicorn on Linux/macOS, waitress on Windows)
 python manage.py worker        background job worker (run it next to start or serve)
+python manage.py roadmap [file] import a plan (default: Cairn's own roadmap, docs/roadmap.json)
 python manage.py upgrade       apply database migrations
 python manage.py migrate "msg" create a migration after a model change
 python manage.py test [args]   run the test suite (pytest arguments pass through)
@@ -139,6 +140,29 @@ def cmd_check(_: argparse.Namespace) -> int:
     return cmd_test(argparse.Namespace(pytest_args=["-q"]))
 
 
+def cmd_roadmap(args: argparse.Namespace) -> int:
+    import json
+
+    from dotenv import load_dotenv
+
+    load_dotenv(ENV_FILE)
+    from app import create_app
+    from app.features.projects.plan_import_core import PlanError, import_plan
+
+    path = Path(args.file)
+    with create_app().app_context():
+        try:
+            counts = import_plan(json.loads(path.read_text(encoding="utf-8")))
+        except (PlanError, ValueError) as exc:
+            print(f"Could not import {path.name}: {exc}", file=sys.stderr)
+            return 1
+    print(
+        f"{path.name}: {counts['created']} tasks created, {counts['existing']} already there, "
+        f"{counts['dependencies']} dependencies added."
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="manage.py", description="Cairn command line.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -146,6 +170,9 @@ def main() -> int:
     sub.add_parser("start", help="development server").set_defaults(func=cmd_start)
     sub.add_parser("serve", help="production server").set_defaults(func=cmd_serve)
     sub.add_parser("worker", help="background job worker").set_defaults(func=cmd_worker)
+    roadmap = sub.add_parser("roadmap", help="import a plan (default: Cairn's own roadmap)")
+    roadmap.add_argument("file", nargs="?", default=str(ROOT / "docs" / "roadmap.json"))
+    roadmap.set_defaults(func=cmd_roadmap)
     sub.add_parser("upgrade", help="apply migrations").set_defaults(func=cmd_upgrade)
     migrate = sub.add_parser("migrate", help="create a migration")
     migrate.add_argument("message")

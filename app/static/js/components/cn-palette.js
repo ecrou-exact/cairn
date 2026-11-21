@@ -8,6 +8,7 @@
  */
 
 import { api, debounce } from '../core/api.js';
+import { showHelp } from '../core/shortcuts.js';
 
 const ACTIONS = [
   { label: 'New task (full form)', icon: 'fa-pen-to-square', url: '/tasks/new' },
@@ -16,6 +17,7 @@ const ACTIONS = [
   { label: 'Blocked tasks', icon: 'fa-link-slash', url: '/tasks?state=blocked' },
   { label: 'Overdue tasks', icon: 'fa-calendar-xmark', url: '/tasks?state=overdue' },
   { label: 'Security', icon: 'fa-shield-halved', url: '/account/security' },
+  { label: 'Keyboard shortcuts', icon: 'fa-keyboard', run: () => showHelp() },
 ];
 
 class CnPalette extends HTMLElement {
@@ -190,6 +192,11 @@ class CnPalette extends HTMLElement {
         item.label = `Could not add: ${error.message}`;
         this.#render();
       }
+      return;
+    }
+    if (item.run) {
+      this.#dialog.close();
+      item.run();
       return;
     }
     window.location.assign(item.url);

@@ -40,6 +40,7 @@ def register_template_filters(app: Flask) -> None:
     app.add_template_filter(relative_day)
     app.add_template_filter(workflow.label_of, "status_label")
     app.add_template_filter(workflow.kind_of, "status_kind")
+    app.add_template_filter(workflow.allowed_next, "next_statuses")
     app.add_template_filter(timer_core.format_duration, "duration")
     app.add_template_global(date.today, "today")
     app.add_template_global(timer_core.running, "running_timer")

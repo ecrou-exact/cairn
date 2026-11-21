@@ -6,12 +6,20 @@ import uuid
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from app.core.schema.planning import DependencyCreate, TaskCreate, TaskUpdate
+from app.core.schema.planning import BulkEdit, DependencyCreate, TaskCreate, TaskUpdate
 from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
-from app.core.utils.web import FormErrors, flash_undo, validate
+from app.core.utils.web import FormErrors, flash_undo, split_list, validate
 from app.features.projects import projects_core
-from app.features.tasks import dependencies_core, quickadd_core, tasks_core, timer_core, workflow
+from app.features.tasks import (
+    dependencies_core,
+    quickadd_core,
+    risk_core,
+    tasks_core,
+    templates_core,
+    timer_core,
+    workflow,
+)
 from app.features.tasks.tasks_forms import values_from_form, values_from_task
 
 tasks = Blueprint("tasks", __name__)
@@ -57,11 +65,92 @@ def _form_context(values, errors: dict | None = None, task=None) -> dict:
 # -- lists and quick add ---------------------------------------------------------------------
 
 
+def list_context() -> dict:
+    """What every task list with bulk and inline editing needs (Tasks page, project page)."""
+    return {
+        "types": workflow.types(),
+        "workflow_statuses": workflow.statuses(),
+        "project_options": projects_core.options(),
+        "templates": templates_core.templates(),
+    }
+
+
 @tasks.get("/tasks")
 def index():
     after = latest_event_id()
     page = tasks_core.list_tasks(request.args)
-    return render_template("tasks/index.html", page=page, events_after=after, types=workflow.types())
+    return render_template("tasks/index.html", page=page, events_after=after, **list_context())
+
+
+@tasks.post("/tasks/bulk")
+def bulk():
+    form = request.form
+    action = form.get("action", "")
+    values: dict = {"task_ids": form.getlist("task_ids")}
+    if action == "status":
+        values["status"] = form.get("status") or None
+    elif action == "priority":
+        values["priority"] = form.get("priority") or None
+    elif action == "project":
+        target = form.get("project_id", "")
+        values |= {"clear_project": True} if target == "none" else {"project_id": target or None}
+    elif action == "tags":
+        values |= {
+            "add_tags": split_list(form.get("add_tags")),
+            "remove_tags": split_list(form.get("remove_tags")),
+        }
+    elif action == "delete":
+        values["delete"] = True
+    else:
+        abort(400)
+    try:
+        data = validate(BulkEdit, values)
+    except FormErrors as exc:
+        flash("Select at least one task." if "task_ids" in exc.errors else str(exc), "danger")
+        return redirect(_back(url_for("tasks.index")))
+    with batch() as batch_id:
+        changed, skipped = tasks_core.bulk_edit(data)
+    if changed:
+        what = "moved to the trash" if data.delete else "changed"
+        flash_undo(f"{changed} task{'s' if changed != 1 else ''} {what}.", batch_id)
+    for reason in skipped[:5]:
+        flash(f"Skipped {reason}", "warning")
+    if not changed and not skipped:
+        flash("Nothing to change: the selected tasks already have it.", "info")
+    return redirect(_back(url_for("tasks.index")))
+
+
+@tasks.post("/tasks/<uuid:task_id>/priority")
+def change_priority(task_id: uuid.UUID):
+    try:
+        with batch() as batch_id:
+            task = tasks_core.update(
+                task_id, validate(TaskUpdate, {"priority": request.form.get("priority")})
+            )
+    except tasks_core.TaskNotFound:
+        abort(404)
+    except (FormErrors, tasks_core.TaskError) as exc:
+        flash(str(exc), "danger")
+    else:
+        flash_undo(f"“{task.title}” is now {task.priority} priority.", batch_id)
+    return redirect(_back(url_for("tasks.detail", task_id=task_id)))
+
+
+@tasks.post("/tasks/from-template")
+def from_template():
+    project_id = request.form.get("project_id") or None
+    try:
+        with batch() as batch_id:
+            task = templates_core.instantiate(
+                request.form.get("template", ""),
+                request.form.get("title", ""),
+                project_id=uuid.UUID(project_id) if project_id else None,
+            )
+    except (tasks_core.TaskError, ValueError) as exc:
+        flash(str(exc).splitlines()[0], "danger")
+        return redirect(_back(url_for("tasks.index")))
+    flash_undo(f"Created “{task.title}” from a template.", batch_id)
+    return redirect(url_for("tasks.detail", task_id=task.id))
 
 
 @tasks.post("/tasks/quick")
@@ -146,6 +235,7 @@ def detail(task_id: uuid.UUID):
         subtasks=tasks_core.subtasks(task.id),
         dependencies=dependencies_core.for_task(task.id),
         chain=dependencies_core.blocking_chain(task.id) if task.is_blocked else [],
+        risk=risk_core.risk_of(task.id) if task.is_open and task.due_on else None,
         next_statuses=[workflow.status_map()[key] for key in workflow.allowed_next(task.status)],
         types=workflow.types(),
         history=tasks_core.task_history(task.id),

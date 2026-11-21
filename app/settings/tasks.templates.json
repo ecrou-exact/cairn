@@ -1,0 +1,57 @@
+{
+  "label": "Task templates",
+  "category": "Tasks",
+  "description": "Shapes of work you repeat. Creating from a template makes the task with its checklist and subtasks; with \"sequential\", each subtask comes after the previous one.",
+  "value": {
+    "release": {
+      "label": "Release",
+      "type": "release",
+      "priority": "high",
+      "tags": ["release"],
+      "checklist": ["Changelog written", "Version bumped", "Tag pushed", "Release notes published"],
+      "acceptance_md": "- CI is green on every supported platform\n- The upgrade path from the previous version is tested",
+      "subtasks": [
+        {"title": "Freeze and triage open issues", "type": "review"},
+        {"title": "Update the changelog and docs", "type": "docs"},
+        {"title": "Tag and publish the release", "type": "release"},
+        {"title": "Announce the release", "type": "ops"}
+      ],
+      "sequential": true
+    },
+    "bug": {
+      "label": "Bug triage",
+      "type": "bug",
+      "priority": "high",
+      "tags": ["bug"],
+      "checklist": ["Reproduced", "Root cause found", "Regression test added", "Fix reviewed"],
+      "acceptance_md": "- A test fails before the fix and passes after it",
+      "subtasks": [],
+      "sequential": false
+    },
+    "review": {
+      "label": "Review a pull request",
+      "type": "review",
+      "priority": "medium",
+      "tags": ["review"],
+      "checklist": ["Read the description and linked issue", "Run it locally", "Check tests and docs", "Leave the review"],
+      "acceptance_md": "",
+      "subtasks": [],
+      "sequential": false
+    },
+    "feature": {
+      "label": "Feature",
+      "type": "feature",
+      "priority": "medium",
+      "tags": [],
+      "checklist": [],
+      "acceptance_md": "- Documented\n- Tested on Ubuntu, macOS and Windows",
+      "subtasks": [
+        {"title": "Write the spec", "type": "research"},
+        {"title": "Implement", "type": "feature"},
+        {"title": "Tests", "type": "feature"},
+        {"title": "Docs", "type": "docs"}
+      ],
+      "sequential": true
+    }
+  }
+}
