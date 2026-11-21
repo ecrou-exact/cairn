@@ -20,4 +20,3 @@
 .cn-inherited { margin-bottom: var(--cn-space-3); font-size: var(--cn-text-sm); }
 .cn-inherited ul { margin: var(--cn-space-2) 0 0; }
 #brief details > summary { cursor: pointer; margin-bottom: var(--cn-space-2); }
-.cn-project-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: var(--cn-space-4); align-items: start; }

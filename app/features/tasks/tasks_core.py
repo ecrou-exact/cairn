@@ -574,14 +574,18 @@ def task_history(task_id: uuid.UUID, limit: int = 50):
 # -- views -----------------------------------------------------------------------------------
 
 
-def next_actions(limit: int = 7, today: date | None = None) -> list[Task]:
+def next_actions(
+    limit: int = 7, today: date | None = None, project_id: uuid.UUID | None = None
+) -> list[Task]:
     """“What should I do now?”: actionable tasks (open, not blocked, not waiting, not
-    scheduled for later), highest score first (PROJECT_BRIEF.md §3)."""
+    scheduled for later), highest score first (PROJECT_BRIEF.md §3), optionally in one project."""
     today = today or date.today()
+    in_project = [Task.project_id == project_id] if project_id is not None else []
     return list(
         db.session.scalars(
             select(Task)
             .where(
+                *in_project,
                 Task.deleted_at.is_(None),
                 Task.is_open.is_(True),
                 Task.blocked_by_count == 0,

@@ -158,11 +158,6 @@
 .cn-project-meter::-webkit-meter-bar { background: var(--cn-surface-sunken); border: 0; border-radius: var(--cn-radius-pill); }
 .cn-project-meter::-webkit-meter-optimum-value { background: var(--cn-project); border-radius: var(--cn-radius-pill); }
 .cn-project-meter::-moz-meter-bar { background: var(--cn-project); border-radius: var(--cn-radius-pill); }
-.cn-stat-row { display: flex; flex-wrap: wrap; gap: var(--cn-space-6); margin: 0 0 var(--cn-space-4); }
-.cn-stat-row dt { font-size: var(--cn-text-xs); color: var(--cn-text-faint); font-weight: var(--cn-weight-regular); text-transform: uppercase; letter-spacing: var(--cn-tracking-caps); }
-.cn-stat-row dd { margin: 0; font-size: var(--cn-text-xl); font-weight: var(--cn-weight-strong); }
-.cn-project-about { margin-bottom: var(--cn-space-5); }
-.cn-project-facts { display: flex; flex-wrap: wrap; gap: var(--cn-space-3); margin-top: var(--cn-space-3); font-size: var(--cn-text-sm); }
 .cn-section-title { font-size: var(--cn-text-lg); margin: var(--cn-space-5) 0 var(--cn-space-3); }
 .cn-row-actions { display: flex; gap: var(--cn-space-2); justify-content: flex-end; }
 
@@ -240,3 +235,65 @@
 .cn-project-meter::-webkit-meter-suboptimum-value,
 .cn-project-meter::-webkit-meter-even-less-good-value { background: var(--cn-project); border-radius: var(--cn-radius-pill); }
 .cn-project-meter::-moz-meter-bar { background: var(--cn-project); border-radius: var(--cn-radius-pill); }
+
+/* Project page: a dark band lit by the project's colour, then work (plan, tasks) beside context */
+.cn-project-hero {
+  --cn-project: var(--cn-palette-slate);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--cn-space-5);
+  align-items: end;
+  padding: var(--cn-space-6) var(--cn-space-6) var(--cn-space-5) var(--cn-space-7);
+  margin-bottom: var(--cn-space-5);
+  border-radius: 22px 22px 28px 28px;
+  background:
+    radial-gradient(50rem 20rem at 100% 0%, color-mix(in srgb, var(--cn-project) 45%, transparent), transparent 62%),
+    var(--cn-chrome-bg);
+  color: var(--cn-chrome-text);
+  box-shadow: var(--cn-slab-hover);
+}
+.cn-project-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--cn-chrome-line) 45%, transparent);
+  mask: url("../../img/contours.svg") 80% 30% / auto 240% no-repeat;
+}
+.cn-project-hero-crumbs a { color: var(--cn-chrome-muted); font-size: var(--cn-text-xs); text-transform: uppercase; letter-spacing: var(--cn-tracking-caps); text-decoration: none; }
+.cn-project-hero-crumbs a:hover { color: var(--cn-chrome-text); }
+.cn-project-hero h1 { display: flex; align-items: center; gap: var(--cn-space-3); margin: var(--cn-space-2) 0 var(--cn-space-2); color: var(--cn-chrome-text); font-size: clamp(1.8rem, 3vw, 2.6rem); letter-spacing: -0.03em; }
+.cn-project-hero-tile { display: inline-grid; place-items: center; width: 3rem; height: 3rem; flex: none; border-radius: 12px 12px 16px 16px; background: var(--cn-project); color: var(--cn-chrome-bg); font-size: 1.3rem; box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--cn-project) 80%, transparent); }
+.cn-project-hero-where { display: flex; flex-wrap: wrap; gap: var(--cn-space-2) var(--cn-space-4); align-items: center; margin: 0 0 var(--cn-space-5); color: var(--cn-chrome-muted); font-size: var(--cn-text-sm); }
+.cn-project-hero-where a { color: var(--cn-chrome-text); text-decoration: none; }
+.cn-project-hero-where a:hover { color: var(--cn-mark); }
+.cn-project-hero-where code { color: var(--cn-chrome-text); background: var(--cn-chrome-hover); padding: 1px 6px; border-radius: var(--cn-radius-sm); }
+.cn-project-hero-stack { padding: 1px 9px; border-radius: var(--cn-radius-pill); background: color-mix(in srgb, var(--cn-project) 22%, transparent); color: var(--cn-chrome-text); font-size: var(--cn-text-xs); }
+.cn-project-hero .cn-hero-stats { margin-bottom: var(--cn-space-4); }
+.cn-project-hero-progress { display: flex; align-items: center; gap: var(--cn-space-3); max-width: 32rem; color: var(--cn-chrome-muted); font-size: var(--cn-text-xs); }
+.cn-project-hero-progress .cn-project-meter { flex: 1; }
+.cn-project-hero-progress .cn-project-meter::-webkit-meter-bar { background: var(--cn-chrome-hover); }
+.cn-project-hero-actions { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); justify-content: flex-end; }
+.cn-project-hero-actions form { margin: 0; }
+
+.cn-project-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem); gap: var(--cn-space-5); align-items: start; }
+.cn-project-work, .cn-project-side { display: grid; gap: var(--cn-space-5); min-width: 0; }
+.cn-project-work > .cn-panel + .cn-panel, .cn-project-side > .cn-panel + .cn-panel { margin-top: 0; }
+.cn-project-next-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cn-space-3); counter-reset: next; }
+.cn-project-next-list li { display: grid; grid-template-columns: 1.5rem minmax(0, 1fr); column-gap: var(--cn-space-2); counter-increment: next; }
+.cn-project-next-list li::before { content: counter(next); grid-row: span 2; display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 7px 7px 9px 9px; background: var(--cn-accent-soft); color: var(--cn-accent); font-size: var(--cn-text-xs); font-weight: var(--cn-weight-strong); }
+.cn-project-next-list a { font-weight: var(--cn-weight-medium); }
+.cn-project-next-list li > span { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: center; font-size: var(--cn-text-xs); }
+.cn-unlocks-text { color: var(--cn-success); }
+.cn-project-links { list-style: none; margin: var(--cn-space-3) 0 0; padding: 0; display: grid; gap: var(--cn-space-1); font-size: var(--cn-text-sm); }
+.cn-project-side .cn-resource-add .cn-inline-form > .form-control,
+.cn-project-side .cn-resource-add .cn-inline-form > cn-picker { flex-basis: 10rem; }
+
+@media (max-width: 1100px) {
+  .cn-project-layout { grid-template-columns: 1fr; }
+  .cn-project-hero { grid-template-columns: 1fr; padding: var(--cn-space-5); }
+  .cn-project-hero-actions { justify-content: flex-start; }
+}

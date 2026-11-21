@@ -1,14 +1,16 @@
 {% extends "layout/shell.html" %}
 {% from "macros/list.html" import toolbar, pagination, empty_state %}
-{% from "macros/planning.html" import quick_add, task_rows, task_cards, bulk_bar, from_template %}
+{% from "macros/planning.html" import quick_add, task_rows, task_cards, bulk_bar, from_template, priority, due %}
 {% from "macros/resources.html" import resources_panel %}
 {% from "macros/comments.html" import comments_panel %}
+{% from "macros/graph.html" import graph_stage, graph_assets %}
 {% block title %}{{ project.name }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments/comments.css') }}">
+{{ graph_assets() }}
 {% endblock %}
 {% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
@@ -18,67 +20,101 @@
 <script type="module" src="{{ url_for('static', filename='js/components/cn-picker.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-upload.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/core/live-panels.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>
 {% endblock %}
 {% block content %}
-<header class="cn-page-header cn-page-header-actions cn-color-{{ project.color }}">
-  <div>
-    <div class="cn-eyebrow"><a href="{{ url_for('projects.index') }}">Projects</a></div>
-    <h1><i class="fa-solid {{ project.icon }} cn-project-icon" aria-hidden="true"></i>{{ project.name }}{% if project.status != "active" %} <span class="cn-badge">{{ project.status }}</span>{% endif %}</h1>
-    <p>
-      {% if project.github_repo %}<a href="https://github.com/{{ project.github_repo }}" rel="noopener noreferrer"><i class="fa-brands fa-github" aria-hidden="true"></i> {{ project.github_repo }}</a> · {{ project.default_branch }}{% endif %}
-      {% if project.local_path %} · <code>{{ project.local_path }}</code>{% endif %}
+{% set total = stats.open + stats.closed %}
+<section class="cn-project-hero cn-color-{{ project.color }}" aria-labelledby="project-title">
+  <div class="cn-project-hero-main">
+    <nav class="cn-project-hero-crumbs" aria-label="Breadcrumb"><a href="{{ url_for('projects.index') }}">Projects</a></nav>
+    <h1 id="project-title"><span class="cn-project-hero-tile" aria-hidden="true"><i class="fa-solid {{ project.icon }}"></i></span>{{ project.name }}{% if project.status != "active" %} <span class="cn-badge">{{ project.status }}</span>{% endif %}</h1>
+    <p class="cn-project-hero-where">
+      {% if project.github_repo %}<a href="https://github.com/{{ project.github_repo }}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github" aria-hidden="true"></i> {{ project.github_repo }}</a><span><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ project.default_branch }}</span>{% endif %}
+      {% if project.local_path %}<span><i class="fa-regular fa-folder" aria-hidden="true"></i> <code>{{ project.local_path }}</code></span>{% endif %}
+      {% for item in project.stack[:6] %}<span class="cn-project-hero-stack">{{ item }}</span>{% endfor %}
     </p>
+    <dl class="cn-hero-stats">
+      <div><dt>Open</dt><dd>{{ stats.open }}</dd></div>
+      <div class="is-good"><dt>Done</dt><dd>{{ stats.closed }}</dd></div>
+      <div class="{{ 'is-warn' if stats.blocked }}"><dt>Blocked</dt><dd>{{ stats.blocked }}</dd></div>
+      <div class="{{ 'is-bad' if stats.overdue }}"><dt>Late</dt><dd>{{ stats.overdue }}</dd></div>
+      <div><dt>Next due</dt><dd class="cn-hero-stats-small">{{ stats.next_due | relative_day if stats.next_due else "—" }}</dd></div>
+    </dl>
+    {% if total %}
+    <div class="cn-project-hero-progress" role="img" aria-label="{{ stats.closed }} of {{ total }} tasks done">
+      <meter class="cn-project-meter" min="0" max="{{ total }}" value="{{ stats.closed }}"></meter>
+      <span>{{ (100 * stats.closed / total) | round | int }}% done</span>
+    </div>
+    {% endif %}
   </div>
-  <div class="cn-inline-form">
-    <a class="btn btn-outline-secondary" href="{{ url_for('graph.index', project=project.id) }}"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span class="ms-2">Graph</span></a>
-    <a class="btn btn-outline-secondary" href="{{ url_for('projects.edit', slug=project.slug) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="ms-2">Edit</span></a>
-    <cn-confirm message="Move “{{ project.name }}” to the trash?" detail="Its {{ stats.open + stats.closed }} task{{ 's' if stats.open + stats.closed != 1 }} go with it. You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
+  <div class="cn-project-hero-actions">
+    <a class="btn btn-primary" href="{{ url_for('graph.index', project=project.id) }}"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span class="ms-2">Open the graph</span></a>
+    <a class="btn btn-outline-light" href="{{ url_for('projects.edit', slug=project.slug) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="ms-2">Edit</span></a>
+    <cn-confirm message="Move “{{ project.name }}” to the trash?" detail="Its {{ total }} task{{ 's' if total != 1 }} go with it. You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
       <form method="post" action="{{ url_for('projects.delete', slug=project.slug) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-outline-secondary" type="submit"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
+        <button class="btn btn-outline-light" type="submit" title="Move to the trash"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
       </form>
     </cn-confirm>
   </div>
-</header>
-
-<dl class="cn-stat-row">
-  <div><dt>Open</dt><dd>{{ stats.open }}</dd></div>
-  <div><dt>Done</dt><dd>{{ stats.closed }}</dd></div>
-  <div><dt>Blocked</dt><dd>{{ stats.blocked }}</dd></div>
-  <div><dt>Late</dt><dd class="{% if stats.overdue %}cn-due-late{% endif %}">{{ stats.overdue }}</dd></div>
-  <div><dt>Next due</dt><dd>{{ stats.next_due | relative_day if stats.next_due else "—" }}</dd></div>
-</dl>
-
-{% if project.description_md or project.links or project.stack %}
-<section class="cn-panel cn-project-about" aria-labelledby="about-title">
-  <h2 id="about-title" class="visually-hidden">About</h2>
-  {% if project.description_md %}
-  <script type="application/json" id="project-description">{{ project.description_md | tojson }}</script>
-  <cn-vitrine kind="markdown" source="project-description"></cn-vitrine>
-  {% endif %}
-  {% if project.stack or project.links %}
-  <div class="cn-project-facts">
-    {% for item in project.stack %}<span class="cn-tag">{{ item }}</span>{% endfor %}
-    {% for link in project.links %}<a href="{{ link.url }}" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> {{ link.label }}</a>{% endfor %}
-  </div>
-  {% endif %}
 </section>
-{% endif %}
 
-<div class="cn-project-panels">
-{{ resources_panel("project", project, resources, max_mb) }}
-{{ comments_panel("project", project, comments) }}
+<div class="cn-project-layout">
+  <div class="cn-project-work">
+    <section class="cn-panel" aria-labelledby="plan-title">
+      <header class="cn-home-head"><h2 id="plan-title">The plan</h2><a href="{{ url_for('graph.index', project=project.id) }}">Full screen <i class="fa-solid fa-expand" aria-hidden="true"></i></a></header>
+      {{ graph_stage("project=" ~ project.id, label=project.name ~ " as a graph", compact=True) }}
+    </section>
+
+    <section class="cn-panel" id="tasks" aria-labelledby="tasks-title">
+      <header class="cn-home-head"><h2 id="tasks-title">Tasks</h2></header>
+      {{ quick_add("Add a task to " ~ project.name ~ "…", project=project) }}
+      {{ from_template(templates, project) }}
+      <div class="cn-live-notice" id="list-changed" hidden role="status"><span>Tasks changed since this page loaded.</span> <a href="{{ page.url() }}">Reload the list</a></div>
+      {{ toolbar(page, "Search this project's tasks") }}
+      {% if page.items %}
+        {% if page.view == "cards" %}{{ task_cards(page, types, show_project=False) }}{% else %}{{ bulk_bar(workflow_statuses, project_options) }}{{ task_rows(page, types, show_project=False, workflow_statuses=workflow_statuses) }}{% endif %}
+        {{ pagination(page) }}
+      {% else %}
+        {{ empty_state(page, "No tasks in this project", "Add the first one above.") }}
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="cn-project-side" aria-label="About the project">
+    <section class="cn-panel cn-project-next" aria-labelledby="next-title">
+      <header class="cn-home-head"><h2 id="next-title">Next up here</h2></header>
+      {% if next_up %}
+      <ol class="cn-project-next-list">
+        {% for task in next_up %}
+        <li>
+          <a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a>
+          <span>{{ priority(task) }} {{ due(task) }}{% if task.unblocks_count %} <span class="cn-unlocks-text">unblocks {{ task.unblocks_count }}</span>{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <p class="cn-muted">Nothing ready here: everything open waits on something.</p>
+      {% endif %}
+    </section>
+
+    <section class="cn-panel cn-project-about" aria-labelledby="about-title">
+      <header class="cn-home-head"><h2 id="about-title">About</h2><a href="{{ url_for('projects.edit', slug=project.slug) }}">Edit</a></header>
+      {% if project.description_md %}
+      <script type="application/json" id="project-description">{{ project.description_md | tojson }}</script>
+      <cn-vitrine kind="markdown" source="project-description"></cn-vitrine>
+      {% else %}
+      <p class="cn-muted">No description yet.</p>
+      {% endif %}
+      {% if project.links %}
+      <ul class="cn-project-links">
+        {% for link in project.links %}<li><a href="{{ link.url }}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> {{ link.label }}</a></li>{% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+
+    {{ resources_panel("project", project, resources, max_mb) }}
+    {{ comments_panel("project", project, comments) }}
+  </aside>
 </div>
-
-<h2 class="cn-section-title">Tasks</h2>
-{{ quick_add("Add a task to " ~ project.name ~ "…", project=project) }}
-{{ from_template(templates, project) }}
-<div class="cn-live-notice" id="list-changed" hidden role="status"><span>Tasks changed since this page loaded.</span> <a href="{{ page.url() }}">Reload the list</a></div>
-{{ toolbar(page, "Search this project's tasks") }}
-{% if page.items %}
-  {% if page.view == "cards" %}{{ task_cards(page, types, show_project=False) }}{% else %}{{ bulk_bar(workflow_statuses, project_options) }}{{ task_rows(page, types, show_project=False, workflow_statuses=workflow_statuses) }}{% endif %}
-  {{ pagination(page) }}
-{% else %}
-  {{ empty_state(page, "No tasks in this project", "Add the first one above.") }}
-{% endif %}
 {% endblock %}

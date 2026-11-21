@@ -353,3 +353,19 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
 .cn-header-profile { display: inline-flex; margin-left: var(--cn-space-2); border-radius: 50%; }
 .cn-header-profile .cn-avatar { box-shadow: 0 0 0 2px var(--cn-chrome-bg), 0 0 0 3px var(--cn-chrome-border); transition: box-shadow var(--cn-duration-fast) var(--cn-easing); }
 .cn-header-profile:hover .cn-avatar { box-shadow: 0 0 0 2px var(--cn-chrome-bg), 0 0 0 3px var(--cn-mark); }
+
+/* Shared by the dark bands (Today, project): the plan at a glance, and slab headers. */
+.cn-hero-stats { display: flex; flex-wrap: wrap; gap: var(--cn-space-5); margin: 0 0 var(--cn-space-5); }
+.cn-hero-stats dt { font-size: var(--cn-text-xs); font-weight: var(--cn-weight-regular); letter-spacing: var(--cn-tracking-caps); text-transform: uppercase; color: var(--cn-chrome-muted); display: flex; align-items: center; gap: var(--cn-space-2); }
+.cn-hero-stats dt::before { content: ""; width: 0.6rem; height: 0.45rem; border-radius: 3px 3px 4px 4px; background: var(--cn-chrome-border); }
+.cn-hero-stats .is-warn dt::before { background: var(--cn-warning); }
+.cn-hero-stats .is-bad dt::before { background: var(--cn-danger); }
+.cn-hero-stats .is-good dt::before { background: var(--cn-success); }
+.cn-hero-stats dd { margin: 2px 0 0; font-size: 2rem; font-weight: var(--cn-weight-strong); letter-spacing: -0.03em; line-height: 1; }
+.cn-hero-stats dd a { color: var(--cn-chrome-text); text-decoration: none; }
+.cn-hero-stats dd a:hover { color: var(--cn-mark); }
+
+.cn-hero-stats .cn-hero-stats-small { font-size: var(--cn-text-lg); letter-spacing: -0.01em; padding-top: 0.6rem; }
+.cn-home-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--cn-space-3); margin-bottom: var(--cn-space-3); }
+.cn-home-head h2 { margin: 0; }
+.cn-home-head a { font-size: var(--cn-text-sm); color: var(--cn-text-muted); }

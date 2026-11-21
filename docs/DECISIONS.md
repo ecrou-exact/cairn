@@ -224,3 +224,8 @@
 - Owner request: the home page must be much more modern; the promised logo.
 - **Today:** a dark hero band (contours, a warm glow of the mark colour) with the greeting, the plan at a glance and quick add as the main field; **Next up**, the task to do now, raised over the band with the biggest parts of its score in words, what it unblocks, Start and "In the plan"; then slabs: **Then** (the following tasks with a score bar and a start button), **This week** (seven days with what is due each day, late tasks flagged), **Needs a look**, **Projects** (progress, open / blocked / late, graph link), **Lately** (activity told as sentences: "You moved X to In progress", noise such as jobs and secrets left out).
 - **Mark:** three organic stones resting on each other, each a little lighter than the one below, with the mark-coloured sun above (`docs/brand/cairn-mark.svg`); the same paths in the app (`brand_mark`) and the favicon (light / dark via `prefers-color-scheme`).
+
+## D-039 · 2026-11-21 · accepted — Project page: work beside context
+- Owner feedback: the project page's organisation did not work (everything stacked, tasks at the bottom).
+- A dark band lit by the project's colour (name, status, repository, branch, local path, stack; open / done / blocked / late / next due; progress), with Open the graph, Edit, Trash. Below, two columns: **work** (the project's plan as a compact graph of its cases, then its tasks with quick add, templates, filters and bulk edit) and **context** (next up here, about with links, resources, discussion). One column under 1100 px.
+- Band stats and slab headers moved to `core/base.css`, shared by Today and the project page.

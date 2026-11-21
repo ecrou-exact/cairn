@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, abort, make_response, redirect, render_template, request, url_for
 
 from app.core.db_class.planning import PROJECT_COLORS, PROJECT_STATUSES
 from app.core.schema.planning import ProjectCreate, ProjectUpdate
@@ -11,6 +11,7 @@ from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, flash_undo, validate
 from app.features.comments import comments_core
+from app.features.graph.graph import with_graph_csp
 from app.features.projects import projects_core
 from app.features.projects.projects_forms import values_from_form, values_from_project
 from app.features.resources import resources_core
@@ -72,17 +73,21 @@ def detail(slug: str):
     after = latest_event_id()
     project = _project_or_404(slug)
     page = tasks_core.list_tasks(request.args, project_id=project.id)
-    return render_template(
-        "projects/detail.html",
-        project=project,
-        page=page,
-        stats=projects_core.stats([project.id])[project.id],
-        events_after=after,
-        resources=resources_core.for_target("project", project.id),
-        comments=comments_core.for_target("project", project.id),
-        max_mb=get_setting("resources.max_upload_mb"),
-        **list_context(),
+    response = make_response(
+        render_template(
+            "projects/detail.html",
+            project=project,
+            page=page,
+            stats=projects_core.stats([project.id])[project.id],
+            next_up=tasks_core.next_actions(limit=3, project_id=project.id),
+            events_after=after,
+            resources=resources_core.for_target("project", project.id),
+            comments=comments_core.for_target("project", project.id),
+            max_mb=get_setting("resources.max_upload_mb"),
+            **list_context(),
+        )
     )
+    return with_graph_csp(response)
 
 
 @projects.get("/projects/<slug>/edit")
