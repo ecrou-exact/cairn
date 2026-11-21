@@ -10,12 +10,13 @@
   display: grid;
   gap: var(--cn-space-2);
   padding: var(--cn-space-3);
-  border: var(--cn-border-width) solid var(--cn-border);
-  border-radius: var(--cn-radius);
+  border-radius: var(--cn-radius-slab);
+  background: var(--cn-surface);
+  box-shadow: var(--cn-slab-shadow);
   cursor: pointer;
   font-size: var(--cn-text-sm);
 }
-.cn-theme-option:has(input:checked) { border-color: var(--cn-accent); background: var(--cn-accent-soft); }
+.cn-theme-option:has(input:checked) { background: var(--cn-accent-soft); box-shadow: 0 0 0 2px var(--cn-accent), var(--cn-slab-shadow); }
 .cn-theme-option input { position: absolute; opacity: 0; }
 .cn-theme-option:has(input:focus-visible) { outline: var(--cn-focus-width) solid var(--cn-focus); outline-offset: var(--cn-focus-offset); }
 

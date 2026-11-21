@@ -189,3 +189,4 @@
 - **Today** greets by time of day and shows the plan at a glance as a row of stones (open, ready, blocked, late, done this week), each stone edged with its meaning's colour.
 - **Sign-in and setup:** the dark contour panel with the pitch ("Plan the path. Let the work follow.") beside the form.
 - Links read as text (coloured, underlined on hover); content width 92 rem for wide screens. Fonts unchanged (IBM Plex, vendored).
+- **Slabs, not boxes** (owner feedback: outlined cards and side stripes are seen everywhere): panels, cards, tables, dialogs have no outline; a layered soft shadow per theme (`--cn-slab-shadow`, `--cn-slab-hover`) raises them, corners a little rounder at the bottom (`--cn-radius-slab`), panel titles start with a small terracotta stone. Coloured states (blocked, risk, correction, preview) are tinted slabs, never side stripes; a project's colour washes the top of its card.

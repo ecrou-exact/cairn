@@ -24,8 +24,8 @@
 .cn-table-wrap {
   overflow-x: auto;
   background: var(--cn-surface);
-  border: var(--cn-border-width) solid var(--cn-border);
-  border-radius: var(--cn-radius-lg);
+  border-radius: var(--cn-radius-slab);
+  box-shadow: var(--cn-slab-shadow);
 }
 .cn-table {
   --bs-table-bg: transparent;
@@ -57,12 +57,14 @@
 }
 .cn-card {
   background: var(--cn-surface);
-  border: var(--cn-border-width) solid var(--cn-border);
-  border-radius: var(--cn-radius-lg);
+  border-radius: var(--cn-radius-slab);
+  box-shadow: var(--cn-slab-shadow);
+  transition: box-shadow var(--cn-duration) var(--cn-easing), transform var(--cn-duration) var(--cn-easing);
   padding: var(--cn-space-4);
   display: grid;
   gap: var(--cn-space-2);
 }
+.cn-card:hover { box-shadow: var(--cn-slab-hover); transform: translateY(-2px); }
 .cn-card-head { display: flex; justify-content: space-between; gap: var(--cn-space-2); align-items: start; }
 .cn-card-head a { font-weight: var(--cn-weight-medium); }
 .cn-card-meta { display: flex; flex-wrap: wrap; gap: var(--cn-space-4); margin: 0; font-size: var(--cn-text-sm); }

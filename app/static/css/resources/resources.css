@@ -46,9 +46,8 @@
 .cn-preview {
   margin: var(--cn-space-3) 0;
   padding: var(--cn-space-3) var(--cn-space-4);
-  border-left: calc(var(--cn-border-width) * 3) solid var(--cn-info);
-  background: var(--cn-surface-sunken);
-  border-radius: 0 var(--cn-radius) var(--cn-radius) 0;
+  background: color-mix(in srgb, var(--cn-info-soft) 70%, var(--cn-surface));
+  border-radius: var(--cn-radius-slab);
   display: grid;
   gap: var(--cn-space-1);
 }

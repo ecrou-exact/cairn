@@ -2,13 +2,12 @@
 
 .cn-comments { list-style: none; margin: 0 0 var(--cn-space-4); padding: 0; display: grid; gap: var(--cn-space-3); }
 .cn-comment {
-  padding: var(--cn-space-3);
-  border: var(--cn-border-width) solid var(--cn-border);
-  border-radius: var(--cn-radius);
-  background: var(--cn-surface);
+  padding: var(--cn-space-3) var(--cn-space-4);
+  border-radius: var(--cn-radius-slab);
+  background: var(--cn-surface-sunken);
 }
-.cn-comment-correction { border-left: calc(var(--cn-border-width) * 3) solid var(--cn-warning); background: var(--cn-warning-soft); }
-.cn-comment-retired { border-left-color: var(--cn-border-strong); background: var(--cn-surface-sunken); opacity: 0.8; }
+.cn-comment-correction { background: color-mix(in srgb, var(--cn-warning-soft) 80%, var(--cn-surface)); }
+.cn-comment-retired { background: var(--cn-surface-sunken); opacity: 0.75; }
 .cn-comment-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cn-space-2); margin-bottom: var(--cn-space-2); font-size: var(--cn-text-sm); }
 .cn-comment-head time { color: var(--cn-text-muted); }
 .cn-comment-actions { display: flex; gap: var(--cn-space-1); margin-left: auto; }

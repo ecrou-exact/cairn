@@ -253,9 +253,8 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
 .cn-auth-card {
   width: min(100%, 24rem);
   background: var(--cn-surface);
-  border: var(--cn-border-width) solid var(--cn-border);
-  border-radius: var(--cn-radius-lg);
-  box-shadow: var(--cn-shadow);
+  border-radius: var(--cn-radius-slab);
+  box-shadow: var(--cn-slab-hover);
   padding: var(--cn-space-6);
 }
 .cn-auth-card h1 { margin-bottom: var(--cn-space-4); }
@@ -265,13 +264,27 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
   .cn-auth-pitch, .cn-auth-foot { display: none; }
 }
 
+/* Panels are slabs: raised by a soft layered shadow, never outlined. */
 .cn-panel {
   background: var(--cn-surface);
-  border: var(--cn-border-width) solid var(--cn-border);
-  border-radius: var(--cn-radius-lg);
+  border: 0;
+  border-radius: var(--cn-radius-slab);
+  box-shadow: var(--cn-slab-shadow);
   padding: var(--cn-space-5);
 }
-.cn-panel + .cn-panel { margin-top: var(--cn-space-4); }
+.cn-panel > h2:first-child,
+.cn-panel > header > h2 { display: flex; align-items: center; gap: var(--cn-space-2); }
+.cn-panel > h2:first-child::before,
+.cn-panel > header > h2::before {
+  content: "";
+  flex: none;
+  width: 0.7rem;
+  height: 0.5rem;
+  border-radius: 3px 3px 5px 5px;
+  background: var(--cn-mark);
+}
+.cn-panel > h2:first-child:has(> i:first-child)::before { display: none; }
+.cn-panel + .cn-panel { margin-top: var(--cn-space-5); }
 .cn-panel h2 { font-size: var(--cn-text-lg); margin-bottom: var(--cn-space-1); }
 .cn-panel-lead { color: var(--cn-text-muted); margin-bottom: var(--cn-space-4); }
 

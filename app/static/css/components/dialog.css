@@ -3,11 +3,11 @@
 .cn-dialog {
   width: min(92vw, 26rem);
   padding: var(--cn-space-5);
-  border: var(--cn-border-width) solid var(--cn-border);
-  border-radius: var(--cn-radius-lg);
+  border: 0;
+  border-radius: var(--cn-radius-slab);
   background: var(--cn-surface-raised);
   color: var(--cn-text);
-  box-shadow: var(--cn-shadow);
+  box-shadow: var(--cn-slab-hover);
 }
 .cn-dialog::backdrop { background: color-mix(in srgb, var(--cn-bg) 60%, transparent); backdrop-filter: blur(2px); }
 .cn-dialog-title { font-size: var(--cn-text-lg); margin: 0 0 var(--cn-space-2); }

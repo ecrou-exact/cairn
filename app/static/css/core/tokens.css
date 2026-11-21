@@ -41,6 +41,8 @@
   --cn-radius-sm: 4px;
   --cn-radius: 8px;
   --cn-radius-lg: 14px;
+  /* A slab: a little rounder at the bottom, like a stone resting on the one below. */
+  --cn-radius-slab: 14px 14px 20px 20px;
   --cn-radius-pill: 999px;
   --cn-border-width: 1px;
 

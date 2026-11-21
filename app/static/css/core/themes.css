@@ -33,6 +33,8 @@
   --cn-info-soft: #e0eaf3;
   --cn-shadow: 0 1px 2px rgb(29 27 24 / 6%), 0 4px 14px rgb(29 27 24 / 6%);
   --cn-focus: #b9481f;
+  --cn-slab-shadow: 0 0 0 1px rgb(29 27 24 / 4%), 0 1px 2px rgb(29 27 24 / 5%), 0 12px 30px -14px rgb(29 27 24 / 20%);
+  --cn-slab-hover: 0 0 0 1px rgb(29 27 24 / 6%), 0 2px 4px rgb(29 27 24 / 6%), 0 20px 40px -16px rgb(29 27 24 / 28%);
   --cn-chrome-bg: #1f1d1a;
   --cn-chrome-text: #f3efe8;
   --cn-chrome-muted: #b1a99c;
@@ -69,6 +71,8 @@
   --cn-info-soft: #1b2a37;
   --cn-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 6px 18px rgb(0 0 0 / 30%);
   --cn-focus: #f08a5d;
+  --cn-slab-shadow: 0 0 0 1px rgb(255 255 255 / 5%), inset 0 1px 0 rgb(255 255 255 / 4%), 0 14px 32px -14px rgb(0 0 0 / 75%);
+  --cn-slab-hover: 0 0 0 1px rgb(255 255 255 / 8%), inset 0 1px 0 rgb(255 255 255 / 6%), 0 22px 44px -16px rgb(0 0 0 / 85%);
   --cn-chrome-bg: #0d0d0c;
   --cn-chrome-text: #ecebe6;
   --cn-chrome-muted: #99968d;
@@ -105,6 +109,8 @@
   --cn-info-soft: #dce7f0;
   --cn-shadow: 0 1px 2px rgb(24 32 26 / 6%), 0 4px 14px rgb(24 32 26 / 6%);
   --cn-focus: #3c6b3f;
+  --cn-slab-shadow: 0 0 0 1px rgb(24 32 26 / 4%), 0 1px 2px rgb(24 32 26 / 5%), 0 12px 30px -14px rgb(24 32 26 / 20%);
+  --cn-slab-hover: 0 0 0 1px rgb(24 32 26 / 6%), 0 2px 4px rgb(24 32 26 / 6%), 0 20px 40px -16px rgb(24 32 26 / 28%);
   --cn-chrome-bg: #1b291e;
   --cn-chrome-text: #eef3ea;
   --cn-chrome-muted: #a7b6a6;
@@ -141,6 +147,8 @@
   --cn-info-soft: #1d2b37;
   --cn-shadow: 0 1px 2px rgb(0 0 0 / 45%), 0 6px 18px rgb(0 0 0 / 35%);
   --cn-focus: #ff9a62;
+  --cn-slab-shadow: 0 0 0 1px rgb(255 255 255 / 5%), inset 0 1px 0 rgb(255 255 255 / 4%), 0 14px 32px -14px rgb(0 0 0 / 75%);
+  --cn-slab-hover: 0 0 0 1px rgb(255 255 255 / 8%), inset 0 1px 0 rgb(255 255 255 / 6%), 0 22px 44px -16px rgb(0 0 0 / 85%);
   --cn-chrome-bg: #0f0a08;
   --cn-chrome-text: #f3e9e1;
   --cn-chrome-muted: #a8958a;
@@ -178,6 +186,8 @@
     --cn-info-soft: #1b2a37;
     --cn-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 6px 18px rgb(0 0 0 / 30%);
     --cn-focus: #f08a5d;
+    --cn-slab-shadow: 0 0 0 1px rgb(255 255 255 / 5%), inset 0 1px 0 rgb(255 255 255 / 4%), 0 14px 32px -14px rgb(0 0 0 / 75%);
+    --cn-slab-hover: 0 0 0 1px rgb(255 255 255 / 8%), inset 0 1px 0 rgb(255 255 255 / 6%), 0 22px 44px -16px rgb(0 0 0 / 85%);
     --cn-chrome-bg: #0d0d0c;
     --cn-chrome-text: #ecebe6;
     --cn-chrome-muted: #99968d;
