@@ -242,6 +242,46 @@
       {% endif %}
     </section>
 
+    {% if related.tasks or related.resources or related.schedule %}
+    <section class="cn-panel" aria-labelledby="related-title">
+      <h2 id="related-title">Related</h2>
+      {% set fit = related.schedule %}
+      {% if fit %}
+      <p class="cn-fit {{ 'cn-fit-tight' if fit.fits == false }}">
+        <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+        {{ "%g" | format(fit.free_hours) }} h free before {{ fit.due_on | relative_day }}: {{ "%g" | format(fit.available_hours) }} h of working time, {{ "%g" | format(fit.booked_hours) }} h taken by {{ fit.booked_tasks }} other task{{ "s" if fit.booked_tasks != 1 }} due by then.
+        {% if fit.fits == false %}<strong>This task ({{ "%g" | format(fit.own_hours) }} h) does not fit.</strong>{% elif fit.own_hours is none %}Add an estimate to know if it fits.{% endif %}
+      </p>
+      {% endif %}
+      {% if related.tasks %}
+      <ul class="cn-related">
+        {% for match in related.tasks %}
+        <li class="{% if not match.task.is_open %}cn-task-closed{% endif %}">
+          <a href="{{ url_for('tasks.detail', task_id=match.task.id) }}">{{ match.task.title }}</a> {{ task_status(match.task) }}
+          <small>{{ match.why | join(" · ") }}</small>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if related.resources %}
+      <ul class="cn-related">
+        {% for resource, why in related.resources %}
+        <li>
+          <a href="{{ url_for('resources.detail', resource_id=resource.id) }}">{{ resource.title }}</a>
+          <form method="post" action="{{ url_for('resources.attach') }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}#resources">
+            <input type="hidden" name="resource_id" value="{{ resource.id }}"><input type="hidden" name="target_type" value="task"><input type="hidden" name="target_id" value="{{ task.id }}">
+            <button class="btn btn-link btn-sm" type="submit">Attach</button>
+          </form>
+          <small>{{ why }}</small>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <p class="form-text">Found by words, tags and dates; Claude will use the same search to fill tasks.</p>
+    </section>
+    {% endif %}
+
     <section class="cn-panel" aria-labelledby="history-title">
       <h2 id="history-title">History</h2>
       <ol class="cn-history">

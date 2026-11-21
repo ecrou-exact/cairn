@@ -166,3 +166,35 @@ def test_checklist_items_keep_done_false_on_update(ctx):
     task = tasks_core.create(TaskCreate(title="x"))
     tasks_core.update(task.id, TaskUpdate.model_validate({"checklist": [{"text": "a"}]}))
     assert task.checklist == [{"text": "a", "done": False}]
+
+
+def test_related_tasks_resources_and_schedule(ctx):
+    from datetime import date, timedelta
+
+    from app.features.tasks import related_core
+
+    set_setting("resources.previews", False)
+    soon = date.today() + timedelta(days=14)
+    task = tasks_core.create(
+        TaskCreate(title="Write the release changelog", tags=["release"], due_on=soon, estimate_hours=2)
+    )
+    twin = tasks_core.create(TaskCreate(title="Write the release changelog again"))
+    tagged = tasks_core.create(
+        TaskCreate(title="Tag the version", tags=["release"], due_on=soon, estimate_hours=3)
+    )
+    tasks_core.create(TaskCreate(title="Unrelated thing about dogs"))
+    sub = tasks_core.create(TaskCreate(title="Write the release changelog intro", parent_id=task.id))
+    guide = resources_core.create(
+        ResourceCreate(kind="url", url="https://keepachangelog.com", title="Changelog guide")
+    )
+
+    found = related_core.related_for(task)
+    ids = [m.task.id for m in found.tasks]
+    assert ids[0] == twin.id and tagged.id in ids and sub.id not in ids
+    assert "almost the same title" in found.tasks[0].why
+    assert [r.id for r, _ in found.resources] == [guide.id]
+    assert found.schedule.booked_hours == 3 and found.schedule.booked_tasks == 1
+    assert found.schedule.fits is True
+
+    text = brief_core.task_brief(task)
+    assert "## Possibly related" in text and "Changelog guide" in text and "\n\n## Subtasks\n\n" in text

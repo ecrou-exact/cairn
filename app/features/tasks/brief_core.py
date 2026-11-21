@@ -15,7 +15,7 @@ import re
 from app.core.db_class.planning import Task
 from app.features.comments import comments_core
 from app.features.resources import resources_core
-from app.features.tasks import dependencies_core, tasks_core, workflow
+from app.features.tasks import dependencies_core, related_core, tasks_core, workflow
 
 MAX_INLINE = 4000  # longer notes and snippets are cut, with a pointer to the resource
 
@@ -55,6 +55,24 @@ def _resource_lines(resource) -> str:
             )
         parts.append("\n" + block + "\n")
     return "\n".join(parts)
+
+
+def _related_section(related: related_core.Related) -> str | None:
+    lines = [
+        f"- {m.task.title} ({workflow.label_of(m.task.status)}; {', '.join(m.why) or 'close'})"
+        for m in related.tasks
+    ]
+    lines += [f"- Resource: {resource.title} ({why})" for resource, why in related.resources]
+    fit = related.schedule
+    if fit is not None:
+        lines.append(
+            f"- Schedule: {fit.available_hours:g} h of working time until {fit.due_on.isoformat()}, "
+            f"{fit.booked_hours:g} h already taken by {fit.booked_tasks} other open task(s) due by then"
+            + (f"; this task needs about {fit.own_hours:g} h" if fit.own_hours is not None else "")
+        )
+    if not lines:
+        return None
+    return _section("Possibly related (found by Cairn, check before relying on it)", "\n".join(lines))
 
 
 def task_brief(task: Task) -> str:
@@ -146,4 +164,8 @@ def task_brief(task: Task) -> str:
     if attached:
         sections.append(_section("Resources", "\n".join(_resource_lines(r) for r in attached)))
 
-    return "\n".join(lines) + "\n".join(sections)
+    related = _related_section(related_core.related_for(task))
+    if related:
+        sections.append(related)
+
+    return "\n".join(lines) + "\n" + "\n".join(sections)

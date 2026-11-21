@@ -18,6 +18,7 @@ from app.features.tasks import (
     brief_core,
     dependencies_core,
     quickadd_core,
+    related_core,
     risk_core,
     tasks_core,
     templates_core,
@@ -249,6 +250,7 @@ def detail(task_id: uuid.UUID):
             if source != "this task"
         ],
         brief=brief_core.task_brief(task),
+        related=related_core.related_for(task),
     )
 
 

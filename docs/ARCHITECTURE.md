@@ -125,6 +125,7 @@ Configurable lists (types, statuses, workflow transitions, priorities, score wei
 ## 3d. Comments, corrections, brief (Phase 3)
 - Code: `features/comments/` (`comments_core`, routes posting from task / project pages), `features/tasks/brief_core.py`; API `api/comments_api.py`; schemas `core/schema/comments.py`; model `db_class/comment.py`.
 - `brief_core.task_brief(task)` is the single source of what a run on a task receives (D-028).
+- `related_core.related_for(task)`: related tasks, resources and schedule fit with reasons (D-029); future MCP tool `find_related`.
 
 ## 5b. Lists, settings, display
 - **Lists:** a feature declares a `ListSpec` (sortable, searchable, filters, tiebreak) and calls `run_list(spec, query, request.args)`; anything undeclared in the URL is ignored. Macros in `templates/macros/list.html`, styles in `css/components/list.css`. The API returns the same page as JSON (`schema/common.page_dict`).

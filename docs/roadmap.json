@@ -26,7 +26,7 @@
     {"key": "p3", "title": "Finish Phase 3 — Core planning", "type": "feature", "priority": "high", "importance": 5, "blocked_by": []},
     {"key": "resources", "parent": "p3", "title": "Resources and resource library", "type": "feature", "priority": "high", "estimate_hours": 10,
      "description_md": "URL (title + preview), file, image, snippet, tool shortcut, note, GitHub item; attach to projects and tasks without duplicating (§2.4).",
-     "checklist": [{"text": "Model + library page", "done": false}, {"text": "Attach / detach from task and project", "done": false}, {"text": "URL title fetch as a job (io lane)", "done": false}]},
+     "checklist": [{"text": "Model + library page", "done": true}, {"text": "Attach / detach from task and project", "done": true}, {"text": "URL title fetch as a job (io lane)", "done": true}]},
     {"key": "upload", "parent": "p3", "title": "Drag and drop and paste uploads (files, images)", "type": "feature", "priority": "medium", "estimate_hours": 5, "blocked_by": ["resources"]},
     {"key": "comments", "parent": "p3", "title": "Comments thread and corrections log on tasks", "type": "feature", "priority": "medium", "estimate_hours": 4,
      "description_md": "Markdown comments from the owner or Claude; corrections are kept and fed into later runs (§2.2)."},
@@ -54,6 +54,9 @@
 
     {"key": "p6", "title": "Phase 6 — Planning intake (chat → plan)", "type": "feature", "priority": "high", "blocked_by": ["p5"]},
     {"key": "changeset", "parent": "p6", "title": "Changeset review: approve item by item, apply in one transaction", "type": "feature", "priority": "high", "estimate_hours": 8},
+    {"key": "fill-task", "parent": "p6", "title": "Ask Claude to fill a task: research it in the graph, schedule, resources and GitHub, propose the details", "type": "feature", "priority": "high", "estimate_hours": 10, "blocked_by": ["changeset", "mcp", "runner"],
+     "description_md": "At any moment the owner adds a task in a few words (quick add, palette, task page) and asks Claude to fill it. A read-only run gathers context with the app MCP tools: related tasks and the dependency graph (`find_related`, the same code as the task page's Related panel), resources, the schedule (working time, deadlines, calendar once Phase 10 exists), GitHub issues and PRs. It proposes a changeset: description, acceptance criteria, checklist, estimate, priority, dates that fit the schedule, dependencies, resources to attach. The owner approves item by item; nothing is written before.",
+     "checklist": [{"text": "\"Fill with Claude\" on quick add and the task page"}, {"text": "Read-only run profile (MCP read tools only)"}, {"text": "Changeset proposal with reasons per field"}, {"text": "Dates checked against working time and the calendar"}]},
     {"key": "p7", "title": "Phase 7 — GitHub", "type": "feature", "priority": "high", "blocked_by": ["p6"]},
     {"key": "gh-inbox", "parent": "p7", "title": "GitHub accounts, inbox of issues and PRs, link and sync", "type": "feature", "priority": "high", "estimate_hours": 14},
     {"key": "p8", "title": "Phase 8 — Local instances and ports", "type": "feature", "priority": "medium", "blocked_by": ["p7"]},

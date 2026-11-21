@@ -58,6 +58,7 @@ Goal: owner approves architecture + design direction.
 - [x] Cairn's own roadmap as a plan (`docs/roadmap.json`, `python manage.py roadmap`)
 - [x] Time tracking (start / stop, time spent vs estimate) (D-025)
 - [x] Comments thread and corrections log on tasks and projects (retire / reactivate, inherited from project and parent tasks); task brief for Claude shown, downloadable and in the API (D-028)
+- [x] Related context per task: close tasks, matching resources, schedule fit — panel, brief, API; base of "Ask Claude to fill a task" (D-029, roadmap `fill-task`, Phase 6)
 - [ ] Recurrence, custom fields, external conditions (§2.2–2.3)
 - [~] JSON schema registry shared by API, forms and MCP tools — schemas exist per feature (`core/schema/`), registry/`describe_schema` comes with the MCP server (Phase 5)
 
@@ -77,6 +78,7 @@ Goal: owner approves architecture + design direction.
 
 ## Phase 6 — Planning intake  ·  Phase 7 — GitHub  ·  Phase 8 — Instances & ports
 - [ ] Intake → changeset → approval → graph
+- [ ] Ask Claude to fill a task from a few words (read-only research run → changeset), owner request 2026-11-21 (D-029)
 - [ ] GitHub accounts, inbox, link/sync, webhooks or polling
 - [ ] Instances: definitions, registry, port allocation (psutil, works on all OS), supervision, logs (`vt-log`), header indicator
 

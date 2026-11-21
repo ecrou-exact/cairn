@@ -25,7 +25,14 @@ from app.core.utils.history import batch
 from app.features.projects import projects_core
 from app.features.resources import resources_core
 from app.features.search import search_core
-from app.features.tasks import dependencies_core, quickadd_core, tasks_core, timer_core, workflow
+from app.features.tasks import (
+    dependencies_core,
+    quickadd_core,
+    related_core,
+    tasks_core,
+    timer_core,
+    workflow,
+)
 
 planning_api = api_blueprint("planning_api")
 
@@ -110,6 +117,40 @@ def get_task(task_id: uuid.UUID):
         {"id": str(t.id), "title": t.title, "status": t.status} for t in tasks_core.subtasks(task.id)
     ]
     return jsonify(data)
+
+
+@planning_api.get("/tasks/<uuid:task_id>/related")
+def related(task_id: uuid.UUID):
+    """Close tasks, matching resources and schedule fit, each with why (base of `find_related`)."""
+    task, _ = _guard(tasks_core.get_task, task_id)
+    found = related_core.related_for(task)
+    fit = found.schedule
+    return jsonify(
+        tasks=[
+            {
+                "id": str(m.task.id),
+                "title": m.task.title,
+                "status": m.task.status,
+                "score": m.score,
+                "why": m.why,
+            }
+            for m in found.tasks
+        ],
+        resources=[
+            {"id": str(r.id), "title": r.title, "kind": r.kind, "why": why} for r, why in found.resources
+        ],
+        schedule=None
+        if fit is None
+        else {
+            "due_on": fit.due_on.isoformat(),
+            "available_hours": fit.available_hours,
+            "booked_hours": fit.booked_hours,
+            "booked_tasks": fit.booked_tasks,
+            "own_hours": fit.own_hours,
+            "free_hours": fit.free_hours,
+            "fits": fit.fits,
+        },
+    )
 
 
 @planning_api.patch("/tasks/<uuid:task_id>")
