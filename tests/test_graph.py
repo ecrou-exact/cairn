@@ -112,3 +112,11 @@ def test_levels_cases_subtasks_and_neighbourhood(ctx):
     assert {n["data"]["label"] for n in around["nodes"]} == {"A1", "A2", "B1"}
     assert next(n for n in around["nodes"] if n["data"]["isRoot"])["data"]["label"] == "A2"
     assert _columns(around) == {"A1": 0, "A2": 1, "B1": 2}
+
+
+def test_cards_carry_the_workflow_moves(ctx):
+    _task("Movable")
+    card = graph_core.graph_data()["nodes"][0]["data"]
+    keys = [move["key"] for move in card["next"]]
+    assert "done" in keys and card["status"] not in keys
+    assert all({"key", "label", "kind"} <= set(move) for move in card["next"])

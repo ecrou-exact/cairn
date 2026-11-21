@@ -103,6 +103,8 @@ function mount(stage) {
   let graph = null;
   let current = { nodes: [], edges: [], critical: { nodes: [] } };
   let criticalOn = false;
+  let selected = null; // id of the task shown in the side panel
+  let message = ''; // last edit result, kept when the panel is redrawn with fresh data
 
   const byId = () => new Map(current.nodes.map((n) => [n.id, n.data]));
 
@@ -141,6 +143,8 @@ function mount(stage) {
 
   function showPanel(d, id) {
     hidePeek();
+    if (selected !== id) message = '';
+    selected = id;
     const head = el('header', 'cn-gpanel-head');
     const close = el('button', 'cn-icon-button cn-gpanel-close');
     close.type = 'button';
@@ -183,6 +187,8 @@ function mount(stage) {
       links.append(ul);
     }
 
+    const editing = editTools(d, id);
+
     const actions = el('div', 'cn-gpanel-actions');
     if (d.drill && !d.isRoot) {
       const deeper = el('a', 'btn btn-primary');
@@ -194,11 +200,79 @@ function mount(stage) {
     page.href = d.url;
     actions.append(page);
 
-    panel.replaceChildren(head, el('h2', 'cn-gpanel-title', d.label), status, facts, links, actions);
+    panel.replaceChildren(head, el('h2', 'cn-gpanel-title', d.label), status, facts, links, editing, actions);
     panel.hidden = false;
   }
 
-  const hidePanel = () => { panel.hidden = true; };
+  /** Change the status, or link the task to another card of this graph (undoable, logged). */
+  function editTools(d, id) {
+    const box = el('div', 'cn-gpanel-edit');
+    const note = el('p', 'cn-gpanel-note', message);
+    note.setAttribute('role', 'status');
+    const run = async (button, work, done) => {
+      button.disabled = true;
+      try {
+        await work();
+        message = done;
+        note.textContent = done;
+        later(); // the graph and this panel follow: columns, edges, critical path recomputed
+      } catch (error) {
+        note.textContent = error.message;
+        button.disabled = false;
+      }
+    };
+
+    if (d.next?.length) {
+      box.append(el('h3', '', 'Move to'));
+      const row = el('div', 'cn-gpanel-moves');
+      for (const status of d.next) {
+        const button = el('button', `btn btn-sm cn-move cn-move-${status.kind}`, status.label);
+        button.type = 'button';
+        button.addEventListener('click', () => run(button,
+          () => api(`/tasks/${id}/status`, { method: 'POST', body: { status: status.key } }),
+          `Now ${status.label}. You can undo it from the task page history.`));
+        row.append(button);
+      }
+      box.append(row);
+    }
+
+    const others = current.nodes.filter((n) => n.id !== id);
+    if (others.length) {
+      box.append(el('h3', '', 'Link'));
+      const form = el('form', 'cn-gpanel-link');
+      const how = el('select', 'form-select form-select-sm');
+      how.setAttribute('aria-label', 'How');
+      for (const [value, label] of [['blocks', 'blocks'], ['blocked_by', 'is blocked by'], ['follows', 'comes after'], ['relates', 'relates to']]) {
+        const option = el('option', '', label);
+        option.value = value;
+        how.append(option);
+      }
+      const other = el('select', 'form-select form-select-sm');
+      other.setAttribute('aria-label', 'Which task');
+      for (const n of others.sort((a, b) => a.data.label.localeCompare(b.data.label))) {
+        const option = el('option', '', n.data.label);
+        option.value = n.id;
+        other.append(option);
+      }
+      const add = el('button', 'btn btn-sm btn-outline-secondary', 'Link');
+      add.type = 'submit';
+      form.append(how, other, add);
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const kind = how.value === 'blocked_by' ? 'blocks' : how.value;
+        const [from, to] = how.value === 'blocked_by' || how.value === 'follows' ? [other.value, id] : [id, other.value];
+        run(add, () => api('/dependencies', { method: 'POST', body: { from_task_id: from, to_task_id: to, kind } }), 'Linked.');
+      });
+      box.append(form);
+    }
+    box.append(note);
+    return box;
+  }
+
+  const hidePanel = () => {
+    panel.hidden = true;
+    selected = null;
+  };
 
   function options() {
     return {
@@ -328,6 +402,9 @@ function mount(stage) {
     current = next;
     summary();
     lightCritical(criticalOn);
+    const still = selected && current.nodes.find((n) => n.id === selected);
+    if (still && !panel.hidden) showPanel(still.data, still.id);
+    else if (selected && !still) hidePanel();
   }
 
   stage.querySelectorAll('[data-graph-action]').forEach((button) => {

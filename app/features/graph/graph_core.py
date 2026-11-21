@@ -196,6 +196,11 @@ def _node(
             "status": task.status,
             "statusLabel": status["label"],
             "statusKind": status["kind"],
+            "next": [
+                {"key": key, "label": statuses[key]["label"], "kind": statuses[key]["kind"]}
+                for key in workflow.allowed_next(task.status)
+                if key in statuses
+            ],
             "priority": task.priority,
             "due": task.due_on.isoformat() if task.due_on else None,
             "dueText": relative_day(task.due_on, today) if task.due_on else "",
