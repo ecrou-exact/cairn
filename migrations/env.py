@@ -68,6 +68,17 @@ def run_migrations_offline():
         context.run_migrations()
 
 
+def render_item(type_, obj, autogen_context):
+    """Write app column types as the plain SQLAlchemy type they store, so migrations never
+    import app code (UTCDateTime stores a timezone-aware DateTime)."""
+    from sqlalchemy.types import TypeDecorator
+
+    if type_ == "type" and isinstance(obj, TypeDecorator):
+        autogen_context.imports.add("import sqlalchemy as sa")
+        return f"sa.{obj.impl!r}"
+    return False
+
+
 def run_migrations_online():
     """Run migrations in 'online' mode.
 
@@ -89,6 +100,7 @@ def run_migrations_online():
     conf_args = current_app.extensions["migrate"].configure_args
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
+    conf_args.setdefault("render_item", render_item)
 
     connectable = get_engine()
 

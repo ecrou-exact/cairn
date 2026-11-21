@@ -1,0 +1,84 @@
+{# Server-side lists (app/core/utils/listing.py): toolbar, sortable headers, pagination, empty state.
+   Every control is a link or a GET form, so the whole state stays in the URL. #}
+
+{% macro toolbar(page, search_label="Search") -%}
+<form class="cn-list-toolbar" method="get" role="search">
+  <div class="cn-list-search">
+    <label class="visually-hidden" for="list-q">{{ search_label }}</label>
+    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+    <input class="form-control" id="list-q" type="search" name="q" value="{{ page.search }}" placeholder="{{ search_label }}…" maxlength="200">
+  </div>
+  {% for flt in page.spec.filters %}
+    {% set chosen = page.active_filters.get(flt.name, []) %}
+    <div class="cn-list-filter">
+      <label class="visually-hidden" for="list-{{ flt.name }}">{{ flt.label }}</label>
+      <select class="form-select" id="list-{{ flt.name }}" name="{{ flt.name }}">
+        <option value="">{{ flt.label }}: any</option>
+        {% for value, label in flt.choices %}
+          <option value="{{ value }}" {% if value in chosen %}selected{% endif %}>{{ flt.label }}: {{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endfor %}
+  {% for name, value in page.hidden_fields("page", search=True) %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+  <button class="btn btn-outline-secondary" type="submit">Apply</button>
+  {% if page.has_filters %}<a class="btn btn-link" href="{{ page.clear_url() }}">Clear</a>{% endif %}
+  <div class="cn-list-views" role="group" aria-label="Display">
+    {% for view, icon, label in [("table", "fa-table-list", "Table"), ("cards", "fa-grip", "Cards")] if view in page.spec.views %}
+      <a class="btn btn-sm btn-outline-secondary" href="{{ page.url(view=view) }}" {% if page.view == view %}aria-current="true"{% endif %}>
+        <i class="fa-solid {{ icon }}" aria-hidden="true"></i><span class="visually-hidden">{{ label }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</form>
+{%- endmacro %}
+
+{% macro sort_header(page, key, label) -%}
+<th scope="col" aria-sort="{{ page.aria_sort(key) }}">
+  <a class="cn-sort" href="{{ page.sort_url(key) }}">{{ label }}
+    {% if page.sort == key %}<i class="fa-solid fa-arrow-{{ 'up' if page.direction == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}
+  </a>
+</th>
+{%- endmacro %}
+
+{% macro pagination(page) -%}
+<nav class="cn-pagination" aria-label="Pages">
+  <span class="cn-pagination-count">{{ page.first_index }}–{{ page.last_index }} of {{ page.total }}</span>
+  <form method="get" class="cn-per-page">
+    {% for name, value in page.hidden_fields("per_page", "page") %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+    <label class="visually-hidden" for="per-page">Rows per page</label>
+    <select class="form-select form-select-sm" id="per-page" name="per_page">
+      {% for size in page.per_page_choices %}<option value="{{ size }}" {% if size == page.per_page %}selected{% endif %}>{{ size }} per page</option>{% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-secondary" type="submit">Show</button>
+  </form>
+  {% if page.pages > 1 %}
+  <ul class="pagination pagination-sm mb-0">
+    <li class="page-item {% if page.page == 1 %}disabled{% endif %}">
+      <a class="page-link" href="{{ page.url(page=page.page - 1) }}" {% if page.page == 1 %}aria-disabled="true" tabindex="-1"{% endif %}>Previous</a>
+    </li>
+    <li class="page-item active" aria-current="page"><span class="page-link">{{ page.page }} / {{ page.pages }}</span></li>
+    <li class="page-item {% if page.page == page.pages %}disabled{% endif %}">
+      <a class="page-link" href="{{ page.url(page=page.page + 1) }}" {% if page.page == page.pages %}aria-disabled="true" tabindex="-1"{% endif %}>Next</a>
+    </li>
+  </ul>
+  {% endif %}
+</nav>
+{%- endmacro %}
+
+{% macro empty_state(page, title, text) -%}
+<div class="cn-empty">
+  <i class="fa-regular fa-folder-open" aria-hidden="true"></i>
+  {% if page.has_filters %}
+    <h2>Nothing matches</h2>
+    <p>No item fits this search or these filters.</p>
+  {% else %}
+    <h2>{{ title }}</h2>
+    <p>{{ text }}</p>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro status_pill(status, id=None) -%}
+<span class="cn-status cn-status-{{ status }}" {% if id %}data-status-for="{{ id }}"{% endif %}>{{ status }}</span>
+{%- endmacro %}

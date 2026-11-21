@@ -1,0 +1,35 @@
+/* Jobs list and job page. */
+
+.cn-job-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--cn-space-3) var(--cn-space-5);
+  margin: 0 0 var(--cn-space-4);
+}
+.cn-job-facts dt {
+  font-size: var(--cn-text-xs);
+  font-weight: var(--cn-weight-regular);
+  color: var(--cn-text-faint);
+  text-transform: uppercase;
+  letter-spacing: var(--cn-tracking-caps);
+}
+.cn-job-facts dd { margin: 0; }
+
+.cn-progress { display: flex; align-items: center; gap: var(--cn-space-3); font-size: var(--cn-text-sm); }
+.cn-progress-meter { flex: 1; height: 0.5rem; }
+.cn-progress-meter::-webkit-meter-bar { background: var(--cn-surface-sunken); border: 0; border-radius: var(--cn-radius-pill); }
+.cn-progress-meter::-webkit-meter-optimum-value { background: var(--cn-accent); border-radius: var(--cn-radius-pill); }
+.cn-progress-meter::-moz-meter-bar { background: var(--cn-accent); border-radius: var(--cn-radius-pill); }
+
+.cn-job-error {
+  margin: var(--cn-space-4) 0 0;
+  padding: var(--cn-space-2) var(--cn-space-3);
+  background: var(--cn-danger-soft);
+  color: var(--cn-danger);
+  border-radius: var(--cn-radius);
+  font-family: var(--cn-font-mono);
+  font-size: var(--cn-text-sm);
+}
+
+.cn-job-io { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--cn-space-4); }
+.cn-job-io h3 { font-size: var(--cn-text-md); margin-bottom: var(--cn-space-2); }

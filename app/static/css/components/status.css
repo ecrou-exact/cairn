@@ -1,0 +1,46 @@
+/* Status pill: a word and a colour, never colour alone. */
+
+.cn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cn-space-1);
+  padding: 0 var(--cn-space-2);
+  border-radius: var(--cn-radius-pill);
+  font-size: var(--cn-text-xs);
+  font-weight: var(--cn-weight-medium);
+  line-height: 1.6;
+  text-transform: capitalize;
+  background: var(--cn-surface-sunken);
+  color: var(--cn-text-muted);
+  white-space: nowrap;
+}
+.cn-status::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentcolor;
+}
+.cn-status-running { background: var(--cn-info-soft); color: var(--cn-info); }
+.cn-status-succeeded { background: var(--cn-success-soft); color: var(--cn-success); }
+.cn-status-failed { background: var(--cn-danger-soft); color: var(--cn-danger); }
+.cn-status-cancelled { background: var(--cn-warning-soft); color: var(--cn-warning); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .cn-status-running::before { animation: cn-pulse 1.4s var(--cn-easing) infinite; }
+}
+@keyframes cn-pulse { 50% { opacity: 0.35; } }
+
+/* Badge: a short label next to a title (Changed, New default…). */
+.cn-badge {
+  display: inline-block;
+  padding: 0 var(--cn-space-2);
+  border-radius: var(--cn-radius-pill);
+  font-size: var(--cn-text-xs);
+  font-weight: var(--cn-weight-medium);
+  line-height: 1.6;
+  background: var(--cn-surface-sunken);
+  color: var(--cn-text-muted);
+}
+.cn-badge-accent { background: var(--cn-accent-soft); color: var(--cn-accent); }
+.cn-badge-warning { background: var(--cn-warning-soft); color: var(--cn-warning); }

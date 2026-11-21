@@ -10,10 +10,10 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Index, String, Uuid
+from sqlalchemy import JSON, Index, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db_class.base import utcnow
+from app.core.db_class.base import UTCDateTime, utcnow
 from app.core.extensions import db
 
 
@@ -25,7 +25,7 @@ class Activity(db.Model):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, nullable=False)
     action: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
     level: Mapped[str] = mapped_column(String(10), default="info", nullable=False)
     actor: Mapped[str] = mapped_column(String(80), nullable=False, index=True)

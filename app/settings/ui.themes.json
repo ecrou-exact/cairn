@@ -1,0 +1,12 @@
+{
+  "label": "Themes",
+  "category": "Interface",
+  "description": "Colour themes offered in Settings → Appearance. Each key must exist in static/css/core/themes.css.",
+  "value": {
+    "auto": "Auto (follows the system)",
+    "stone": "Stone — warm light",
+    "basalt": "Basalt — neutral dark",
+    "moss": "Moss — calm green light",
+    "ember": "Ember — warm dark"
+  }
+}

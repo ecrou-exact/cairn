@@ -1,0 +1,47 @@
+/* Settings page: theme picker and one block per setting. */
+
+.cn-theme-picker fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--cn-space-3);
+  margin-bottom: var(--cn-space-4);
+}
+.cn-theme-option {
+  display: grid;
+  gap: var(--cn-space-2);
+  padding: var(--cn-space-3);
+  border: var(--cn-border-width) solid var(--cn-border);
+  border-radius: var(--cn-radius);
+  cursor: pointer;
+  font-size: var(--cn-text-sm);
+}
+.cn-theme-option:has(input:checked) { border-color: var(--cn-accent); background: var(--cn-accent-soft); }
+.cn-theme-option input { position: absolute; opacity: 0; }
+.cn-theme-option:has(input:focus-visible) { outline: var(--cn-focus-width) solid var(--cn-focus); outline-offset: var(--cn-focus-offset); }
+
+/* A swatch shows a theme's own colours: data-theme on the swatch scopes the tokens to it. */
+.cn-theme-swatch {
+  display: flex;
+  height: 2.25rem;
+  border-radius: var(--cn-radius-sm);
+  overflow: hidden;
+  border: var(--cn-border-width) solid var(--cn-border);
+  background: var(--cn-bg);
+}
+.cn-theme-swatch span { flex: 1; }
+.cn-theme-swatch:not(.cn-theme-swatch-auto) span:nth-child(1) { background: var(--cn-surface); }
+.cn-theme-swatch:not(.cn-theme-swatch-auto) span:nth-child(2) { background: var(--cn-text); flex: 0 0 25%; }
+.cn-theme-swatch:not(.cn-theme-swatch-auto) span:nth-child(3) { background: var(--cn-accent); flex: 0 0 25%; }
+/* Auto: half the light theme, half the dark one. */
+.cn-theme-swatch-auto span { background: var(--cn-bg); }
+
+.cn-setting { padding: var(--cn-space-4) 0; border-top: var(--cn-border-width) solid var(--cn-border); }
+.cn-setting:first-of-type { border-top: 0; padding-top: var(--cn-space-2); }
+.cn-setting-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--cn-space-2); }
+.cn-setting-head h3 { font-size: var(--cn-text-md); margin: 0; }
+.cn-setting-head code { font-size: var(--cn-text-xs); color: var(--cn-text-faint); }
+.cn-setting-description { color: var(--cn-text-muted); font-size: var(--cn-text-sm); margin: var(--cn-space-1) 0 var(--cn-space-3); }
+.cn-setting-actions { margin-top: var(--cn-space-2); }
+.cn-setting-reset { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cn-space-2); margin-top: var(--cn-space-2); font-size: var(--cn-text-sm); }
+.cn-setting-default { flex: 1 1 16rem; }
+.cn-code-fallback { font-family: var(--cn-font-mono); font-size: var(--cn-text-sm); }

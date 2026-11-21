@@ -3,6 +3,7 @@
 python manage.py setup         first run: .env with a secret key, master key, database
 python manage.py start         development server (auto-reload) on 127.0.0.1:7010
 python manage.py serve         production server (gunicorn on Linux/macOS, waitress on Windows)
+python manage.py worker        background job worker (run it next to start or serve)
 python manage.py upgrade       apply database migrations
 python manage.py migrate "msg" create a migration after a model change
 python manage.py test [args]   run the test suite (pytest arguments pass through)
@@ -20,6 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 ENV_FILE = ROOT / ".env"
+SERVE_THREADS = 16
 
 
 def _run(*args: str, env: dict[str, str] | None = None) -> int:
@@ -70,11 +72,47 @@ def cmd_serve(_: argparse.Namespace) -> int:
     host = os.environ.get("CAIRN_HOST", "127.0.0.1")
     port = os.environ.get("CAIRN_PORT", "7010")
     env = {"CAIRN_ENV": os.environ.get("CAIRN_ENV", "production")}
+    # Threads, not processes alone: every open tab keeps one live-events stream (SSE) open.
     if os.name == "nt":
-        return _run(sys.executable, "-m", "waitress", f"--listen={host}:{port}", "wsgi:app", env=env)
+        return _run(
+            sys.executable,
+            "-m",
+            "waitress",
+            f"--listen={host}:{port}",
+            f"--threads={SERVE_THREADS}",
+            "wsgi:app",
+            env=env,
+        )
     return _run(
-        sys.executable, "-m", "gunicorn", "--bind", f"{host}:{port}", "--workers", "2", "wsgi:app", env=env
+        sys.executable,
+        "-m",
+        "gunicorn",
+        "--bind",
+        f"{host}:{port}",
+        "--workers",
+        "2",
+        "--worker-class",
+        "gthread",
+        "--threads",
+        str(SERVE_THREADS),
+        "wsgi:app",
+        env=env,
     )
+
+
+def cmd_worker(_: argparse.Namespace) -> int:
+    from dotenv import load_dotenv
+
+    load_dotenv(ENV_FILE)
+    from app import create_app
+    from app.core.jobs.worker import Worker, WorkerLockError
+
+    try:
+        Worker(create_app()).run_forever()
+    except WorkerLockError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    return 0
 
 
 def cmd_upgrade(_: argparse.Namespace) -> int:
@@ -107,6 +145,7 @@ def main() -> int:
     sub.add_parser("setup", help="first run").set_defaults(func=cmd_setup)
     sub.add_parser("start", help="development server").set_defaults(func=cmd_start)
     sub.add_parser("serve", help="production server").set_defaults(func=cmd_serve)
+    sub.add_parser("worker", help="background job worker").set_defaults(func=cmd_worker)
     sub.add_parser("upgrade", help="apply migrations").set_defaults(func=cmd_upgrade)
     migrate = sub.add_parser("migrate", help="create a migration")
     migrate.add_argument("message")

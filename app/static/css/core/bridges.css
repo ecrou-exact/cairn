@@ -1,6 +1,8 @@
 /*
  * Maps Cairn tokens onto the libraries' own variables, so a theme change reaches all of them.
- * Bootstrap 5.3 (--bs-*). Pivotick (--pvt-*) and Vitrine (--vt-*) are added with their wrappers.
+ * Bootstrap 5.3 (--bs-*), Vitrine (--vt-*, docs/theming.md of Vitrine). Pivotick (--pvt-*) comes
+ * with the graph wrapper (Phase 4). Vitrine's syntax colours stay its own: cn-vitrine.js picks its
+ * light or dark theme to match.
  */
 
 :root,
@@ -95,3 +97,37 @@
 }
 
 .alert { --bs-alert-border-radius: var(--cn-radius); }
+
+/* Vitrine: custom properties cross its shadow roots, so setting them here themes every element. */
+:root,
+[data-theme] {
+  --vt-bg: var(--cn-bg);
+  --vt-surface: var(--cn-surface);
+  --vt-surface-sunken: var(--cn-surface-sunken);
+  --vt-surface-raised: var(--cn-surface-raised);
+  --vt-border: var(--cn-border);
+  --vt-border-strong: var(--cn-border-strong);
+  --vt-fg: var(--cn-text);
+  --vt-fg-muted: var(--cn-text-muted);
+  --vt-accent: var(--cn-accent);
+  --vt-accent-fg: var(--cn-accent);
+  --vt-on-accent: var(--cn-on-accent);
+  --vt-accent-soft: var(--cn-accent-soft);
+  --vt-line-highlight: var(--cn-accent-soft);
+  --vt-success: var(--cn-success);
+  --vt-warning: var(--cn-warning);
+  --vt-danger: var(--cn-danger);
+  --vt-info: var(--cn-info);
+  --vt-diff-added: var(--cn-success-soft);
+  --vt-diff-removed: var(--cn-danger-soft);
+  --vt-shadow: var(--cn-shadow);
+  --vt-font-ui: var(--cn-font-ui);
+  --vt-font-mono: var(--cn-font-mono);
+  --vt-font-body: var(--cn-font-ui);
+  --vt-radius-sm: var(--cn-radius-sm);
+  --vt-radius: var(--cn-radius);
+  --vt-radius-lg: var(--cn-radius-lg);
+  --vt-duration-fast: var(--cn-duration-fast);
+  --vt-duration: var(--cn-duration);
+  --vt-easing: var(--cn-easing);
+}

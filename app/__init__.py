@@ -27,11 +27,15 @@ def create_app(env: str | None = None) -> Flask:
     _init_vault(app)
     _register_blueprints(app)
 
+    from app.api import register_api
     from app.core.security.headers import register_security_headers
     from app.core.utils.decorators import register_access_rules
     from app.core.utils.static_versions import register_static_versions
+    from app.core.utils.template_filters import register_template_filters
 
+    register_api(app)
     register_access_rules(app)
+    register_template_filters(app)
     register_security_headers(app)
     register_static_versions(app)
     return app
@@ -67,8 +71,12 @@ def _init_vault(app: Flask) -> None:
 
 
 def _register_blueprints(app: Flask) -> None:
+    from app import jobs as _handlers  # noqa: F401  (registers every job handler)
     from app.features.account.account import account
+    from app.features.events.events import events
     from app.features.home.home import health, home
+    from app.features.jobs.jobs import jobs
+    from app.features.settings.settings import settings
 
-    for blueprint in (account, home, health):
+    for blueprint in (account, home, health, jobs, settings, events):
         app.register_blueprint(blueprint)

@@ -20,7 +20,7 @@ Goal: owner approves architecture + design direction.
   - [x] Background jobs: Rulezet uses a DB-backed `BackgroundJob` queue + `worker.py` + APScheduler (no Redis) — study it
   - [x] Write `docs/OWNER_CONVENTIONS.md`
 - [~] Deep read of Pivotick source (constructor + data API verified, D-013; Simplify/filters/table/plugins still to read in Phase 4 prep) (typed API reference, Simplify, filters, legend, table, plugins, history, `_variables.scss`); confirm constructor signature
-- [~] Deep read of Vitrine source (delivery decided, D-012; per-component attributes to read in Phase 2 prep) (common attributes, vt-json, vt-diff, vt-log, vt-markdown, `configure()`); pick bundle vs loader
+- [x] Deep read of Vitrine source (configuration, theming, security, common attributes, vt-log, vt-json, editing; `main` built and vendored, D-019)
 - [ ] Read Agent SDK pages not yet covered (permissions, hooks, sessions, MCP, streaming input); verify per-run `ANTHROPIC_API_KEY` via `env`
 - [x] Compare design skills, propose a base (D-009) — install after reading their source
 - [x] Write `docs/ARCHITECTURE.md`, `docs/SECURITY.md` (threat model), `CLAUDE.md` (proposed)
@@ -31,18 +31,18 @@ Goal: owner approves architecture + design direction.
 ## Phase 2 — Foundations  *(current)*
 - [x] Repo skeleton (app factory, `features/` layout, uv + `uv.lock`, ruff, bandit, pytest, `manage.py`) — pre-commit still to add
 - [x] Cross-platform base: `pathlib`, `platformdirs` data dir, argv-only subprocess, CI matrix ubuntu / macos / windows × Python 3.12 / 3.13
-- [~] Config from env/.env, SQLAlchemy + Alembic (first migration), SQLite dev / PostgreSQL extra — JSON settings (`app/settings/`) + admin overrides still to do
+- [x] Config from env/.env, SQLAlchemy + Alembic, SQLite dev / PostgreSQL extra, JSON settings (`app/settings/`) with typed overrides, Settings page + API (D-022)
 - [~] `BaseEntity` (UUID, timestamps, `created_by`, soft delete), `Activity` log with actor + diff + batch — undo service comes with the first editable entities (Phase 3)
 - [x] Auth: single owner, Argon2id, TOTP with replay protection, CSRF, rate limits, Strict cookies, session version (password change signs out others), deny-by-default access, localhost bind — WebAuthn optional later
 - [x] Secrets vault (AES-256-GCM bound to the secret name; master key from env, OS keyring or 0600 key file)
 - [x] Security headers + strict CSP (no inline, no eval); Trusted Types report-only (D-018)
-- [~] Design tokens + 4 themes + Auto, mapped to Bootstrap — theme picker UI, `--pvt-*` and `--vt-*` bridges still to do
-- [ ] Component library (table/card list, filter bar, pagination, form fields, modal, side panel, badge, status pill, empty/loading/error, toast, confirm dialog)
-- [ ] Server-side list engine (filter/search/sort/paginate on full dataset, URL state, saved views)
-- [ ] Vitrine wrapper component (single config point)
-- [ ] Job queue (lanes, retries/backoff, timeouts, cancellation) + Jobs page
-- [ ] Realtime channel (SSE) + client event bus
-- [~] `manage.py` works on all OS (setup / start / serve with gunicorn or waitress) — `install.sh`, systemd units, Docker Compose still to do
+- [~] Design tokens + 4 themes + Auto, mapped to Bootstrap and Vitrine, theme picker in Settings — `--pvt-*` bridge comes with the graph (Phase 4)
+- [~] Component library — done: table/card list, filter bar, sortable headers, pagination, status pill, badge, empty state, live notice, live status; to do: form fields, modal, side panel, loading/error, toast, confirm dialog
+- [~] Server-side list engine (filter/search/sort/paginate on full dataset, URL state, API JSON) — saved views to do
+- [x] Vitrine wrapper component `<cn-vitrine>` (single config point, theme sync, form field mode)
+- [x] Job queue (lanes, retries/backoff, timeouts, cancellation, crash recovery, SQLite single-worker lock, daily clean-up) + Jobs page + job page with live log + API (D-021)
+- [x] Realtime channel (SSE over the event table, gap-safe resume) + client event bus + header live indicator (D-020)
+- [~] `manage.py` works on all OS (setup / start / serve threaded / worker) — `install.sh`, systemd units, Docker Compose still to do
 - **Done when:** login, theme switch, empty app shell, jobs page and live push work end to end, tests green on all three OS in CI.
 
 ## Phase 3 — Core planning

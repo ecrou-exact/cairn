@@ -15,6 +15,7 @@ from app.core.db_class.owner import Owner
 from app.core.extensions import db
 from app.core.security.secret_core import delete_secret, get_secret, put_secret
 from app.core.utils.logger import log_action
+from app.core.utils.settings import get_setting
 
 MIN_PASSWORD_LENGTH = 12
 # Vault entry names, not secrets.
@@ -88,6 +89,21 @@ def record_login(owner: Owner) -> None:
     owner.last_login_at = utcnow()
     log_action("auth.login", target_type="owner", target_id=owner.id)
     db.session.commit()
+
+
+def theme_choices() -> dict[str, str]:
+    return dict(get_setting("ui.themes"))
+
+
+def set_theme(owner: Owner, theme: str) -> None:
+    if theme not in theme_choices():
+        raise AccountError("This theme does not exist.")
+    if theme != owner.theme:
+        log_action(
+            "owner.theme", target_type="owner", target_id=owner.id, diff={"theme": [owner.theme, theme]}
+        )
+        owner.theme = theme
+        db.session.commit()
 
 
 def change_password(owner: Owner, current: str, new: str) -> None:

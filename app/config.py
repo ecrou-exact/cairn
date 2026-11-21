@@ -45,6 +45,9 @@ class BaseConfig:
     WTF_CSRF_TIME_LIMIT = None
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024
 
+    # An SSE connection ends after this many seconds; the browser reconnects and resumes.
+    SSE_LIFETIME_SECONDS = 300
+
     RATELIMIT_STORAGE_URI = "memory://"
     RATELIMIT_HEADERS_ENABLED = True
 
@@ -72,6 +75,7 @@ class TestingConfig(BaseConfig):
     SECRET_KEY = "testing-only-not-secret"  # noqa: S105  # nosec B105
     WTF_CSRF_ENABLED = False
     RATELIMIT_ENABLED = False
+    SSE_LIFETIME_SECONDS = 0  # one poll, then the stream closes
 
     @classmethod
     def database_uri(cls) -> str:

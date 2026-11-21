@@ -1,0 +1,90 @@
+{% extends "layout/shell.html" %}
+{% from "macros/list.html" import toolbar, sort_header, pagination, empty_state, status_pill %}
+{% block title %}Jobs{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/jobs/jobs.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/jobs/job-list.js') }}"></script>
+{% endblock %}
+{% block content %}
+<header class="cn-page-header cn-page-header-actions">
+  <div>
+    <div class="cn-eyebrow">System</div>
+    <h1>Jobs</h1>
+    <p>Background work run by the worker process. Updates live; failed jobs retry with a growing delay.</p>
+  </div>
+  {% if startable %}
+  <form method="post" action="{{ url_for('jobs.start') }}" class="cn-inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="visually-hidden" for="start-type">Job to start</label>
+    <select class="form-select" id="start-type" name="type">
+      {% for spec in startable %}<option value="{{ spec.type }}">{{ spec.title }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit"><i class="fa-solid fa-play" aria-hidden="true"></i><span class="ms-2">Start</span></button>
+  </form>
+  {% endif %}
+</header>
+
+<div class="cn-live-notice" id="jobs-new" hidden role="status">
+  <span>New jobs were added.</span> <a href="{{ page.url() }}">Reload the list</a>
+</div>
+
+{{ toolbar(page, "Search jobs") }}
+
+{% if page.items %}
+  {% if page.view == "cards" %}
+  <ul class="cn-cards">
+    {% for job in page.items %}
+    <li class="cn-card" data-job-id="{{ job.id }}">
+      <div class="cn-card-head">
+        <a href="{{ url_for('jobs.detail', job_id=job.id) }}">{{ job.title }}</a>
+        {{ status_pill(job.status, job.id) }}
+      </div>
+      <code>{{ job.type }}</code>
+      <dl class="cn-card-meta">
+        <div><dt>Lane</dt><dd>{{ job.lane }}</dd></div>
+        <div><dt>Progress</dt><dd data-progress-for="{{ job.id }}">{{ job.progress }}%</dd></div>
+        <div><dt>Created</dt><dd><time datetime="{{ job.created_at.isoformat() }}">{{ job.created_at.strftime("%d %b, %H:%M") }}</time></dd></div>
+      </dl>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="cn-table-wrap">
+    <table class="table cn-table">
+      <thead>
+        <tr>
+          <th scope="col">Job</th>
+          {{ sort_header(page, "type", "Type") }}
+          {{ sort_header(page, "lane", "Lane") }}
+          {{ sort_header(page, "status", "Status") }}
+          <th scope="col">Progress</th>
+          <th scope="col">Attempts</th>
+          {{ sort_header(page, "created", "Created") }}
+          {{ sort_header(page, "finished", "Finished") }}
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in page.items %}
+        <tr data-job-id="{{ job.id }}">
+          <td><a href="{{ url_for('jobs.detail', job_id=job.id) }}">{{ job.title }}</a></td>
+          <td><code>{{ job.type }}</code></td>
+          <td>{{ job.lane }}</td>
+          <td>{{ status_pill(job.status, job.id) }}</td>
+          <td data-progress-for="{{ job.id }}">{{ job.progress }}%</td>
+          <td data-attempts-for="{{ job.id }}">{{ job.attempts }} / {{ job.max_attempts }}</td>
+          <td><time datetime="{{ job.created_at.isoformat() }}">{{ job.created_at.strftime("%d %b, %H:%M:%S") }}</time></td>
+          <td>{% if job.finished_at %}<time datetime="{{ job.finished_at.isoformat() }}">{{ job.finished_at.strftime("%d %b, %H:%M:%S") }}</time>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {{ pagination(page) }}
+{% else %}
+  {{ empty_state(page, "No jobs yet", "Jobs appear here when Cairn runs background work. Start a self-check to see one.") }}
+{% endif %}
+{% endblock %}

@@ -103,3 +103,26 @@
 - One `Activity` table serves as audit log, entity history (diff + batch for undo) and activity feed: one implementation (§15).
 - Flask-Login's `UserMixin` is not used on SQLAlchemy models (its `__eq__` on `get_id()` interferes with the identity map); `get_id()` embeds `session_version` so a password change signs out every other session.
 - Production server: gunicorn on Linux/macOS, waitress on Windows (`manage.py serve` picks).
+
+## D-019 · 2026-11-21 · accepted — Vitrine from `main`, built and vendored (supersedes D-012)
+- **Context:** owner: take Vitrine's latest `main`, not the last release. `main` has no `dist/` (built files exist only in release commits).
+- **Choice:** build `main` with its own lockfile (`npm ci --ignore-scripts && npm run build`) and vendor `dist/esm/`, `dist/languages/`, `dist/syntax-themes/` into `app/static/vendor/vitrine/` without source maps (≈4 MB). `dist/vendor/` (ECharts, Mermaid, icon sets, maps — 10 MB) is left out until a feature needs it. Commit, date and how to rebuild are in `vendor.json`. No submodule: same vendoring as Bootstrap and Font Awesome.
+- **Wrapper:** `<cn-vitrine kind=…>` (`static/js/components/cn-vitrine.js`) is the only place that loads Vitrine: imports one `vt-<kind>.js` module on demand, maps Cairn's theme to Vitrine's light/dark (syntax colours) while `bridges.css` maps `--vt-*` to `--cn-*`, feeds text through `content`, and turns a child `<textarea name>` (no-JS fallback) into an editor plus hidden input. Content comes from a `<script type="application/json">` written with `| tojson`.
+
+## D-020 · 2026-11-21 · accepted — Realtime: event table polled by the SSE stream (refines D-004)
+- **Choice:** `publish()` adds a row to `event` in the same transaction as the change (never announces a rolled-back change). `GET /events` polls the table every second. No LISTEN/NOTIFY and no in-process bus: the worker is a separate process, and polling works the same on SQLite and PostgreSQL. Switch to NOTIFY only if polling ever costs something measurable.
+- **No lost events:** ids come from a sequence (SQLite `AUTOINCREMENT`, never reused after a prune). `EventCursor` waits up to 5 s on an id gap (a PostgreSQL transaction committing a lower id later), then gives up on it; the SSE `id:` is the resume point below any open gap and the client drops duplicates by event id. Live pages read the last event id *before* their data and pass it as `<meta name="cn-events-after">`.
+- **Threads:** a stream closes after `SSE_LIFETIME_SECONDS` (300) and the browser reconnects with `Last-Event-ID`. `serve` runs gunicorn `gthread` / waitress with 16 threads, because every open tab holds one stream.
+- Events are pruned after a day by the daily `system.prune` job.
+
+## D-021 · 2026-11-21 · accepted — Job queue details (refines D-003)
+- Claim = conditional `UPDATE … WHERE id = ? AND status = 'queued'`: one worker wins, on SQLite and PostgreSQL, without `SKIP LOCKED`.
+- Lanes (`jobs.lanes` setting) are thread pools in one worker process. On SQLite a lock file holding PID + process start time (checked with psutil, so it works on every OS and survives crashes) allows a single worker.
+- Retries with exponential backoff (15 s × 2ⁿ); a timeout fails the job (retryable), a cancel ends it as cancelled. Running jobs are heartbeated every 30 s; a job without heartbeat for 2 min is requeued.
+- Recurring work: the worker's housekeeping enqueues `system.prune` daily. APScheduler comes with the calendar (Phase 10), when schedules become owner-defined.
+- Only handlers registered with `manual=True` can be started from the Jobs page or the API.
+- Job logs are `HH:MM:SS LEVEL message` lines, a format `vt-log` splits into time, level and message.
+
+## D-022 · 2026-11-21 · accepted — REST API as plain blueprints, settings typed by pydantic
+- `/api/*` blueprints in `app/api/` instead of Flask-RESTX (not needed for a single-owner app; one dependency less). Inputs validated by `app/core/schema/` models (`extra="forbid"`), errors as `{"error", "details"}` with 4xx codes. Same session auth and CSRF header as the pages; MCP gets its own auth in Phase 5.
+- Every `app/settings/<key>.json` has a pydantic type in `SETTING_TYPES` (tested): an override must fit it (e.g. `jobs.lanes` must keep every lane).

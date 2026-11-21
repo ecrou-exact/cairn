@@ -13,15 +13,15 @@
                     ▼                            │
 ┌──────────────────────────── web ─────────────────────────────┐
 │ Flask app (gunicorn on Linux/macOS, waitress on Windows)      │
-│  features/* (HTML)   api/* (REST, Flask-RESTX)   /mcp (MCP)   │
+│  features/* (HTML)   api/* (REST, blueprints)    /mcp (MCP)   │
 │                 └──────── core services ────────┘            │
 └───────────────┬───────────────────────────────┬──────────────┘
-                │ SQLAlchemy                     │ NOTIFY / in-process bus
+                │ SQLAlchemy                     │ /events polls the event table
                 ▼                                ▼
-        PostgreSQL (prod) / SQLite (dev)   ◄── events table + LISTEN/NOTIFY
+        PostgreSQL (prod) / SQLite (dev)   ◄── event table (written by web and worker)
                 ▲
 ┌───────────────┴──────────── worker ──────────────────────────┐
-│ worker.py: job runner (lanes) + APScheduler + supervisors     │
+│ manage.py worker: job runner (lanes) + daily jobs + supervisors│
 │  ├─ agent lane: Claude Agent SDK runs (asyncio loop / run)    │
 │  ├─ io lane: GitHub sync, URL fetch, notifications            │
 │  ├─ module lane: automations and action modules               │
@@ -34,7 +34,8 @@
 
 - **web** never runs long work; it enqueues jobs and streams events.
 - **worker** is a separate process (same reasons as Rulezet's `worker.py`: no web timeouts on long jobs, no recycling mid-job, no GIL contention).
-- Both read the same config and DB. On SQLite only one worker is allowed (file lock).
+- Both read the same config and DB. On SQLite only one worker is allowed (`WorkerLock`: PID + start time, checked with psutil).
+- Start both: `python manage.py start` (or `serve`) and `python manage.py worker`.
 - Child processes (Claude runs, instances) are tracked by PID + start time with `psutil`, so supervision works on Linux, macOS and Windows; on Linux/macOS they get their own process group so a stop kills the whole tree.
 
 ## 2. Code layout
@@ -42,12 +43,13 @@
 ```
 app/
   __init__.py                  create_app(start_worker=False)
-  api/                         REST namespaces (thin, call core)
+  api/                         REST blueprints under /api (thin: validate with schema/, call core)
   mcp/                         MCP server: tool definitions → core services
   core/
     db_class/                  models (one module per feature)
     schema/                    pydantic models = the single source of field definitions
-    utils/                     decorators, log_action, settings, vault, events, paths
+    jobs/                      jobs_core (lifecycle), registry, context (log/progress/cancel), worker
+    utils/                     decorators, log_action, settings, events (SSE), listing (server-side lists)
   features/
     account/ admin/ settings/  (from the owner's flask-launchpad patterns)
     dashboard/ project/ task/ dependency/ resource/ graph/
@@ -55,13 +57,13 @@ app/
     chat/ run/ skill/ account_ai/ usage/
     github/ instance/ module/ alert/ jobs/
       <feature>.py  <feature>_core.py
-  jobs/handlers/               @register_handler('<type>') per domain
+  jobs/                        @register_handler('<type>') handlers, one module per domain (system.py…)
   modules/                     built-in automation + action modules (plugin registry)
   templates/<feature>/
   static/{css,js}/{components,<feature>}/
   static/vendor/               bootstrap, fontawesome, fonts, pivotick, vitrine (pinned, see vendor.json)
   settings/<key>.json          settings defaults (statuses, types, weights, ports…)
-worker.py  manage.py  launch.sh  wsgi.py
+manage.py  wsgi.py
 migrations/  tests/  docs/
 ```
 
@@ -102,8 +104,15 @@ Configurable lists (types, statuses, workflow transitions, priorities, score wei
 **Module** → domain event (`task.status_changed`, `github.pr_merged`…) → registry matches bindings → execution job → each step declares the permissions it needs; side-effect steps wait for confirmation unless the binding is `auto`.
 
 ## 5. Realtime
-- `GET /events` (SSE), one connection per tab, authenticated by session, filtered server-side by what the page subscribes to.
-- Producer: `events.publish(type, payload)` writes to `event` table and `NOTIFY` (PostgreSQL) or an in-process queue (SQLite, single process dev mode). `Last-Event-ID` replays missed events.
+- `GET /events?topics=job,setting` (SSE), one connection per tab (`static/js/core/events.js`), authenticated by session, filtered server-side by topic prefix.
+- Producer: `events.publish(type, payload)` adds an `event` row in the caller's transaction; the stream polls it every second (D-020). `Last-Event-ID` (or `?after=`) resumes; id gaps are waited on for 5 s so nothing is skipped.
+- Live pages pass the last event id read before their data (`<meta name="cn-events-after">`); `<cn-live-status>` in the header shows the connection state.
+- Event types so far: `job.changed`, `job.progress`, `job.log`, `setting.changed`.
+
+## 5b. Lists, settings, display
+- **Lists:** a feature declares a `ListSpec` (sortable, searchable, filters, tiebreak) and calls `run_list(spec, query, request.args)`; anything undeclared in the URL is ignored. Macros in `templates/macros/list.html`, styles in `css/components/list.css`. The API returns the same page as JSON (`schema/common.page_dict`).
+- **Settings:** defaults in `app/settings/<key>.json`, overrides in `setting_override` (with the default they were made from, to flag "new default"). Typed by `SETTING_TYPES`; page `/settings`, API `/api/settings`.
+- **Code, JSON, logs:** always `<cn-vitrine>` (D-019).
 
 ## 6. Cross-platform rules
 See D-001. Paths via `pathlib`/`platformdirs`; processes via `psutil`; no `fork`-only code; subprocess argument lists only; `.gitattributes` forces LF; CI on Ubuntu, macOS and Windows.

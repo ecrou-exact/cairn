@@ -1,5 +1,5 @@
 {
-  "_comment": "Front-end libraries vendored in app/static/vendor. Update with the versions and tarball hashes here; see docs/DECISIONS.md D-008.",
+  "_comment": "Front-end libraries vendored in app/static/vendor. Update with the versions and tarball hashes (or source commit) here; see docs/DECISIONS.md D-008 and D-019.",
   "bootstrap": {
     "version": "5.3.9",
     "source": "npm bootstrap@5.3.9",
@@ -34,5 +34,19 @@
     "files": [
       "fonts/*.woff2"
     ]
+  },
+  "vitrine": {
+    "version": "main @ 07ab87825dfbe100b5a3357e4d42b8789f76ffad (2026-11-19, after v0.14.0)",
+    "source": "git https://github.com/ecrou-exact/vitrine, built locally: npm ci --ignore-scripts && npm run build (Node 26)",
+    "license": "MIT (bundled third-party licences in THIRD_PARTY_NOTICES.md)",
+    "files": [
+      "esm/*.js",
+      "esm/chunks/*.js",
+      "languages/*.js",
+      "syntax-themes/*",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "notes": "Source maps and their sourceMappingURL comments removed. dist/vendor/ (ECharts, Mermaid, icons, maps) not included; see docs/DECISIONS.md D-019."
   }
 }

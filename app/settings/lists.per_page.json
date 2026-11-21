@@ -1,0 +1,6 @@
+{
+  "label": "Rows per page",
+  "category": "Lists",
+  "description": "Page sizes offered on every list. The first one is the default.",
+  "value": [25, 50, 100]
+}

@@ -1,0 +1,15 @@
+/* Header indicator of the realtime connection (cn-live-status). */
+
+.cn-live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cn-space-2);
+  font-size: var(--cn-text-xs);
+  color: var(--cn-text-muted);
+  margin-right: var(--cn-space-2);
+}
+.cn-live-status[hidden] { display: none; }
+.cn-live-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--cn-text-faint); }
+.cn-live-status[data-state="live"] .cn-live-dot { background: var(--cn-success); }
+.cn-live-status[data-state="connecting"] .cn-live-dot { background: var(--cn-warning); }
+.cn-live-status[data-state="closed"] .cn-live-dot { background: var(--cn-danger); }

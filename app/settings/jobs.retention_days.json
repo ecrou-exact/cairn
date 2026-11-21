@@ -1,0 +1,6 @@
+{
+  "label": "Finished job retention (days)",
+  "category": "Jobs",
+  "description": "Finished, failed and cancelled jobs older than this are deleted by the daily clean-up job.",
+  "value": 30
+}

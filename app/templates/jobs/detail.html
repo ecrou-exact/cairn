@@ -1,0 +1,76 @@
+{% extends "layout/shell.html" %}
+{% from "macros/list.html" import status_pill %}
+{% block title %}{{ job.title }} · Jobs{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/jobs/jobs.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/jobs/job-detail.js') }}"></script>
+{% endblock %}
+{% block content %}
+<header class="cn-page-header cn-page-header-actions">
+  <div>
+    <div class="cn-eyebrow"><a href="{{ url_for('jobs.index') }}">Jobs</a></div>
+    <h1>{{ job.title }}</h1>
+    <p><code>{{ job.type }}</code> on the {{ job.lane }} lane · started by {{ job.created_by }}</p>
+  </div>
+  <div class="cn-inline-form">
+    {% if not job.is_finished and not job.cancel_requested %}
+    <form method="post" action="{{ url_for('jobs.cancel', job_id=job.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-secondary" type="submit"><i class="fa-solid fa-stop" aria-hidden="true"></i><span class="ms-2">Cancel</span></button>
+    </form>
+    {% endif %}
+    {% if job.status in ("failed", "cancelled") %}
+    <form method="post" action="{{ url_for('jobs.retry', job_id=job.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary" type="submit"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i><span class="ms-2">Retry</span></button>
+    </form>
+    {% endif %}
+  </div>
+</header>
+
+<section class="cn-panel cn-job" id="job" data-job-id="{{ job.id }}" data-status="{{ job.status }}" aria-labelledby="job-state-title">
+  <h2 class="visually-hidden" id="job-state-title">State</h2>
+  <dl class="cn-job-facts">
+    <div><dt>Status</dt><dd>{{ status_pill(job.status, job.id) }}{% if job.cancel_requested and not job.is_finished %} <span class="cn-muted">cancelling…</span>{% endif %}</dd></div>
+    <div><dt>Attempts</dt><dd data-attempts-for="{{ job.id }}">{{ job.attempts }} / {{ job.max_attempts }}</dd></div>
+    <div><dt>Created</dt><dd><time datetime="{{ job.created_at.isoformat() }}">{{ job.created_at.strftime("%d %b %Y, %H:%M:%S") }}</time></dd></div>
+    <div><dt>Started</dt><dd>{% if job.started_at %}<time datetime="{{ job.started_at.isoformat() }}">{{ job.started_at.strftime("%H:%M:%S") }}</time>{% else %}—{% endif %}</dd></div>
+    <div><dt>Finished</dt><dd>{% if job.finished_at %}<time datetime="{{ job.finished_at.isoformat() }}">{{ job.finished_at.strftime("%H:%M:%S") }}</time>{% else %}—{% endif %}</dd></div>
+    <div><dt>Time limit</dt><dd>{{ job.timeout_seconds }} s</dd></div>
+  </dl>
+  <div class="cn-progress">
+    <meter class="cn-progress-meter" aria-label="Progress" min="0" max="100" value="{{ job.progress }}" data-meter-for="{{ job.id }}"></meter>
+    <span data-progress-for="{{ job.id }}">{{ job.progress }}%</span>
+  </div>
+  {% if job.error %}<p class="cn-job-error" role="alert"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ job.error }}</p>{% endif %}
+</section>
+
+<section class="cn-panel" aria-labelledby="log-title">
+  <h2 id="log-title">Log</h2>
+  <script type="application/json" id="job-log-content">{{ job.log | tojson }}</script>
+  <cn-vitrine kind="log" source="job-log-content" id="job-log" vt-variant="full" vt-label="Job log" vt-follow vt-time="short" vt-max-height="28rem" vt-download="job-{{ job.id }}.log"></cn-vitrine>
+</section>
+
+<section class="cn-panel" aria-labelledby="io-title">
+  <h2 id="io-title">Input and result</h2>
+  <div class="cn-job-io">
+    <div>
+      <h3>Payload</h3>
+      <script type="application/json" id="job-payload">{{ job.payload | pretty_json | tojson }}</script>
+      <cn-vitrine kind="json" source="job-payload" vt-label="payload.json" vt-copy></cn-vitrine>
+    </div>
+    <div>
+      <h3>Result</h3>
+      {% if job.result is not none %}
+      <script type="application/json" id="job-result">{{ job.result | pretty_json | tojson }}</script>
+      <cn-vitrine kind="json" source="job-result" vt-label="result.json" vt-copy vt-view="tree"></cn-vitrine>
+      {% else %}
+      <p class="cn-muted">No result yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

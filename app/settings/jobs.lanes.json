@@ -1,0 +1,6 @@
+{
+  "label": "Job lanes",
+  "category": "Jobs",
+  "description": "Worker lanes and how many jobs each runs at the same time. Agent runs, I/O work and modules never wait for each other. Applied when the worker restarts.",
+  "value": {"agent": 2, "io": 4, "module": 2, "system": 1}
+}

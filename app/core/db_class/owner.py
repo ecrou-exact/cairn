@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db_class.base import BaseEntity
+from app.core.db_class.base import BaseEntity, UTCDateTime
 
 
 class Owner(BaseEntity):
@@ -19,7 +19,7 @@ class Owner(BaseEntity):
     totp_last_step: Mapped[int | None] = mapped_column(default=None)
     # Bumped on password change / "sign out everywhere": old sessions stop working.
     session_version: Mapped[int] = mapped_column(default=1, nullable=False)
-    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     theme: Mapped[str] = mapped_column(String(32), default="auto", nullable=False)
 
     # Flask-Login interface. Written out instead of UserMixin, whose __eq__ (comparing get_id())

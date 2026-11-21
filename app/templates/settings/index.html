@@ -1,0 +1,75 @@
+{% extends "layout/shell.html" %}
+{% block title %}Settings{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings/settings.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow">Cairn</div>
+  <h1>Settings</h1>
+  <p>Defaults ship in <code>app/settings/</code> and are never rewritten; what you change here is stored as an override and can be reset. Every change is in the activity log.</p>
+</header>
+
+<section class="cn-panel" aria-labelledby="appearance-title">
+  <h2 id="appearance-title">Appearance</h2>
+  <p class="cn-panel-lead">The theme colours every page, the code viewers and the graph.</p>
+  <form method="post" action="{{ url_for('settings.appearance') }}" class="cn-theme-picker">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <fieldset>
+      <legend class="visually-hidden">Theme</legend>
+      {% for key, label in themes.items() %}
+      <label class="cn-theme-option">
+        <input type="radio" name="theme" value="{{ key }}" {% if current_user.theme == key %}checked{% endif %}>
+        {% if key == "auto" %}
+        <span class="cn-theme-swatch cn-theme-swatch-auto" aria-hidden="true"><span data-theme="stone"></span><span data-theme="basalt"></span></span>
+        {% else %}
+        <span class="cn-theme-swatch" data-theme="{{ key }}" aria-hidden="true"><span></span><span></span><span></span></span>
+        {% endif %}
+        <span>{{ label }}</span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    <button class="btn btn-primary" type="submit">Use this theme</button>
+  </form>
+</section>
+
+{% for category, states in groups %}
+<section class="cn-panel" aria-labelledby="cat-{{ loop.index }}">
+  <h2 id="cat-{{ loop.index }}">{{ category }}</h2>
+  {% for state in states %}
+  {% set d = state.definition %}
+  <article class="cn-setting" id="{{ d.key }}">
+    <header class="cn-setting-head">
+      <h3>{{ d.label }}</h3>
+      <code>{{ d.key }}</code>
+      {% if state.overridden %}<span class="cn-badge cn-badge-accent">Changed</span>{% endif %}
+      {% if state.default_changed %}<span class="cn-badge cn-badge-warning" title="An update changed the default since you saved this value.">New default</span>{% endif %}
+    </header>
+    <p class="cn-setting-description">{{ d.description }}</p>
+    <form method="post" action="{{ url_for('settings.update', key=d.key) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <cn-vitrine kind="json" vt-mode="edit" vt-label="{{ d.key }}.json">
+        <label class="visually-hidden" for="value-{{ d.key }}">{{ d.label }} (JSON)</label>
+        <textarea class="form-control cn-code-fallback" id="value-{{ d.key }}" name="value" rows="4" spellcheck="false">{{ state.value | pretty_json }}</textarea>
+      </cn-vitrine>
+      <div class="cn-setting-actions">
+        <button class="btn btn-primary btn-sm" type="submit">Save</button>
+      </div>
+    </form>
+    {% if state.overridden %}
+    <form method="post" action="{{ url_for('settings.reset', key=d.key) }}" class="cn-setting-reset">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-secondary btn-sm" type="submit">Reset to default</button>
+      <span class="cn-muted">Default:</span>
+      <script type="application/json" id="default-{{ d.key }}">{{ d.default | pretty_json | tojson }}</script>
+      <cn-vitrine kind="json" source="default-{{ d.key }}" class="cn-setting-default"></cn-vitrine>
+    </form>
+    {% endif %}
+  </article>
+  {% endfor %}
+</section>
+{% endfor %}
+{% endblock %}

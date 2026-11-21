@@ -19,6 +19,7 @@ cd cairn
 uv sync
 uv run python manage.py setup    # creates .env, the master key and the database
 uv run python manage.py start    # http://127.0.0.1:7010
+uv run python manage.py worker   # background jobs, in a second terminal
 ```
 
 Open the URL, create the owner account, then turn on two-factor sign-in under **Security**.
@@ -29,6 +30,7 @@ Open the URL, create the owner account, then turn on two-factor sign-in under **
 | `python manage.py setup` | First run: `.env` with a secret key, master key, database |
 | `python manage.py start` | Development server with auto-reload |
 | `python manage.py serve` | Production server (gunicorn on Linux/macOS, waitress on Windows) |
+| `python manage.py worker` | Background job worker (one per SQLite database) |
 | `python manage.py upgrade` | Apply database migrations |
 | `python manage.py migrate "message"` | Create a migration after a model change |
 | `python manage.py test` | Run the test suite |

@@ -1,0 +1,4 @@
+/*! Vitrine v0.14.0 | MIT License | https://github.com/ecrou-exact/vitrine
+ * Includes: highlight.js 11.12.0 (BSD-3-Clause), marked 18.1.3 (MIT), DOMPurify 3.4.17 (Apache-2.0 OR MPL-2.0), Lucide 1.52.0 (ISC; icons derived from Feather: MIT).
+ * Full license texts: THIRD_PARTY_NOTICES.md */
+import{a as e}from"./chunks/chunk-ZTVX3RTI.js";import"./chunks/chunk-WYQOVAXI.js";import"./chunks/chunk-RXTDTAHY.js";import"./chunks/chunk-N35IOOJ4.js";import"./chunks/chunk-JRUMHT4D.js";import"./chunks/chunk-DUXCLZ3D.js";import{a as t}from"./chunks/chunk-7PAHM2BV.js";import"./chunks/chunk-FOOPRKFN.js";import{h as m,i as o,k as r,n as s,s as f,t as i,u as p,v as n,z as u}from"./chunks/chunk-TUK22DTT.js";t(new URL("../",import.meta.url));customElements.get("vt-jwt")||customElements.define("vt-jwt",e);export{f as BUILT_IN_THEMES,r as EVENTS,e as VtJwt,o as configure,m as getConfig,n as getTheme,u as listSyntaxThemes,p as listThemes,s as registerLocale,i as registerTheme};
