@@ -30,6 +30,7 @@ from app.core.db_class.base import BaseEntity, UTCDateTime
 PROJECT_STATUSES = ("active", "paused", "archived")
 PRIORITIES = ("critical", "high", "medium", "low")
 DEPENDENCY_KINDS = ("blocks", "relates", "duplicates", "follows")
+CONDITION_KINDS = ("review", "release", "pr", "date", "other")
 # Project colours are names of palette tokens (--cn-palette-<name> in tokens.css), never raw colours.
 PROJECT_COLORS = ("terracotta", "moss", "slate", "plum", "ochre", "sea")
 
@@ -113,6 +114,26 @@ class Dependency(BaseEntity):
     to_task_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("task.id"), nullable=False, index=True)
     kind: Mapped[str] = mapped_column(String(12), default="blocks", nullable=False)
     note: Mapped[str] = mapped_column(String(300), default="", nullable=False)
+
+
+class ExternalCondition(BaseEntity):
+    """Something outside Cairn a task waits for (§2.3): a review, an upstream release, a PR
+    to be merged, a date. Open, it blocks the task; a `date` one lifts itself on that day.
+    Resolving by GitHub sync comes with Phase 7."""
+
+    __tablename__ = "external_condition"
+
+    task_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("task.id"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(12), default="other", nullable=False)
+    label: Mapped[str] = mapped_column(String(200), nullable=False)
+    url: Mapped[str | None] = mapped_column(String(2000))
+    until_on: Mapped[date | None] = mapped_column(Date)
+    resolved_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+    def is_waiting(self, today: date) -> bool:
+        if self.resolved_at is not None:
+            return False
+        return not (self.kind == "date" and self.until_on is not None and self.until_on <= today)
 
 
 class TimeEntry(BaseEntity):

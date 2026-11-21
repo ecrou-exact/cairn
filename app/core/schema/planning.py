@@ -11,9 +11,15 @@ import uuid
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import AfterValidator, BaseModel, Field, HttpUrl, field_validator
+from pydantic import AfterValidator, BaseModel, Field, HttpUrl, field_validator, model_validator
 
-from app.core.db_class.planning import DEPENDENCY_KINDS, PRIORITIES, PROJECT_COLORS, PROJECT_STATUSES
+from app.core.db_class.planning import (
+    CONDITION_KINDS,
+    DEPENDENCY_KINDS,
+    PRIORITIES,
+    PROJECT_COLORS,
+    PROJECT_STATUSES,
+)
 from app.core.schema.common import Output, Strict
 
 _TAG = re.compile(r"^[\w][\w.+-]{0,31}$", re.UNICODE)
@@ -245,6 +251,36 @@ class DependencyOut(BaseModel):
     to_task_id: uuid.UUID
     kind: str
     note: str
+
+
+class ConditionCreate(Strict):
+    task_id: uuid.UUID
+    kind: Literal[CONDITION_KINDS] = "other"  # type: ignore[valid-type]
+    label: Annotated[str, Field(min_length=1, max_length=200)]
+    url: Annotated[str, Field(max_length=2000, pattern=r"^https?://\S+$")] | None = None
+    until_on: date | None = None
+
+    @model_validator(mode="after")
+    def _date_needs_a_day(self) -> ConditionCreate:
+        if self.kind == "date" and self.until_on is None:
+            raise ValueError("Say until which day it waits.")
+        return self
+
+
+class ConditionResolve(Strict):
+    resolved: bool
+
+
+class ConditionOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    task_id: uuid.UUID
+    kind: str
+    label: str
+    url: str | None
+    until_on: date | None
+    resolved_at: datetime | None
 
 
 class BulkEdit(Strict):

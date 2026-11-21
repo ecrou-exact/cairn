@@ -71,9 +71,15 @@
 </section>
 {% endif %}
 
-{% if chain %}
+{% set waiting = conditions | selectattr("resolved_at", "none") | select("is_waiting_today") | list %}
+{% if chain or waiting %}
 <section class="cn-panel cn-blocked-panel" aria-labelledby="chain-title">
   <h2 id="chain-title"><i class="fa-solid fa-link-slash" aria-hidden="true"></i> Why it is blocked</h2>
+  {% if waiting %}
+  <ul class="cn-chain">
+    {% for condition in waiting %}<li><i class="fa-solid {{ condition_icons[condition.kind] }}" aria-hidden="true"></i> Waiting for {{ condition.label }}{% if condition.until_on %} — until {{ condition.until_on | relative_day }}{% endif %}</li>{% endfor %}
+  </ul>
+  {% endif %}
   <ul class="cn-chain">
     {% for depth, blocker in chain %}
     <li class="cn-chain-depth-{{ [depth, 4] | min }}">
@@ -166,6 +172,46 @@
       {% else %}
       <p class="cn-muted">No dependency. Link a task that must be done first, or one this task unblocks.</p>
       {% endif %}
+      <h3 class="cn-subtitle">Waiting for something outside</h3>
+      {% if conditions %}
+      <ul class="cn-conditions">
+        {% for condition in conditions %}
+        {% set open = condition.resolved_at is none and condition is is_waiting_today %}
+        <li class="{{ 'cn-condition-done' if not open }}">
+          <i class="fa-solid {{ condition_icons[condition.kind] }}" aria-hidden="true" title="{{ condition_kinds[condition.kind] }}"></i>
+          {% if condition.url %}<a href="{{ condition.url }}" target="_blank" rel="noopener noreferrer">{{ condition.label }}</a>{% else %}{{ condition.label }}{% endif %}
+          {% if condition.until_on %}<span class="cn-muted">until {{ condition.until_on | relative_day }}</span>{% endif %}
+          {% if condition.resolved_at %}<span class="cn-badge">resolved</span>{% elif not open %}<span class="cn-badge">date passed</span>{% endif %}
+          {% if condition.kind != "date" %}
+          <form method="post" action="{{ url_for('tasks.resolve_condition', task_id=task.id, condition_id=condition.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="resolved" value="{{ '0' if condition.resolved_at else '1' }}">
+            <button class="btn btn-link btn-sm" type="submit">{{ "Waiting again" if condition.resolved_at else "It happened" }}</button>
+          </form>
+          {% endif %}
+          <form method="post" action="{{ url_for('tasks.remove_condition', task_id=task.id, condition_id=condition.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-link btn-sm cn-remove" type="submit" title="Remove"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="visually-hidden">Remove the condition {{ condition.label }}</span></button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <form method="post" action="{{ url_for('tasks.add_condition', task_id=task.id) }}" class="cn-dep-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="visually-hidden" for="condition-kind">Waiting for</label>
+        <select class="form-select" id="condition-kind" name="kind">
+          {% for key, label in condition_kinds.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+        </select>
+        <label class="visually-hidden" for="condition-label">What exactly</label>
+        <input class="form-control" id="condition-label" name="label" maxlength="200" required placeholder="Review from Alex, flask 3.2, PR #42…">
+        <label class="visually-hidden" for="condition-until">Until (for a date)</label>
+        <input class="form-control cn-date-input" id="condition-until" name="until_on" type="date" title="Until (for a date)">
+        <label class="visually-hidden" for="condition-url">Link (optional)</label>
+        <input class="form-control" id="condition-url" name="url" type="url" maxlength="2000" placeholder="Link (optional)">
+        <button class="btn btn-outline-secondary" type="submit">Wait for it</button>
+      </form>
+
+      <h3 class="cn-subtitle">Link another task</h3>
       <form method="post" action="{{ url_for('tasks.add_dependency', task_id=task.id) }}" class="cn-dep-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label class="visually-hidden" for="dep-direction">This task</label>

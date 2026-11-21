@@ -15,7 +15,14 @@ import re
 from app.core.db_class.planning import Task
 from app.features.comments import comments_core
 from app.features.resources import resources_core
-from app.features.tasks import dependencies_core, recurrence_core, related_core, tasks_core, workflow
+from app.features.tasks import (
+    conditions_core,
+    dependencies_core,
+    recurrence_core,
+    related_core,
+    tasks_core,
+    workflow,
+)
 
 MAX_INLINE = 4000  # longer notes and snippets are cut, with a pointer to the resource
 
@@ -146,6 +153,12 @@ def task_brief(task: Task) -> str:
         f"- Comes after: {other.title} ({workflow.label_of(other.status)})" for _, other in deps["follows"]
     ]
     dep_lines += [f"- Unblocks: {other.title}" for _, other in deps["blocks"]]
+    dep_lines += [
+        f"- Waiting for ({conditions_core.KIND_LABELS[c.kind].lower()}): {c.label}"
+        + (f" until {c.until_on.isoformat()}" if c.until_on else "")
+        + (f" <{c.url}>" if c.url else "")
+        for c in conditions_core.waiting(task.id)
+    ]
     dep_lines += [f"- Related: {other.title}" for _, other in deps["relates"]]
     if dep_lines:
         sections.append(_section("Dependencies", "\n".join(dep_lines)))

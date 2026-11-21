@@ -69,4 +69,5 @@ def register_template_filters(app: Flask) -> None:
     app.add_template_filter(workflow.allowed_next, "next_statuses")
     app.add_template_filter(timer_core.format_duration, "duration")
     app.add_template_global(date.today, "today")
+    app.add_template_test(lambda condition: condition.is_waiting(date.today()), "is_waiting_today")
     app.add_template_global(timer_core.running, "running_timer")

@@ -6,7 +6,7 @@ import uuid
 
 from flask import Blueprint, abort, flash, make_response, redirect, render_template, request, url_for
 
-from app.core.schema.planning import BulkEdit, DependencyCreate, TaskCreate, TaskUpdate
+from app.core.schema.planning import BulkEdit, ConditionCreate, DependencyCreate, TaskCreate, TaskUpdate
 from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
@@ -16,6 +16,7 @@ from app.features.projects import projects_core
 from app.features.resources import resources_core
 from app.features.tasks import (
     brief_core,
+    conditions_core,
     dependencies_core,
     quickadd_core,
     related_core,
@@ -256,6 +257,9 @@ def detail(task_id: uuid.UUID):
         ],
         brief=brief_core.task_brief(task),
         related=related_core.related_for(task),
+        conditions=conditions_core.for_task(task.id),
+        condition_kinds=conditions_core.KIND_LABELS,
+        condition_icons=conditions_core.KIND_ICONS,
     )
 
 
@@ -351,6 +355,49 @@ def remove_dependency(task_id: uuid.UUID, dependency_id: uuid.UUID):
     except dependencies_core.DependencyError:
         abort(404)
     flash_undo("Dependency removed.", batch_id)
+    return redirect(url_for("tasks.detail", task_id=task_id, _anchor="dependencies"))
+
+
+@tasks.post("/tasks/<uuid:task_id>/conditions")
+def add_condition(task_id: uuid.UUID):
+    _task_or_404(task_id)
+    values = {
+        "task_id": task_id,
+        "kind": request.form.get("kind", "other"),
+        "label": request.form.get("label", ""),
+        "url": (request.form.get("url") or "").strip() or None,
+        "until_on": request.form.get("until_on") or None,
+    }
+    try:
+        with batch() as batch_id:
+            conditions_core.add(validate(ConditionCreate, values))
+    except FormErrors as exc:
+        flash(next(iter(exc.errors.values())), "danger")
+    else:
+        flash_undo("This task now waits for it.", batch_id)
+    return redirect(url_for("tasks.detail", task_id=task_id, _anchor="dependencies"))
+
+
+@tasks.post("/tasks/<uuid:task_id>/conditions/<uuid:condition_id>/resolved")
+def resolve_condition(task_id: uuid.UUID, condition_id: uuid.UUID):
+    resolved = request.form.get("resolved") == "1"
+    try:
+        with batch() as batch_id:
+            conditions_core.set_resolved(condition_id, resolved)
+    except conditions_core.ConditionError:
+        abort(404)
+    flash_undo("Done waiting for it." if resolved else "Waiting for it again.", batch_id)
+    return redirect(url_for("tasks.detail", task_id=task_id, _anchor="dependencies"))
+
+
+@tasks.post("/tasks/<uuid:task_id>/conditions/<uuid:condition_id>/remove")
+def remove_condition(task_id: uuid.UUID, condition_id: uuid.UUID):
+    try:
+        with batch() as batch_id:
+            conditions_core.remove(condition_id)
+    except conditions_core.ConditionError:
+        abort(404)
+    flash_undo("Condition removed.", batch_id)
     return redirect(url_for("tasks.detail", task_id=task_id, _anchor="dependencies"))
 
 

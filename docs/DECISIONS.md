@@ -173,3 +173,7 @@
 - `Task.recurrence = {"every", "unit": day|week|month|year, "anchor": due|done}`. When the task moves to a status of kind *done* (not cancelled), the next occurrence is created in the same batch: same fields, checklist unticked, all dates moved by one step so their spacing stays. `due` keeps the rhythm and skips periods already past when done late; `done` counts from the completion day. Months clamp to the last day (31 Jan → 28 Feb).
 - `next_occurrence_id` makes it happen once: reopening and closing again does not make a second copy while the first is alive. Undoing the "done" removes the occurrence (it is part of the batch, `task.recur` has an inverse).
 - Subtasks are not copied (a template is the tool for a repeated tree). Quick add understands `daily`, `weekly`, `every 2 weeks`, `chaque semaine`, `tous les mois`.
+
+## D-031 · 2026-11-21 · accepted — External conditions block like tasks
+- `ExternalCondition` (task, kind review / release / pr / date / other, label, optional link, `until_on`, `resolved_at`): what a task waits for outside Cairn. An open one counts in `blocked_by_count`, so "blocked" means the same everywhere (badges, filters, "what should I do now", the brief). Resolved by hand ("It happened"); a `date` one lifts itself on its day through the daily recompute, with no write. Auto-resolution of PRs and releases comes with the GitHub sync (Phase 7).
+- Like dependencies, conditions are links: removed for good, kept in the activity log, undoable.

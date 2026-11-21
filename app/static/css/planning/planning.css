@@ -218,3 +218,11 @@
 .cn-related small { display: block; color: var(--cn-text-faint); font-size: var(--cn-text-xs); }
 .cn-fit { font-size: var(--cn-text-sm); color: var(--cn-text-muted); }
 .cn-fit-tight { color: var(--cn-danger); }
+
+/* External conditions */
+.cn-subtitle { font-size: var(--cn-text-sm); font-weight: var(--cn-weight-medium); color: var(--cn-text-muted); margin: var(--cn-space-4) 0 var(--cn-space-2); }
+.cn-conditions { list-style: none; margin: 0 0 var(--cn-space-2); padding: 0; display: grid; gap: var(--cn-space-1); font-size: var(--cn-text-sm); }
+.cn-conditions i { color: var(--cn-warning); width: 1.2em; }
+.cn-condition-done { color: var(--cn-text-muted); }
+.cn-condition-done i { color: var(--cn-text-faint); }
+.cn-date-input { flex: 0 1 11rem; }

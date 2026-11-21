@@ -60,7 +60,8 @@ Goal: owner approves architecture + design direction.
 - [x] Comments thread and corrections log on tasks and projects (retire / reactivate, inherited from project and parent tasks); task brief for Claude shown, downloadable and in the API (D-028)
 - [x] Related context per task: close tasks, matching resources, schedule fit — panel, brief, API; base of "Ask Claude to fill a task" (D-029, roadmap `fill-task`, Phase 6)
 - [x] Recurring tasks: form, quick add (`weekly`, `every 2 weeks`, `tous les mois`), next occurrence on done, undoable (D-030)
-- [ ] Custom fields, external conditions (§2.2–2.3)
+- [x] External conditions (review, upstream release, PR merged, date, other) block the task until they happen; date ones lift themselves (D-031) — GitHub auto-resolution in Phase 7
+- [ ] Custom fields (§2.2)
 - [~] JSON schema registry shared by API, forms and MCP tools — schemas exist per feature (`core/schema/`), registry/`describe_schema` comes with the MCP server (Phase 5)
 
 ## Phase 4 — Graph (Pivotick, full integration per §4)

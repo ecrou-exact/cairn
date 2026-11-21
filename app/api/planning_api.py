@@ -9,6 +9,9 @@ from flask import jsonify, request, url_for
 from app.api import ApiError, api_blueprint, body
 from app.core.schema.common import page_dict
 from app.core.schema.planning import (
+    ConditionCreate,
+    ConditionOut,
+    ConditionResolve,
     DependencyCreate,
     DependencyOut,
     ProjectCreate,
@@ -26,6 +29,7 @@ from app.features.projects import projects_core
 from app.features.resources import resources_core
 from app.features.search import search_core
 from app.features.tasks import (
+    conditions_core,
     dependencies_core,
     quickadd_core,
     related_core,
@@ -51,6 +55,8 @@ def _guard(action, *args):
         with batch() as batch_id:
             result = action(*args)
     except (tasks_core.TaskNotFound, projects_core.ProjectNotFound) as exc:
+        raise ApiError(str(exc), 404) from exc
+    except conditions_core.ConditionError as exc:
         raise ApiError(str(exc), 404) from exc
     except (tasks_core.TaskError, projects_core.ProjectError, dependencies_core.DependencyError) as exc:
         raise ApiError(str(exc), 422) from exc
@@ -226,6 +232,39 @@ def remove_dependency(dependency_id: uuid.UUID):
             dependencies_core.remove(dependency_id)
     except dependencies_core.DependencyError as exc:
         raise ApiError(str(exc), 404) from exc
+    return jsonify(batch=str(batch_id))
+
+
+@planning_api.get("/tasks/<uuid:task_id>/conditions")
+def list_conditions(task_id: uuid.UUID):
+    _guard(tasks_core.get_task, task_id)
+    return jsonify(
+        items=[
+            ConditionOut.model_validate(c).model_dump(mode="json") for c in conditions_core.for_task(task_id)
+        ]
+    )
+
+
+@planning_api.post("/conditions")
+def add_condition():
+    condition, batch_id = _guard(conditions_core.add, body(ConditionCreate))
+    return jsonify(
+        condition=ConditionOut.model_validate(condition).model_dump(mode="json"), batch=str(batch_id)
+    ), 201
+
+
+@planning_api.patch("/conditions/<uuid:condition_id>")
+def resolve_condition(condition_id: uuid.UUID):
+    data = body(ConditionResolve)
+    condition, batch_id = _guard(conditions_core.set_resolved, condition_id, data.resolved)
+    return jsonify(
+        condition=ConditionOut.model_validate(condition).model_dump(mode="json"), batch=str(batch_id)
+    )
+
+
+@planning_api.delete("/conditions/<uuid:condition_id>")
+def remove_condition(condition_id: uuid.UUID):
+    _, batch_id = _guard(conditions_core.remove, condition_id)
     return jsonify(batch=str(batch_id))
 
 

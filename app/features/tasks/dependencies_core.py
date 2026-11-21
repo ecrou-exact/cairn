@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy import or_, select, update
 
-from app.core.db_class.planning import Dependency, Project, Task
+from app.core.db_class.planning import Dependency, ExternalCondition, Project, Task
 from app.core.extensions import db
 from app.core.schema.planning import DependencyCreate
 from app.core.utils.events import publish
@@ -202,6 +202,8 @@ def blocking_chain(task_id: uuid.UUID) -> list[tuple[int, Task]]:
 def refresh_derived(today: date | None = None) -> int:
     """Recompute is_open, blocked_by_count, unblocks_count and score for every task.
 
+    `blocked_by_count` counts open blocking tasks and open external conditions.
+
     Runs after every planning change (a few ms for hundreds of tasks) and daily (deadlines
     and age move with time). Writes only what changed, and keeps `updated_at`: derived
     values are not an edit by the owner. Returns how many tasks changed.
@@ -222,6 +224,12 @@ def refresh_derived(today: date | None = None) -> int:
             successors[source].add(target)
             if is_open[source]:
                 blocked_by[target] += 1
+
+    for condition in db.session.scalars(
+        select(ExternalCondition).where(ExternalCondition.resolved_at.is_(None))
+    ):
+        if condition.task_id in is_open and condition.is_waiting(today):
+            blocked_by[condition.task_id] += 1
 
     def unblocks(start: uuid.UUID) -> int:
         seen: set[uuid.UUID] = set()
