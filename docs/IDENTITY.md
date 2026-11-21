@@ -1,6 +1,6 @@
 # Name and logo — proposals
 
-> Status: **decided 2026-11-21 — name Cairn, logo direction A (D-014)**. Working name before that: "Claude Manager". Drafts only; the chosen direction gets a full set (SVG light/dark, PNG sizes, favicon) in Phase 2.
+> Status: **decided 2026-11-21 — name Cairn, logo direction A (D-014), final mark `brand/cairn-mark.svg` (D-038)**. Working name before that: "Claude Manager". Drafts only; the chosen direction gets a full set (SVG light/dark, PNG sizes, favicon) in Phase 2.
 
 ## Why rename
 "Claude Manager" uses Anthropic's product name. For a public open-source project, a name that does not depend on a vendor trademark is safer and lets the app support other agents later. The repo can be renamed on GitHub at any time (old URLs redirect).

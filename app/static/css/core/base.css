@@ -335,20 +335,6 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
 
 .cn-form-narrow { max-width: 26rem; }
 
-.cn-activity { list-style: none; margin: 0; padding: 0; }
-.cn-activity li {
-  display: grid;
-  grid-template-columns: 9rem 1fr auto;
-  gap: var(--cn-space-3);
-  padding: var(--cn-space-2) 0;
-  border-top: var(--cn-border-width) solid var(--cn-border);
-  font-size: var(--cn-text-sm);
-}
-.cn-activity li:first-child { border-top: 0; }
-.cn-activity time, .cn-activity .cn-actor { color: var(--cn-text-muted); }
-.cn-activity code { font-size: var(--cn-text-sm); color: var(--cn-text); }
-.cn-level-warning code { color: var(--cn-warning); }
-.cn-level-error code, .cn-level-critical code { color: var(--cn-danger); }
 
 /* Avatar: the owner's picture, or their initials on a stone of the mark colour. */
 .cn-avatar {

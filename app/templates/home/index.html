@@ -1,75 +1,115 @@
 {% extends "layout/shell.html" %}
-{% from "macros/planning.html" import type_icon, priority, task_status, due, project_chip, quick_add, score %}
+{% from "macros/planning.html" import type_icon, priority, due, project_chip, quick_add %}
 {% block title %}Today{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home/home.css') }}">
 {% endblock %}
 {% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-quick-add.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/planning/live-list.js') }}"></script>
 {% endblock %}
 {% block content %}
-<header class="cn-page-header cn-today-header">
-  <div>
-    <div class="cn-eyebrow">{{ today().strftime("%A %d %B") }}</div>
-    <h1>{{ greeting }}.</h1>
-    <p>{% if pulse.ready %}{{ pulse.ready }} task{{ "s are" if pulse.ready != 1 else " is" }} ready to pick up{% else %}Nothing is ready to pick up{% endif %}{% if attention %}, {{ attention | length }} need{{ "s" if attention | length == 1 }} a look{% endif %}.</p>
-  </div>
-  <dl class="cn-cairn-stats" aria-label="Your plan at a glance">
-    <div><dt>Open</dt><dd>{{ pulse.open }}</dd></div>
-    <div><dt>Ready</dt><dd><a href="{{ url_for('tasks.index', state='actionable') }}">{{ pulse.ready }}</a></dd></div>
-    <div class="{{ 'cn-stat-warn' if pulse.blocked }}"><dt>Blocked</dt><dd><a href="{{ url_for('tasks.index', state='blocked') }}">{{ pulse.blocked }}</a></dd></div>
-    <div class="{{ 'cn-stat-bad' if pulse.late }}"><dt>Late</dt><dd><a href="{{ url_for('tasks.index', state='overdue') }}">{{ pulse.late }}</a></dd></div>
-    <div class="cn-stat-good"><dt>Done this week</dt><dd>{{ pulse.done_week }}</dd></div>
-  </dl>
-</header>
-
 {% if not current_user.totp_enabled %}
-<section class="cn-panel cn-notice-panel">
-  <h2>Secure your account</h2>
-  <p class="cn-panel-lead mb-3">Two-factor sign-in is off. Turn it on before adding API keys or GitHub tokens.</p>
-  <a class="btn btn-primary" href="{{ url_for('account.security') }}">Set up two-factor sign-in</a>
-</section>
+<a class="cn-home-notice" href="{{ url_for('account.security') }}"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span><strong>Two-factor sign-in is off.</strong> Turn it on before adding API keys or GitHub tokens.</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
 {% endif %}
 
-{{ quick_add() }}
+<section class="cn-hero" aria-labelledby="hero-title">
+  <div class="cn-hero-main">
+    <p class="cn-hero-date">{{ today().strftime("%A %d %B") }}</p>
+    <h1 id="hero-title">{{ greeting }}{% if current_user.display_name %}, {{ current_user.display_name.split()[0] }}{% endif %}.</h1>
+    <p class="cn-hero-lead">
+      {% if pulse.ready %}<strong>{{ pulse.ready }}</strong> task{{ "s are" if pulse.ready != 1 else " is" }} ready to pick up{% else %}Nothing is ready to pick up{% endif %}{% if pulse.late %}, <strong class="cn-hero-late">{{ pulse.late }} late</strong>{% endif %}{% if pulse.done_week %} — {{ pulse.done_week }} done this week{% endif %}.
+    </p>
+    <dl class="cn-hero-stats">
+      <div><dt>Open</dt><dd>{{ pulse.open }}</dd></div>
+      <div><dt>Ready</dt><dd><a href="{{ url_for('tasks.index', state='actionable') }}">{{ pulse.ready }}</a></dd></div>
+      <div class="{{ 'is-warn' if pulse.blocked }}"><dt>Blocked</dt><dd><a href="{{ url_for('tasks.index', state='blocked') }}">{{ pulse.blocked }}</a></dd></div>
+      <div class="{{ 'is-bad' if pulse.late }}"><dt>Late</dt><dd><a href="{{ url_for('tasks.index', state='overdue') }}">{{ pulse.late }}</a></dd></div>
+      <div class="is-good"><dt>Done · 7 days</dt><dd>{{ pulse.done_week }}</dd></div>
+    </dl>
+    <div class="cn-hero-add">{{ quick_add("What needs doing? “fix login for rulezet by friday #bug !high ~2h”") }}</div>
+  </div>
+
+  <article class="cn-focus" aria-labelledby="focus-title">
+    {% if timer %}{% set entry, timed = timer %}
+    <p class="cn-focus-eyebrow cn-focus-live"><span class="cn-pulse-dot" aria-hidden="true"></span>Working on it since {{ entry.started_at.strftime("%H:%M") }} UTC</p>
+    <h2 id="focus-title"><a href="{{ url_for('tasks.detail', task_id=timed.id) }}">{{ timed.title }}</a></h2>
+    <p class="cn-focus-meta">{{ project_chip(timed.project) }} {{ priority(timed) }} {{ due(timed) }}</p>
+    <form method="post" action="{{ url_for('tasks.stop_timer') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">
+      <button class="btn btn-outline-secondary" type="submit"><i class="fa-solid fa-pause" aria-hidden="true"></i><span class="ms-2">Pause</span></button>
+    </form>
+    {% elif focus %}
+    <p class="cn-focus-eyebrow">Next up <span class="cn-focus-score" title="Priority score">{{ "%.0f" | format(focus.score) }}</span></p>
+    <h2 id="focus-title"><a href="{{ url_for('tasks.detail', task_id=focus.id) }}">{{ focus.title }}</a></h2>
+    <p class="cn-focus-meta">{{ project_chip(focus.project) }} {{ type_icon(focus, types) }} {{ priority(focus) }} {{ due(focus) }}</p>
+    {% if focus_reasons %}
+    <ul class="cn-focus-why" aria-label="Why it comes first">
+      {% for reason in focus_reasons %}<li>{{ reason }}</li>{% endfor %}
+      {% if focus.unblocks_count %}<li class="is-unblocks">Finishing it unblocks {{ focus.unblocks_count }} task{{ "s" if focus.unblocks_count > 1 }}</li>{% endif %}
+    </ul>
+    {% endif %}
+    <div class="cn-focus-actions">
+      <form method="post" action="{{ url_for('tasks.start_timer', task_id=focus.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-play" aria-hidden="true"></i><span class="ms-2">Start</span></button>
+      </form>
+      <a class="btn btn-outline-secondary" href="{{ url_for('graph.index', root=focus.id) }}"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span class="ms-2">In the plan</span></a>
+    </div>
+    {% else %}
+    <p class="cn-focus-eyebrow">Next up</p>
+    <h2 id="focus-title">Nothing is ready right now</h2>
+    <p class="cn-muted">Add a task above, or see <a href="{{ url_for('tasks.index', state='blocked') }}">what is blocked</a>.</p>
+    {% endif %}
+  </article>
+</section>
 <div class="cn-live-notice" id="list-changed" hidden role="status"><span>Your plan changed.</span> <a href="{{ url_for('home.index') }}">Refresh</a></div>
 
-{% if timer %}{% set entry, timed = timer %}
-<section class="cn-panel cn-now-panel" aria-labelledby="now-title">
-  <h2 id="now-title"><i class="fa-solid fa-stopwatch" aria-hidden="true"></i> Working on</h2>
-  <p><a href="{{ url_for('tasks.detail', task_id=timed.id) }}">{{ timed.title }}</a> — since <time datetime="{{ entry.started_at.isoformat() }}">{{ entry.started_at.strftime("%H:%M") }} UTC</time></p>
-</section>
-{% endif %}
-
-<div class="cn-today-grid">
-  <section class="cn-panel" aria-labelledby="next-title">
-    <h2 id="next-title">What should I do now?</h2>
-    <p class="cn-panel-lead">Actionable tasks — not blocked, not waiting, not planned for later — best score first.</p>
+<div class="cn-home-grid">
+  <section class="cn-panel cn-home-next" aria-labelledby="next-title">
+    <header class="cn-home-head"><h2 id="next-title">Then</h2><a href="{{ url_for('tasks.index', state='actionable') }}">All ready tasks <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></header>
     {% if next_actions %}
-    <ol class="cn-next">
+    {% set top = (focus.score if focus else 0) or 1 %}
+    <ol class="cn-up-next">
       {% for task in next_actions %}
-      <li>
-        <div class="cn-next-main">
-          {{ type_icon(task, types) }} <a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a>
-          <div class="cn-next-meta">{{ project_chip(task.project) }} {{ priority(task) }} {{ due(task) }}{% if task.unblocks_count %} <span class="cn-unblocks-chip" title="Open tasks waiting on this one"><i class="fa-solid fa-unlock" aria-hidden="true"></i> unblocks {{ task.unblocks_count }}</span>{% endif %}</div>
+      <li class="cn-color-{{ task.project.color if task.project else 'slate' }}">
+        <span class="cn-up-rank">{{ loop.index + 1 }}</span>
+        <div class="cn-up-main">
+          <a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a>
+          <span class="cn-up-meta">{{ task.project.name if task.project else "No project" }}{% if task.due_on %} · {{ task.due_on | relative_day }}{% endif %}{% if task.unblocks_count %} · unblocks {{ task.unblocks_count }}{% endif %}</span>
         </div>
-        {{ score(task) }}
+        <meter class="cn-up-score" min="0" max="{{ top }}" value="{{ task.score }}" title="Score {{ '%.0f' | format(task.score) }}">{{ "%.0f" | format(task.score) }}</meter>
         <form method="post" action="{{ url_for('tasks.start_timer', task_id=task.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">
-          <button class="btn btn-sm btn-outline-secondary" type="submit" title="Start working on it"><i class="fa-solid fa-play" aria-hidden="true"></i><span class="visually-hidden">Start working on {{ task.title }}</span></button>
+          <button class="cn-icon-button cn-up-start" type="submit" title="Start working on it"><i class="fa-solid fa-play" aria-hidden="true"></i><span class="visually-hidden">Start {{ task.title }}</span></button>
         </form>
       </li>
       {% endfor %}
     </ol>
-    <a class="cn-more" href="{{ url_for('tasks.index', state='actionable') }}">All actionable tasks</a>
     {% else %}
-    <p class="cn-muted">Nothing actionable. Add a task above, or look at what is blocked.</p>
+    <p class="cn-muted">Nothing else is ready. The rest waits on something.</p>
     {% endif %}
   </section>
 
-  <section class="cn-panel" aria-labelledby="attention-title">
-    <h2 id="attention-title">Needs attention</h2>
+  <section class="cn-panel cn-home-week" aria-labelledby="week-title">
+    <header class="cn-home-head"><h2 id="week-title">This week</h2>{% if week.late %}<a class="cn-week-late" href="{{ url_for('tasks.index', state='overdue') }}">{{ week.late | length }} late</a>{% endif %}</header>
+    <ol class="cn-week">
+      {% for day in week.days %}
+      <li class="{{ 'is-today' if day.today }} {{ 'is-weekend' if day.weekend }} {{ 'has-tasks' if day.tasks }}">
+        <span class="cn-week-day">{{ day.date.strftime("%a") }}</span>
+        <span class="cn-week-num">{{ day.date.day }}</span>
+        <ul>
+          {% for task in day.tasks[:3] %}<li class="cn-color-{{ task.project.color if task.project else 'slate' }}"><a href="{{ url_for('tasks.detail', task_id=task.id) }}" title="{{ task.title }}">{{ task.title }}</a></li>{% endfor %}
+          {% if day.tasks | length > 3 %}<li class="cn-week-more">+{{ day.tasks | length - 3 }}</li>{% endif %}
+        </ul>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="cn-panel cn-home-attention" aria-labelledby="attention-title">
+    <header class="cn-home-head"><h2 id="attention-title">Needs a look</h2></header>
     {% if attention %}
     <ul class="cn-attention">
       {% for key, reason, task in attention %}
@@ -80,21 +120,41 @@
       {% endfor %}
     </ul>
     {% else %}
-    <p class="cn-muted">Nothing late, nothing stuck. <i class="fa-regular fa-face-smile" aria-hidden="true"></i></p>
+    <p class="cn-home-calm"><i class="fa-regular fa-face-smile" aria-hidden="true"></i> Nothing late, nothing stuck.</p>
     {% endif %}
   </section>
-</div>
 
-<section class="cn-panel" aria-labelledby="activity-title">
-  <h2 id="activity-title">Recent activity</h2>
-  <ul class="cn-activity">
-    {% for entry in activity %}
-      <li class="cn-level-{{ entry.level }}">
-        <time datetime="{{ entry.created_at.isoformat() }}">{{ entry.created_at.strftime("%d %b, %H:%M") }}</time>
-        <code>{{ entry.action }}</code>
-        <span class="cn-actor">{{ entry.actor }}</span>
+  <section class="cn-panel cn-home-projects" aria-labelledby="projects-title">
+    <header class="cn-home-head"><h2 id="projects-title">Projects</h2><a href="{{ url_for('projects.index') }}">All <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></header>
+    {% if projects %}
+    <ul class="cn-pulse">
+      {% for row in projects %}{% set p = row.project %}
+      <li class="cn-color-{{ p.color }}">
+        <a class="cn-pulse-name" href="{{ url_for('projects.detail', slug=p.slug) }}"><span class="cn-project-tile" aria-hidden="true"><i class="fa-solid {{ p.icon }}"></i></span>{{ p.name }}</a>
+        <meter class="cn-project-meter" min="0" max="{{ row.total or 1 }}" value="{{ row.closed }}" aria-label="{{ row.closed }} of {{ row.total }} tasks done"></meter>
+        <span class="cn-pulse-facts">{{ row.open }} open{% if row.blocked %} · {{ row.blocked }} blocked{% endif %}{% if row.overdue %} · <span class="cn-due-late">{{ row.overdue }} late</span>{% endif %}</span>
+        <a class="cn-icon-button" href="{{ url_for('graph.index', project=p.id) }}" title="{{ p.name }} as a graph"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span class="visually-hidden">{{ p.name }} as a graph</span></a>
       </li>
-    {% endfor %}
-  </ul>
-</section>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="cn-muted">No project yet. <a href="{{ url_for('projects.new') }}">Start one</a>.</p>
+    {% endif %}
+  </section>
+
+  <section class="cn-panel cn-home-activity" aria-labelledby="activity-title">
+    <header class="cn-home-head"><h2 id="activity-title">Lately</h2></header>
+    <ol class="cn-timeline">
+      {% for item in activity %}
+      <li class="cn-level-{{ item.level }}">
+        <span class="cn-timeline-icon" aria-hidden="true"><i class="fa-solid {{ item.icon }}"></i></span>
+        <p><strong>{{ item.who }}</strong> {{ item.verb }}{% if item.name %} {% if item.url %}<a href="{{ item.url }}">{{ item.name }}</a>{% else %}{{ item.name }}{% endif %}{% endif %}{% if item.after %} {{ item.after }}{% endif %}</p>
+        <time datetime="{{ item.when.isoformat() }}">{{ item.when.strftime("%d %b, %H:%M") }}</time>
+      </li>
+      {% else %}
+      <li><p class="cn-muted">Nothing yet.</p></li>
+      {% endfor %}
+    </ol>
+  </section>
+</div>
 {% endblock %}

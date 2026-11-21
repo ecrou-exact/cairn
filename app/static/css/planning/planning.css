@@ -167,17 +167,6 @@
 .cn-row-actions { display: flex; gap: var(--cn-space-2); justify-content: flex-end; }
 
 /* Today */
-.cn-today-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--cn-space-4); margin-bottom: var(--cn-space-4); }
-.cn-today-grid > .cn-panel + .cn-panel { margin-top: 0; }
-@media (max-width: 1000px) { .cn-today-grid { grid-template-columns: 1fr; } }
-.cn-next { list-style: none; margin: 0; padding: 0; counter-reset: next; }
-.cn-next li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: var(--cn-space-3); align-items: center; padding: var(--cn-space-2) 0; border-top: var(--cn-border-width) solid var(--cn-border); counter-increment: next; }
-.cn-next li:first-child { border-top: 0; }
-.cn-next li::before { content: counter(next); font-family: var(--cn-font-mono); color: var(--cn-text-faint); font-size: var(--cn-text-sm); }
-.cn-next li:first-child::before { color: var(--cn-accent); font-weight: var(--cn-weight-strong); }
-.cn-next-meta { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: center; margin-top: var(--cn-space-1); }
-.cn-unblocks-chip { font-size: var(--cn-text-xs); color: var(--cn-success); }
-.cn-more { display: inline-block; margin-top: var(--cn-space-3); font-size: var(--cn-text-sm); }
 .cn-attention { list-style: none; margin: 0; padding: 0; }
 .cn-attention li { display: flex; gap: var(--cn-space-3); padding: var(--cn-space-2) 0; border-top: var(--cn-border-width) solid var(--cn-border); }
 .cn-attention li:first-child { border-top: 0; }
@@ -189,9 +178,6 @@
 .cn-attention-at_risk i { color: var(--cn-danger); }
 .cn-attention-stale i { color: var(--cn-info); }
 .cn-attention-unblocked i { color: var(--cn-success); }
-.cn-now-panel { background: color-mix(in srgb, var(--cn-accent-soft) 70%, var(--cn-surface)); margin-bottom: var(--cn-space-5); }
-.cn-now-panel h2 i { color: var(--cn-accent); }
-.cn-notice-panel { margin-bottom: var(--cn-space-5); background: color-mix(in srgb, var(--cn-info-soft) 55%, var(--cn-surface)); }
 
 /* Bulk edit and inline editing */
 .cn-bulk {
@@ -231,26 +217,6 @@
 .cn-condition-done { color: var(--cn-text-muted); }
 .cn-condition-done i { color: var(--cn-text-faint); }
 .cn-date-input { flex: 0 1 11rem; }
-
-/* Today: greeting and the plan at a glance, as a row of stones */
-.cn-today-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: var(--cn-space-5); }
-.cn-cairn-stats { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); margin: 0; }
-.cn-cairn-stats > div {
-  --cn-stone: var(--cn-border-strong);
-  min-width: 7rem;
-  padding: var(--cn-space-3) var(--cn-space-4);
-  background: var(--cn-surface);
-  border-radius: var(--cn-radius-slab);
-  box-shadow: var(--cn-slab-shadow);
-}
-.cn-cairn-stats dt { display: flex; align-items: center; gap: var(--cn-space-2); font-size: var(--cn-text-xs); font-weight: var(--cn-weight-regular); color: var(--cn-text-faint); letter-spacing: var(--cn-tracking-caps); text-transform: uppercase; }
-.cn-cairn-stats dt::before { content: ""; width: 0.6rem; height: 0.45rem; border-radius: 3px 3px 4px 4px; background: var(--cn-stone); }
-.cn-cairn-stats dd { margin: var(--cn-space-1) 0 0; font-size: var(--cn-text-2xl); font-weight: var(--cn-weight-strong); letter-spacing: -0.02em; line-height: 1.1; }
-.cn-cairn-stats dd a { color: inherit; }
-.cn-cairn-stats .cn-stat-warn { --cn-stone: var(--cn-warning); }
-.cn-cairn-stats .cn-stat-bad { --cn-stone: var(--cn-danger); }
-.cn-cairn-stats .cn-stat-bad dd { color: var(--cn-danger); }
-.cn-cairn-stats .cn-stat-good { --cn-stone: var(--cn-success); }
 
 /* Project cards: a coloured stone for the icon, the share of work done as a meter */
 .cn-cards.cn-project-cards { grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); }

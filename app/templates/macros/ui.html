@@ -1,13 +1,14 @@
 {# Small shared UI pieces. Bigger reusable components get their own template in components/. #}
 
 {% macro brand_mark(class="cn-brand-mark") -%}
+{# Cairn's mark (docs/brand/cairn-mark.svg): three stones at rest, the mark-coloured sun above. #}
 <svg class="{{ class }}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
   <g fill="currentColor">
-    <rect x="10" y="44" width="44" height="12" rx="6"/>
-    <rect x="16" y="29" width="32" height="11" rx="5.5"/>
-    <rect x="23" y="15" width="18" height="10" rx="5"/>
+    <path d="M6.5 51.2c0-5.6 9.6-8.9 24.1-9.3 15.6-.4 26.9 2.6 26.9 8.6 0 5.7-10.2 8.6-25.4 8.6C17.4 59.1 6.5 56.7 6.5 51.2z"/>
+    <path d="M13.6 35.4c.6-4.6 8.4-7.4 18.6-7.3 10.8.1 18.1 3.1 17.6 7.9-.5 4.4-8.3 6.6-18.4 6.4-10.6-.2-18.4-2.6-17.8-7z" fill-opacity=".86"/>
+    <path d="M21.4 20.6c.9-3.7 5.7-6 11.6-5.7 6.4.3 10.5 2.9 9.9 6.6-.6 3.4-5.2 5.4-11.2 5.1-6.4-.3-11.1-2.6-10.3-6z" fill-opacity=".72"/>
   </g>
-  <circle class="cn-mark-dot" cx="44" cy="10" r="4"/>
+  <circle class="cn-mark-dot" cx="47.5" cy="9.5" r="4.6"/>
 </svg>
 {%- endmacro %}
 
