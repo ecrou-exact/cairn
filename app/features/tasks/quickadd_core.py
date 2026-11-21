@@ -32,7 +32,7 @@ from sqlalchemy import func, or_, select
 from app.core.db_class.planning import Project, Task
 from app.core.extensions import db
 from app.core.schema.planning import TaskCreate
-from app.features.tasks import tasks_core, workflow
+from app.features.tasks import recurrence_core, tasks_core, workflow
 
 WEEKDAYS = {
     **{
@@ -50,6 +50,17 @@ WEEKDAYS = {
 PRIORITY_WORDS = {"critical": "critical", "high": "high", "medium": "medium", "low": "low", "1": "critical"}
 PRIORITY_WORDS |= {"2": "high", "3": "medium", "4": "low", "crit": "critical", "urgent": "critical"}
 DUE_WORDS = ("by", "due", "before", "avant")
+# Recurrence: "daily", "weekly", "every 2 weeks", "chaque semaine", "tous les mois".
+REPEAT_ADVERBS = {
+    "daily": "day", "weekly": "week", "monthly": "month", "yearly": "year",
+    "quotidien": "day", "hebdo": "week", "hebdomadaire": "week", "mensuel": "month", "annuel": "year",
+}  # fmt: skip
+REPEAT_UNITS = {
+    "day": "day", "days": "day", "week": "week", "weeks": "week", "month": "month", "months": "month",
+    "year": "year", "years": "year", "jour": "day", "jours": "day", "semaine": "week", "semaines": "week",
+    "mois": "month", "an": "year", "ans": "year", "année": "year", "années": "year",
+}  # fmt: skip
+REPEAT_WORDS = ("every", "chaque", "toutes", "tous")
 DO_WORDS = ("on", "le")
 PROJECT_WORDS = ("for", "pour")
 DUPLICATE_RATIO = 0.82
@@ -67,6 +78,7 @@ class Parsed:
     hard_deadline: bool = False
     estimate_hours: float | None = None
     assignee: str | None = None
+    recurrence: dict[str, Any] | None = None
     understood: list[dict[str, str]] = field(default_factory=list)  # chips for the preview
 
     def note(self, kind: str, text: str) -> None:
@@ -116,6 +128,25 @@ def _date(words: list[str], today: date) -> tuple[date | None, int]:
             found = found.replace(year=year + 1)
         return found, 1
     return None, 0
+
+
+def _repeat(word: str, rest: list[str]) -> tuple[dict[str, Any], int] | None:
+    """A recurrence starting at `word`, and how many of the following words it used."""
+    if word in REPEAT_ADVERBS:
+        return {"every": 1, "unit": REPEAT_ADVERBS[word], "anchor": "due"}, 0
+    if word not in REPEAT_WORDS:
+        return None
+    following = [w.lower().rstrip(",.") for w in rest[:3]]
+    if following and following[0] in ("les", "the"):  # "tous les jours", "toutes les 2 semaines"
+        following, skipped = following[1:], 1
+    else:
+        skipped = 0
+    every = 1
+    if following and following[0].isdigit() and 0 < int(following[0]) <= 365:
+        every, following, skipped = int(following[0]), following[1:], skipped + 1
+    if following and following[0] in REPEAT_UNITS:
+        return {"every": every, "unit": REPEAT_UNITS[following[0]], "anchor": "due"}, skipped + 1
+    return None
 
 
 def _project(name: str) -> Project | None:
@@ -173,6 +204,12 @@ def parse(text: str, today: date | None = None) -> Parsed:
                 result.note("tag", f"#{key}")
             i += 1
             continue
+        if result.recurrence is None and (found := _repeat(lower, rest)):
+            rule, used = found
+            result.recurrence = rule
+            result.note("repeat", recurrence_core.describe(rule).split(",")[0])
+            i += 1 + used
+            continue
         if lower == "!hard":
             result.hard_deadline = True
             result.note("hard", "Hard deadline")
@@ -215,7 +252,7 @@ def to_create(
 ) -> TaskCreate:
     values: dict[str, Any] = {"title": parsed.title, "parent_id": parent_id, "tags": parsed.tags}
     values["project_id"] = parsed.project.id if parsed.project else project_id
-    for key in ("type", "priority", "due_on", "do_on", "estimate_hours", "assignee"):
+    for key in ("type", "priority", "due_on", "do_on", "estimate_hours", "assignee", "recurrence"):
         if getattr(parsed, key) is not None:
             values[key] = getattr(parsed, key)
     values["hard_deadline"] = parsed.hard_deadline

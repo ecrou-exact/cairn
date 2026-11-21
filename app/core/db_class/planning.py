@@ -79,6 +79,9 @@ class Task(BaseEntity):
     checklist: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
     acceptance_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
     claude_instructions_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # {"every", "unit", "anchor"} (recurrence_core); done → the next occurrence is created.
+    recurrence: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    next_occurrence_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
 
     # Derived, recomputed by tasks_core after every planning change (and daily): kept as
     # columns so lists can filter and sort on them in the database.

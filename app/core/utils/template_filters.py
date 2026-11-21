@@ -54,10 +54,11 @@ def host(url: str | None) -> str:
 def register_template_filters(app: Flask) -> None:
     from app.features.comments import comments_core
     from app.features.resources import resources_core
-    from app.features.tasks import timer_core, workflow
+    from app.features.tasks import recurrence_core, timer_core, workflow
 
     app.add_template_filter(pretty_json)
     app.add_template_filter(filesize)
+    app.add_template_filter(recurrence_core.describe, "recurrence")
     app.add_template_filter(comments_core.author_label, "author")
     app.add_template_filter(host)
     app.add_template_filter(resources_core.icon_of, "resource_icon")

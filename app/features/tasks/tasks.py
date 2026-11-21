@@ -39,6 +39,11 @@ DEPENDENCY_DIRECTIONS = {
 }
 
 
+def _spawned(task, before) -> bool:
+    """True when the change just made created the next occurrence of a repeating task."""
+    return task.next_occurrence_id is not None and task.next_occurrence_id != before
+
+
 def _task_or_404(task_id: uuid.UUID):
     try:
         return tasks_core.get_task(task_id)
@@ -266,6 +271,7 @@ def brief(task_id: uuid.UUID):
 @tasks.post("/tasks/<uuid:task_id>/status")
 def change_status(task_id: uuid.UUID):
     status = request.form.get("status", "")
+    before = _task_or_404(task_id).next_occurrence_id
     try:
         with batch() as batch_id:
             task = tasks_core.set_status(task_id, status)
@@ -274,7 +280,12 @@ def change_status(task_id: uuid.UUID):
     except tasks_core.TaskError as exc:
         flash(str(exc), "danger")
     else:
-        flash_undo(f"“{task.title}” is now {workflow.label_of(task.status)}.", batch_id)
+        message = f"“{task.title}” is now {workflow.label_of(task.status)}."
+        following = tasks_core.get_task(task.next_occurrence_id) if _spawned(task, before) else None
+        if following is not None:
+            when = f" for {following.due_on:%a %d %b}" if following.due_on else ""
+            message += f" Next one created{when}."
+        flash_undo(message, batch_id)
     return redirect(back_to(url_for("tasks.detail", task_id=task_id)))
 
 

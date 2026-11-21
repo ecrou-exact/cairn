@@ -15,7 +15,7 @@ import re
 from app.core.db_class.planning import Task
 from app.features.comments import comments_core
 from app.features.resources import resources_core
-from app.features.tasks import dependencies_core, related_core, tasks_core, workflow
+from app.features.tasks import dependencies_core, recurrence_core, related_core, tasks_core, workflow
 
 MAX_INLINE = 4000  # longer notes and snippets are cut, with a pointer to the resource
 
@@ -93,6 +93,8 @@ def task_brief(task: Task) -> str:
         facts.append("- Part of: " + " › ".join(parent.title for parent in chain))
     if task.due_on:
         facts.append(f"- Due: {task.due_on.isoformat()}{' (hard deadline)' if task.hard_deadline else ''}")
+    if task.recurrence:
+        facts.append(f"- Repeats: {recurrence_core.describe(task.recurrence)}")
     if task.estimate_hours:
         facts.append(f"- Estimate: {task.estimate_hours:g} h")
     if task.tags:

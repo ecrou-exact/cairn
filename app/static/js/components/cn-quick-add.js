@@ -8,7 +8,7 @@ import { api, debounce } from '../core/api.js';
 
 const ICONS = {
   project: 'fa-folder', due: 'fa-calendar-day', do: 'fa-calendar-check', type: 'fa-shapes', tag: 'fa-hashtag',
-  priority: 'fa-flag', estimate: 'fa-hourglass-half', assignee: 'fa-user', hard: 'fa-lock',
+  priority: 'fa-flag', estimate: 'fa-hourglass-half', assignee: 'fa-user', hard: 'fa-lock', repeat: 'fa-repeat',
 };
 
 class CnQuickAdd extends HTMLElement {

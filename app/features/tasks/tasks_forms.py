@@ -51,6 +51,18 @@ def values_from_form(form: Mapping[str, str]) -> dict[str, Any]:
         "checklist": checklist_from_text(form.get("checklist")),
         "acceptance_md": form.get("acceptance_md", ""),
         "claude_instructions_md": form.get("claude_instructions_md", ""),
+        "recurrence": recurrence_from_form(form),
+    }
+
+
+def recurrence_from_form(form: Mapping[str, str]) -> dict[str, Any] | None:
+    unit = form.get("repeat_unit") or ""
+    if not unit:
+        return None
+    return {
+        "every": form.get("repeat_every") or 1,
+        "unit": unit,
+        "anchor": form.get("repeat_anchor") or "due",
     }
 
 
@@ -76,4 +88,7 @@ def values_from_task(task: Task) -> dict[str, Any]:
         "checklist": checklist_to_text(task.checklist),
         "acceptance_md": task.acceptance_md,
         "claude_instructions_md": task.claude_instructions_md,
+        "repeat_unit": (task.recurrence or {}).get("unit", ""),
+        "repeat_every": (task.recurrence or {}).get("every", 1),
+        "repeat_anchor": (task.recurrence or {}).get("anchor", "due"),
     }

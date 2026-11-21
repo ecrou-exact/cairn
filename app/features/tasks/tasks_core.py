@@ -26,7 +26,7 @@ from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
 from app.features.comments import comments_core
 from app.features.resources import resources_core
-from app.features.tasks import workflow
+from app.features.tasks import recurrence_core, workflow
 from app.features.tasks.dependencies_core import refresh_derived
 from app.features.tasks.risk_core import deadline_risks
 
@@ -126,8 +126,11 @@ def update(task_id: uuid.UUID, data: TaskUpdate, *, force: bool = False) -> Task
     """Apply the fields set in `data`. `force` skips the workflow transition check (undo)."""
     task = get_task(task_id)
     fields = data.model_dump(exclude_unset=True)
-    if data.checklist is not None:  # exclude_unset also drops `done: false` inside each item
+    # exclude_unset also drops the defaults inside nested items (`done: false`, `anchor`)
+    if data.checklist is not None:
         fields["checklist"] = [item.model_dump() for item in data.checklist]
+    if data.recurrence is not None:
+        fields["recurrence"] = data.recurrence.model_dump()
     if "type" in fields:
         _check_type(fields["type"])
     if "status" in fields and fields["status"] != task.status:
@@ -157,9 +160,63 @@ def update(task_id: uuid.UUID, data: TaskUpdate, *, force: bool = False) -> Task
         elif now_open and not was_open:
             task.completed_at = None
         log_action("task.update", target_type="task", target_id=task.id, diff=diff)
+        if was_open and workflow.kind_of(task.status) == "done":
+            _spawn_next_occurrence(task)
         refresh_derived()
         _changed(task)
     return task
+
+
+def _spawn_next_occurrence(task: Task) -> Task | None:
+    """A recurring task just done: create the next one (once, even if it is reopened and
+    done again). Undoing the change removes it with the rest of the batch."""
+    if not task.recurrence:
+        return None
+    existing = db.session.get(Task, task.next_occurrence_id) if task.next_occurrence_id else None
+    if existing is not None and not existing.is_deleted:
+        return None
+    dates = recurrence_core.next_dates(
+        task.recurrence, start_on=task.start_on, do_on=task.do_on, due_on=task.due_on, today=date.today()
+    )
+    following = create(
+        TaskCreate(
+            title=task.title,
+            description_md=task.description_md,
+            project_id=task.project_id,
+            parent_id=task.parent_id,
+            type=task.type,
+            priority=task.priority,
+            importance=task.importance,
+            urgency=task.urgency,
+            hard_deadline=task.hard_deadline and dates["due_on"] is not None,
+            estimate_hours=task.estimate_hours,
+            assignee=task.assignee,
+            tags=task.tags,
+            checklist=[{"text": item["text"], "done": False} for item in task.checklist],
+            acceptance_md=task.acceptance_md,
+            claude_instructions_md=task.claude_instructions_md,
+            recurrence=task.recurrence,
+            **dates,
+        )
+    )
+    log_action(
+        "task.recur",
+        target_type="task",
+        target_id=task.id,
+        diff={"next_occurrence_id": [_json(task.next_occurrence_id), str(following.id)]},
+    )
+    task.next_occurrence_id = following.id
+    return following
+
+
+def _undo_recur(row) -> None:
+    task = db.session.get(Task, uuid.UUID(row.target_id))
+    if task is not None:
+        old = row.diff["next_occurrence_id"][0]
+        task.next_occurrence_id = uuid.UUID(old) if old else None
+
+
+register_undo("task.recur", _undo_recur)
 
 
 def set_status(task_id: uuid.UUID, status: str) -> Task:

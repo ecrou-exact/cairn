@@ -16,7 +16,7 @@
 
 {% set tab_errors = {
   "essentials": ["title", "description_md", "project_id", "parent_id", "type", "status", "priority", "tags"],
-  "planning": ["importance", "urgency", "start_on", "due_on", "hard_deadline", "do_on", "estimate_hours", "assignee"],
+  "planning": ["importance", "urgency", "start_on", "due_on", "hard_deadline", "do_on", "estimate_hours", "assignee", "recurrence"],
   "claude": ["claude_instructions_md"],
   "advanced": ["checklist", "acceptance_md"],
 } %}
@@ -59,6 +59,16 @@
       </div>
       {{ f.checkbox("hard_deadline", "Hard deadline (a release, an event): weighs more in the score", values, errors) }}
       {{ f.text("assignee", "Assignee", values, errors, hint="me, claude, or a collaborator's name.") }}
+      <fieldset class="cn-field">
+        <legend class="form-label">Repeats</legend>
+        <div class="cn-form-grid">
+          {{ f.select("repeat_unit", "Repeat", values, errors, [("", "Does not repeat"), ("day", "Daily"), ("week", "Weekly"), ("month", "Monthly"), ("year", "Yearly")]) }}
+          {{ f.text("repeat_every", "Every how many", values, errors, type="number", hint="2 with Weekly: every other week.", attrs={"min": "1", "max": "365", "step": "1"}) }}
+          {{ f.select("repeat_anchor", "Next one counted", values, errors, [("due", "from the due date (keeps the rhythm)"), ("done", "from the day it is done")]) }}
+        </div>
+        <div class="form-text">When a repeating task is done, the next one is created with its dates moved and its checklist unticked.</div>
+        {% if errors.get("recurrence") %}<div class="invalid-feedback d-block">{{ errors["recurrence"] }}</div>{% endif %}
+      </fieldset>
     </div>
     <div class="tab-pane fade" id="pane-claude" role="tabpanel" aria-labelledby="tab-claude">
       {{ f.markdown("claude_instructions_md", "Instructions for Claude", values, errors, hint="How this task must be done, constraints, what to avoid. Sent with every run on this task.") }}

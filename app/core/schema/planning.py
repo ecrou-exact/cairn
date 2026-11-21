@@ -47,6 +47,12 @@ class ChecklistItem(Strict):
     done: bool = False
 
 
+class Recurrence(Strict):
+    every: Annotated[int, Field(ge=1, le=365)] = 1
+    unit: Literal["day", "week", "month", "year"]
+    anchor: Literal["due", "done"] = "due"
+
+
 # -- projects --------------------------------------------------------------------------------
 
 
@@ -139,6 +145,7 @@ class TaskCreate(Strict):
     checklist: Annotated[list[ChecklistItem], Field(max_length=100)] = Field(default_factory=list)
     acceptance_md: Markdown = ""
     claude_instructions_md: Markdown = ""
+    recurrence: Recurrence | None = None
 
     @field_validator("title")
     @classmethod
@@ -166,6 +173,7 @@ class TaskUpdate(Strict):
     checklist: Annotated[list[ChecklistItem], Field(max_length=100)] | None = None
     acceptance_md: Markdown | None = None
     claude_instructions_md: Markdown | None = None
+    recurrence: Recurrence | None = None  # sent as null: no longer repeats
 
     @field_validator("title")
     @classmethod
@@ -206,6 +214,8 @@ class TaskOut(Output):
     checklist: list[dict[str, Any]]
     acceptance_md: str
     claude_instructions_md: str
+    recurrence: dict[str, Any] | None
+    next_occurrence_id: uuid.UUID | None
     is_open: bool
     is_blocked: bool
     blocked_by_count: int
