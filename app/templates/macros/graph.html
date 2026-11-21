@@ -1,0 +1,38 @@
+{# The graph stage (D-035): Pivotick canvas with Cairn's chrome. `query` is what /api/graph
+   gets (project, root, closed, level); `compact` for the embedded version on task pages. #}
+
+{% macro graph_stage(query, label="Task graph", compact=False) -%}
+<section class="cn-graph cn-graph-loading{{ ' cn-graph-compact' if compact }}" data-graph data-query="{{ query }}" aria-label="{{ label }}">
+  <div class="cn-graph-canvas" data-graph-canvas></div>
+  <div class="cn-graph-zoom" role="group" aria-label="Zoom">
+    <button type="button" class="cn-icon-button" data-graph-action="in" title="Zoom in"><i class="fa-solid fa-plus" aria-hidden="true"></i><span class="visually-hidden">Zoom in</span></button>
+    <button type="button" class="cn-icon-button" data-graph-action="out" title="Zoom out"><i class="fa-solid fa-minus" aria-hidden="true"></i><span class="visually-hidden">Zoom out</span></button>
+    <button type="button" class="cn-icon-button" data-graph-action="now" title="Back to what to do now"><i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i><span class="visually-hidden">What to do now</span></button>
+    <button type="button" class="cn-icon-button" data-graph-action="fit" title="See everything"><i class="fa-solid fa-expand" aria-hidden="true"></i><span class="visually-hidden">Fit</span></button>
+  </div>
+  <label class="cn-switch cn-switch-critical cn-graph-critical-toggle"><input type="checkbox" data-graph-critical><span><i class="fa-solid fa-route" aria-hidden="true"></i> Critical path <small data-graph-critical-summary></small></span></label>
+  <aside class="cn-gpanel" data-graph-panel hidden aria-live="polite"></aside>
+  <div class="cn-gpeek" data-graph-peek hidden aria-hidden="true"></div>
+  <div class="cn-graph-legend" aria-label="Legend">
+    <span class="cn-graph-count" data-graph-count></span>
+    <span class="cn-graph-direction"><i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>first → later</span>
+    {% if not compact %}
+    <span><i class="cn-lg cn-lg-blocks" aria-hidden="true"></i>blocks</span>
+    <span><i class="cn-lg cn-lg-follows" aria-hidden="true"></i>comes after</span>
+    <span><i class="cn-lg cn-lg-relates" aria-hidden="true"></i>related</span>
+    {% endif %}
+  </div>
+  <div class="cn-graph-empty" data-graph-empty hidden>
+    <i class="fa-solid fa-diagram-project" aria-hidden="true"></i>
+    <h2>Nothing to draw here</h2>
+    <p>Add tasks and link them with dependencies; they appear here as a map.</p>
+  </div>
+  <div class="cn-graph-error" data-graph-error hidden role="alert"><strong>The graph could not be drawn.</strong> <span data-error></span></div>
+  <p class="cn-graph-wait" role="status">Drawing the graph…</p>
+</section>
+{%- endmacro %}
+
+{% macro graph_assets() -%}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/pivotick/pivotick.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/graph/graph.css') }}">
+{%- endmacro %}

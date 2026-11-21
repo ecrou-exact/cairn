@@ -16,7 +16,7 @@ from collections import defaultdict
 from datetime import date
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 
 from app.core.db_class.planning import Dependency, Task
 from app.core.extensions import db
@@ -37,30 +37,32 @@ def _barycentre(tid, column, position, neighbours, rank) -> float:
     return sum(linked) / len(linked) if linked else position[tid]
 
 
-def plan_layout(tasks: dict[uuid.UUID, Task], deps: list[Dependency]) -> dict[uuid.UUID, tuple[float, float]]:
+def plan_layout(
+    tasks: dict[uuid.UUID, Task],
+    ordering: list[tuple[uuid.UUID, uuid.UUID]],
+    parents: dict[uuid.UUID, uuid.UUID] | None = None,
+) -> dict[uuid.UUID, tuple[float, float]]:
     """Where each card goes: a column per step of the plan, read from left to right.
 
-    A task stands right of everything that must come first: what blocks it or comes before
-    it, what blocks its parent tasks (a subtask cannot start before its parent can), and
-    its own subtasks (a parent is done when they are). Rows group a column by project,
-    then a few sweeps place each card near the cards it is linked to, to uncross lines.
+    `ordering` lists (first, then) pairs among `tasks`; `parents` maps a shown subtask to its
+    shown parent. A task stands right of everything that must come first: what blocks it or
+    comes before it, what blocks its parent tasks (a subtask cannot start before its parent
+    can), and its own subtasks (a parent is done when they are). Rows group a column by
+    project, then a few sweeps place each card near the cards it is linked to.
     """
+    parents = parents or {}
     before: dict[uuid.UUID, set[uuid.UUID]] = defaultdict(set)
-    for dep in deps:
-        if dep.kind in ORDERING:
-            before[dep.to_task_id].add(dep.from_task_id)
-    for task in tasks.values():
-        if task.parent_id in tasks:
-            before[task.parent_id].add(task.id)
+    for first, then in ordering:
+        before[then].add(first)
+    for child, parent in parents.items():
+        before[parent].add(child)
 
     def inherited(task_id: uuid.UUID) -> set[uuid.UUID]:
-        found, parent, seen = set(before[task_id]), tasks[task_id].parent_id, set()
-        while parent in tasks and parent not in seen:
+        found, parent, seen = set(before[task_id]), parents.get(task_id), set()
+        while parent is not None and parent not in seen:
             seen.add(parent)
-            found |= {
-                b for b in before[parent] if b != task_id and b in tasks and tasks[b].parent_id != parent
-            }
-            parent = tasks[parent].parent_id
+            found |= {b for b in before[parent] if b != task_id and parents.get(b) != parent}
+            parent = parents.get(parent)
         return found
 
     preds = {tid: {p for p in inherited(tid) if p in tasks and p != tid} for tid in tasks}
@@ -113,9 +115,14 @@ def _remaining(task: Task) -> tuple[float, bool]:
     return max(task.estimate_hours - task.tracked_seconds / 3600, 0.0), False
 
 
-def critical_path(tasks: dict[uuid.UUID, Task], blocks: list[tuple[uuid.UUID, uuid.UUID]]) -> dict[str, Any]:
+def critical_path(
+    tasks: dict[uuid.UUID, Task],
+    blocks: list[tuple[uuid.UUID, uuid.UUID]],
+    remaining=None,
+) -> dict[str, Any]:
     """Longest chain of open tasks along `blocks` edges, by remaining hours (the graph is
-    acyclic: dependencies_core refuses cycles)."""
+    acyclic: dependencies_core refuses cycles). `remaining(task)` → (hours, unknown)."""
+    remaining = remaining or _remaining
     open_ids = {tid for tid, task in tasks.items() if task.is_open}
     successors: dict[uuid.UUID, list[uuid.UUID]] = defaultdict(list)
     indegree: dict[uuid.UUID, int] = {tid: 0 for tid in open_ids}
@@ -134,11 +141,11 @@ def critical_path(tasks: dict[uuid.UUID, Task], blocks: list[tuple[uuid.UUID, uu
     best: dict[uuid.UUID, float] = {}
     previous: dict[uuid.UUID, uuid.UUID | None] = {}
     for node in order:
-        hours = _remaining(tasks[node])[0]
+        hours = remaining(tasks[node])[0]
         if node not in best:
             best[node], previous[node] = hours, None
         for nxt in successors[node]:
-            candidate = best[node] + _remaining(tasks[nxt])[0]
+            candidate = best[node] + remaining(tasks[nxt])[0]
             if candidate > best.get(nxt, -1.0):
                 best[nxt], previous[nxt] = candidate, node
     if not best:
@@ -155,7 +162,7 @@ def critical_path(tasks: dict[uuid.UUID, Task], blocks: list[tuple[uuid.UUID, uu
     return {
         "nodes": [str(tid) for tid in chain],
         "hours": round(best[end], 1),
-        "unknown": sum(1 for tid in chain if _remaining(tasks[tid])[1]),
+        "unknown": sum(1 for tid in chain if remaining(tasks[tid])[1]),
     }
 
 
@@ -209,56 +216,170 @@ def _node(
     }
 
 
-def graph_data(project_id: uuid.UUID | None = None, *, include_closed: bool = False) -> dict[str, Any]:
+def _scope(project_id: uuid.UUID | None) -> dict[uuid.UUID, Task]:
     query = select(Task).where(Task.deleted_at.is_(None))
     if project_id is not None:
         query = query.where(Task.project_id == project_id)
-    if not include_closed:
-        query = query.where(Task.is_open.is_(True))
-    tasks = {task.id: task for task in db.session.scalars(query)}
-    ids = list(tasks)
+    return {task.id: task for task in db.session.scalars(query)}
+
+
+def _breadcrumb(project, root: Task | None) -> list[dict[str, str]]:
+    trail = [{"label": "All projects", "url": "/graph"}]
+    if project is not None:
+        trail.append({"label": project.name, "url": f"/graph?project={project.id}"})
+    if root is not None:
+        chain, node, seen = [], root, set()
+        while node is not None and node.id not in seen:
+            seen.add(node.id)
+            chain.append(node)
+            node = db.session.get(Task, node.parent_id) if node.parent_id else None
+        trail += [{"label": t.title, "url": f"/graph?root={t.id}"} for t in reversed(chain)]
+    return trail
+
+
+def graph_data(
+    project_id: uuid.UUID | None = None,
+    *,
+    root_id: uuid.UUID | None = None,
+    include_closed: bool = False,
+    level: str = "top",
+) -> dict[str, Any]:
+    """The plan at one level, as Pivotick data.
+
+    - no root, `level="top"`: the top-level tasks (the cases of each project);
+    - no root, `level="all"`: every task, subtasks linked to their parent;
+    - a root with subtasks: its direct subtasks;
+    - a root without: the task and the tasks it is linked to (its neighbourhood).
+
+    Dependencies between deeper tasks are lifted to the cards shown, so a link between two
+    subtasks of different cases appears between those cases.
+    """
+    root = db.session.get(Task, root_id) if root_id else None
+    if root is not None and root.is_deleted:
+        root = None
+    project = root.project if root is not None else None
+    if project is None and project_id is not None:
+        from app.core.db_class.planning import Project
+
+        project = db.session.get(Project, project_id)
+    tasks = _scope(None if root is not None else project_id)
+    if root is not None and root.id not in tasks:
+        tasks[root.id] = root
     deps = (
         list(
             db.session.scalars(
                 select(Dependency).where(
-                    or_(Dependency.from_task_id.in_(ids), Dependency.to_task_id.in_(ids))
+                    Dependency.from_task_id.in_(list(tasks)), Dependency.to_task_id.in_(list(tasks))
                 )
             )
         )
-        if ids
+        if tasks
         else []
     )
-    deps = [d for d in deps if d.from_task_id in tasks and d.to_task_id in tasks]
-    path = critical_path(tasks, [(d.from_task_id, d.to_task_id) for d in deps if d.kind == "blocks"])
+    children: dict[uuid.UUID, list[Task]] = defaultdict(list)
+    for task in tasks.values():
+        if task.parent_id in tasks:
+            children[task.parent_id].append(task)
+
+    def visible(task: Task) -> bool:
+        return include_closed or task.is_open
+
+    if root is not None and children[root.id]:
+        mode, shown_ids = "children", [t.id for t in children[root.id] if visible(t)]
+    elif root is not None:
+        mode = "around"
+        linked = {d.from_task_id for d in deps if d.to_task_id == root.id}
+        linked |= {d.to_task_id for d in deps if d.from_task_id == root.id}
+        shown_ids = [root.id, *[t for t in linked if visible(tasks[t])]]
+    elif level == "all":
+        mode, shown_ids = "all", [t.id for t in tasks.values() if visible(t)]
+    else:
+        mode = "top"
+        shown_ids = [
+            t.id for t in tasks.values() if visible(t) and (t.parent_id is None or t.parent_id not in tasks)
+        ]
+    shown = {tid: tasks[tid] for tid in shown_ids}
+
+    def rep(task_id: uuid.UUID) -> uuid.UUID | None:
+        """The card standing for a task at this level: itself, or its nearest shown ancestor."""
+        seen = set()
+        node = tasks.get(task_id)
+        while node is not None and node.id not in seen:
+            if node.id in shown:
+                return node.id
+            if mode in ("around",):
+                return None
+            seen.add(node.id)
+            node = tasks.get(node.parent_id) if node.parent_id else None
+        return None
+
+    lifted: dict[tuple[uuid.UUID, uuid.UUID, str], list[Dependency]] = defaultdict(list)
+    for dep in deps:
+        a, b = rep(dep.from_task_id), rep(dep.to_task_id)
+        if a is not None and b is not None and a != b:
+            lifted[(a, b, dep.kind)].append(dep)
+
+    def remaining(task: Task) -> tuple[float, bool]:
+        hours, unknown = _remaining(task)
+        if mode == "all" or not children[task.id]:
+            return hours, unknown
+        if task.estimate_hours is None:  # a case without its own estimate is the sum of its parts
+            hours, unknown = 0.0, False
+        stack = list(children[task.id])
+        while stack:  # a case weighs the work left in all its open subtasks
+            child = stack.pop()
+            if child.is_open:
+                more, missing = _remaining(child)
+                hours, unknown = hours + more, unknown or missing
+            stack.extend(children[child.id])
+        return hours, unknown
+
+    path = critical_path(shown, [(a, b) for (a, b, kind) in lifted if kind == "blocks"], remaining)
     on_path = set(path["nodes"])
     path_edges = set(zip(path["nodes"], path["nodes"][1:], strict=False))
+    parents = {t.id: t.parent_id for t in shown.values() if mode == "all" and t.parent_id in shown}
+    places = plan_layout(shown, [(a, b) for (a, b, kind) in lifted if kind in ORDERING], parents)
 
     today = date.today()
     types, statuses = workflow.types(), workflow.status_map()
-    places = plan_layout(tasks, deps)
-    nodes = [_node(task, types, statuses, today, on_path, places[task.id]) for task in tasks.values()]
+    nodes = []
+    for task in shown.values():
+        node = _node(task, types, statuses, today, on_path, places[task.id])
+        kids = children[task.id]
+        node["data"]["children"] = len(kids)
+        node["data"]["childrenDone"] = sum(1 for k in kids if not k.is_open)
+        node["data"]["drill"] = f"/graph?root={task.id}" if kids and mode != "all" else ""
+        node["data"]["isRoot"] = root is not None and task.id == root.id
+        nodes.append(node)
     edges = [
         {
-            "id": f"dep-{d.id}",
-            "from": str(d.from_task_id),
-            "to": str(d.to_task_id),
+            "id": f"dep-{a}-{b}-{kind}",
+            "from": str(a),
+            "to": str(b),
             "data": {
-                "kind": d.kind,
-                "note": d.note,
-                "critical": (str(d.from_task_id), str(d.to_task_id)) in path_edges,
+                "kind": kind,
+                "note": group[0].note if len(group) == 1 else f"{len(group)} links between their subtasks",
+                "count": len(group),
+                "critical": kind == "blocks" and (str(a), str(b)) in path_edges,
             },
         }
-        for d in deps
+        for (a, b, kind), group in lifted.items()
     ]
     edges += [
         {
-            "id": f"sub-{task.id}",
-            "from": str(task.parent_id),
-            "to": str(task.id),
-            "data": {"kind": "subtask", "note": "", "critical": False},
+            "id": f"sub-{child}",
+            "from": str(parent),
+            "to": str(child),
+            "data": {"kind": "subtask", "note": "", "count": 1, "critical": False},
         }
-        for task in tasks.values()
-        if task.parent_id in tasks
+        for child, parent in parents.items()
     ]
     steps = max((x for x, _ in places.values()), default=0) // (CARD_W + COL_GAP) + 1 if places else 0
-    return {"nodes": nodes, "edges": edges, "critical": path, "steps": int(steps)}
+    return {
+        "mode": mode,
+        "nodes": nodes,
+        "edges": edges,
+        "critical": path,
+        "steps": int(steps),
+        "breadcrumb": _breadcrumb(project, root),
+    }

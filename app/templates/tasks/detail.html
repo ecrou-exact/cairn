@@ -2,10 +2,12 @@
 {% from "macros/planning.html" import type_icon, priority, task_status, due, project_chip, quick_add, blocked_badge %}
 {% from "macros/resources.html" import resources_panel %}
 {% from "macros/comments.html" import comments_panel %}
+{% from "macros/graph.html" import graph_stage, graph_assets %}
 {% block title %}{{ task.title }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
+{{ graph_assets() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments/comments.css') }}">
 {% endblock %}
 {% block scripts %}
@@ -15,6 +17,7 @@
 <script type="module" src="{{ url_for('static', filename='js/planning/live-task.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-upload.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/core/live-panels.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>
 {% endblock %}
 {% block content %}
 <nav class="cn-crumbs" aria-label="Breadcrumb">
@@ -225,6 +228,14 @@
         <cn-picker kind="tasks" name="other_id" exclude="{{ task.id }}" label="Task to link"></cn-picker>
         <button class="btn btn-outline-secondary" type="submit">Link</button>
       </form>
+    </section>
+
+    <section class="cn-panel cn-task-graph" aria-labelledby="graph-title">
+      <header class="cn-task-graph-head">
+        <h2 id="graph-title">{{ "Its subtasks as a plan" if subtasks else "Where it stands in the plan" }}</h2>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('graph.index', root=task.id) }}"><i class="fa-solid fa-expand" aria-hidden="true"></i><span class="ms-1">Full graph</span></a>
+      </header>
+      {{ graph_stage("root=" ~ task.id, label="Graph of " ~ task.title, compact=True) }}
     </section>
 
     {{ resources_panel("task", task, resources, max_mb) }}

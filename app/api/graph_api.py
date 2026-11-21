@@ -1,4 +1,4 @@
-"""Graph API: the plan as Pivotick nodes and edges, with the critical path."""
+"""Graph API: the plan at one level as Pivotick nodes and edges, with the critical path."""
 
 from __future__ import annotations
 
@@ -12,12 +12,24 @@ from app.features.graph import graph_core
 graph_api = api_blueprint("graph_api")
 
 
+def _uuid(name: str) -> uuid.UUID | None:
+    raw = request.args.get(name)
+    if not raw:
+        return None
+    try:
+        return uuid.UUID(raw)
+    except ValueError as exc:
+        raise ApiError(f"'{name}' must be an id.", 422) from exc
+
+
 @graph_api.get("/graph")
 def get_graph():
-    project_id = None
-    if request.args.get("project"):
-        try:
-            project_id = uuid.UUID(request.args["project"])
-        except ValueError as exc:
-            raise ApiError("'project' must be a project id.", 422) from exc
-    return jsonify(graph_core.graph_data(project_id, include_closed=request.args.get("closed") == "1"))
+    """`project`, `root` (a task: its subtasks, or its neighbourhood), `closed=1`, `level=all`."""
+    return jsonify(
+        graph_core.graph_data(
+            _uuid("project"),
+            root_id=_uuid("root"),
+            include_closed=request.args.get("closed") == "1",
+            level="all" if request.args.get("level") == "all" else "top",
+        )
+    )

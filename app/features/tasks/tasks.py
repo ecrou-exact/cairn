@@ -12,6 +12,7 @@ from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, back_to, flash_undo, split_list, validate
 from app.features.comments import comments_core
+from app.features.graph.graph import with_graph_csp
 from app.features.projects import projects_core
 from app.features.resources import resources_core
 from app.features.tasks import (
@@ -233,7 +234,7 @@ def detail(task_id: uuid.UUID):
     task = _task_or_404(task_id)
     current = timer_core.running()
     ancestors = tasks_core.ancestors(task)
-    return render_template(
+    page = render_template(
         "tasks/detail.html",
         task=task,
         events_after=after,
@@ -263,6 +264,7 @@ def detail(task_id: uuid.UUID):
         condition_kinds=conditions_core.KIND_LABELS,
         condition_icons=conditions_core.KIND_ICONS,
     )
+    return with_graph_csp(make_response(page))
 
 
 @tasks.get("/tasks/<uuid:task_id>/brief.md")

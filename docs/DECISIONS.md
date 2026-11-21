@@ -207,3 +207,10 @@
 - **Critical path** (server): the chain of open `blocks` tasks with the most work left (estimate − time spent, unestimated = 1 h and counted); lit cards glow, the others step back.
 - **CSP:** the graph page alone adds `style-src-attr 'unsafe-inline'`, because Pivotick writes a few `style="…"` attributes in its own markup; `<style>` elements stay forbidden (no selectors, so no CSS that reads the page) and scripts stay `'self'`. The simulation worker is off (`useWorker: false`): every node is pinned, and the worker's `data:` fallback is blocked by the CSP anyway.
 - Live: `task.changed` / `project.changed` re-fetch and apply only the differences (added / removed / changed cards and edges), positions included.
+
+## D-036 · 2026-11-21 · accepted — Graph levels, hover peek, a graph on every task
+- Owner request: too many cards at once; a project should show its cases, a click opens the case's own graph with a breadcrumb; the graph on every task page; a better hover title.
+- **Levels** (`graph_data`): `top` (default: tasks without a shown parent, the cases), `children` (a root's direct subtasks), `around` (a root without subtasks: itself and the tasks it is linked to), `all` (everything, subtasks linked to their parent). Dependencies between deeper tasks are **lifted** to the cards shown (a link between subtasks of two cases appears between the cases, with how many links it stands for). A case's weight on the critical path is the work left in its open subtasks (its own estimate if it has one, never a made-up hour).
+- Cards with subtasks show "done/total subtasks" with a progress line and a stacked look; double click (or the side panel's button) opens `/graph?root=<id>`; the breadcrumb (All projects › project › parents › case) is computed by the server.
+- **Hover peek** (Cairn's, dark like the header) replaces Pivotick's tooltip: full title, project, status, type, priority, due date, what a double click will do.
+- The stage is one Jinja macro (`macros/graph.html`) mounted by `graph.js` on every `[data-graph]`: the Graph page and a compact stage on each task page (CSP for graphs applied there too).
