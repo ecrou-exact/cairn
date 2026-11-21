@@ -56,7 +56,25 @@ export class CnVitrine extends HTMLElement {
 
     const textarea = this.querySelector('textarea[name]');
     const content = textarea ? textarea.value : readSource(this.getAttribute('source'));
-    await load(kind);
+    let status = null;
+    if (!textarea) {
+      // A form field keeps its textarea until the editor is ready; a viewer shows a status.
+      status = document.createElement('p');
+      status.className = 'cn-loading';
+      status.setAttribute('role', 'status');
+      status.textContent = 'Loading…';
+      this.replaceChildren(status);
+    }
+    try {
+      await load(kind);
+    } catch {
+      loading.delete(kind); // the next element may try again
+      if (status) {
+        status.className = 'cn-load-error';
+        status.textContent = 'This content could not be displayed: the viewer failed to load. Reload the page.';
+      }
+      return;
+    }
 
     const viewer = document.createElement(`vt-${kind}`);
     for (const { name, value } of this.attributes) {

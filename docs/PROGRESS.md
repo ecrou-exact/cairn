@@ -37,7 +37,7 @@ Goal: owner approves architecture + design direction.
 - [x] Secrets vault (AES-256-GCM bound to the secret name; master key from env, OS keyring or 0600 key file)
 - [x] Security headers + strict CSP (no inline, no eval); Trusted Types report-only (D-018)
 - [~] Design tokens + 4 themes + Auto, mapped to Bootstrap and Vitrine, theme picker in Settings — `--pvt-*` bridge comes with the graph (Phase 4)
-- [~] Component library — done: table/card list, filter bar, sortable headers, pagination, status pill, badge, empty state, live notice, live status; to do: form fields, modal, side panel, loading/error, toast, confirm dialog
+- [~] Component library — done: table/card list, filter bar, sortable headers, pagination, status pill, badge, empty state, loading/error state, live notice, live status, confirm dialog (`<cn-confirm>`); to do with their first use in Phase 3: form fields, modal, side panel, toast
 - [~] Server-side list engine (filter/search/sort/paginate on full dataset, URL state, API JSON) — saved views to do
 - [x] Vitrine wrapper component `<cn-vitrine>` (single config point, theme sync, form field mode)
 - [x] Job queue (lanes, retries/backoff, timeouts, cancellation, crash recovery, SQLite single-worker lock, daily clean-up) + Jobs page + job page with live log + API (D-021)

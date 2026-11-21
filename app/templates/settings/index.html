@@ -60,6 +60,7 @@
       </div>
     </form>
     {% if state.overridden %}
+    <cn-confirm message="Reset “{{ d.label }}”?" detail="Your value is replaced by the default shipped with Cairn." confirm-label="Reset">
     <form method="post" action="{{ url_for('settings.reset', key=d.key) }}" class="cn-setting-reset">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-outline-secondary btn-sm" type="submit">Reset to default</button>
@@ -67,6 +68,7 @@
       <script type="application/json" id="default-{{ d.key }}">{{ d.default | pretty_json | tojson }}</script>
       <cn-vitrine kind="json" source="default-{{ d.key }}" class="cn-setting-default"></cn-vitrine>
     </form>
+    </cn-confirm>
     {% endif %}
   </article>
   {% endfor %}

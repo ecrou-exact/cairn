@@ -17,10 +17,12 @@
   </div>
   <div class="cn-inline-form">
     {% if not job.is_finished and not job.cancel_requested %}
+    <cn-confirm message="Cancel this job?" detail="A running job stops at its next checkpoint; its work so far is kept in the log." confirm-label="Cancel job" cancel-label="Keep running" danger>
     <form method="post" action="{{ url_for('jobs.cancel', job_id=job.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-outline-secondary" type="submit"><i class="fa-solid fa-stop" aria-hidden="true"></i><span class="ms-2">Cancel</span></button>
     </form>
+    </cn-confirm>
     {% endif %}
     {% if job.status in ("failed", "cancelled") %}
     <form method="post" action="{{ url_for('jobs.retry', job_id=job.id) }}">

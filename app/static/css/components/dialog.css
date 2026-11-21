@@ -1,0 +1,23 @@
+/* Native <dialog> used by cn-confirm (and later modals). */
+
+.cn-dialog {
+  width: min(92vw, 26rem);
+  padding: var(--cn-space-5);
+  border: var(--cn-border-width) solid var(--cn-border);
+  border-radius: var(--cn-radius-lg);
+  background: var(--cn-surface-raised);
+  color: var(--cn-text);
+  box-shadow: var(--cn-shadow);
+}
+.cn-dialog::backdrop { background: color-mix(in srgb, var(--cn-bg) 60%, transparent); backdrop-filter: blur(2px); }
+.cn-dialog-title { font-size: var(--cn-text-lg); margin: 0 0 var(--cn-space-2); }
+.cn-dialog-text { color: var(--cn-text-muted); margin: 0 0 var(--cn-space-4); }
+.cn-dialog-actions { display: flex; justify-content: flex-end; gap: var(--cn-space-2); margin-top: var(--cn-space-4); }
+.btn-danger {
+  --bs-btn-bg: var(--cn-danger);
+  --bs-btn-border-color: var(--cn-danger);
+  --bs-btn-color: var(--cn-on-accent);
+  --bs-btn-hover-bg: var(--cn-danger);
+  --bs-btn-hover-border-color: var(--cn-danger);
+  --bs-btn-hover-color: var(--cn-on-accent);
+}

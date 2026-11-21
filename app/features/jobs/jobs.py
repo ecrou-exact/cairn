@@ -44,23 +44,30 @@ def start():
     return redirect(url_for("jobs.detail", job_id=job.id))
 
 
-def _act(action, job_id: uuid.UUID, done: str):
+def _act(action, job_id: uuid.UUID, done):
+    """Run a job action; `done(job)` gives the success message."""
     try:
-        action(job_id)
+        job = action(job_id)
     except jobs_core.JobNotFound:
         abort(404)
     except jobs_core.JobError as exc:
         flash(str(exc), "danger")
     else:
-        flash(done, "success")
+        flash(done(job), "success")
     return redirect(url_for("jobs.detail", job_id=job_id))
 
 
 @jobs.post("/jobs/<uuid:job_id>/cancel")
 def cancel(job_id: uuid.UUID):
-    return _act(jobs_core.cancel, job_id, "Cancellation requested.")
+    return _act(
+        jobs_core.cancel,
+        job_id,
+        lambda job: (
+            "Job cancelled." if job.is_finished else "Cancellation requested: the job stops at its next step."
+        ),
+    )
 
 
 @jobs.post("/jobs/<uuid:job_id>/retry")
 def retry(job_id: uuid.UUID):
-    return _act(jobs_core.retry, job_id, "The job is queued again.")
+    return _act(jobs_core.retry, job_id, lambda job: "The job is queued again.")

@@ -44,3 +44,13 @@
 }
 .cn-badge-accent { background: var(--cn-accent-soft); color: var(--cn-accent); }
 .cn-badge-warning { background: var(--cn-warning-soft); color: var(--cn-warning); }
+
+/* Loading and error states of live components (cn-vitrine…). */
+.cn-loading { color: var(--cn-text-faint); font-size: var(--cn-text-sm); padding: var(--cn-space-3) 0; }
+.cn-load-error {
+  color: var(--cn-danger);
+  background: var(--cn-danger-soft);
+  border-radius: var(--cn-radius);
+  padding: var(--cn-space-2) var(--cn-space-3);
+  font-size: var(--cn-text-sm);
+}

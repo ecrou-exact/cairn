@@ -208,6 +208,7 @@ def cancel(job_id: uuid.UUID) -> Job:
         raise JobError("Cancellation was already requested.")
     if job.status == "queued":
         job.status, job.finished_at, job.error = "cancelled", utcnow(), "cancelled by the owner"
+        append_log(job, "Cancelled by the owner before it started.", "WARN")
     else:
         job.cancel_requested = True  # the handler stops at its next check_cancelled()
         append_log(job, "Cancellation requested.", "WARN")
