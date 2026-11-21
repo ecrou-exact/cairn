@@ -19,13 +19,8 @@ def test_today_tells_what_to_do_and_why(ctx):
     assert [t.title for t in data["next_actions"]] == ["Later"]
     days = data["week"]["days"]
     assert len(days) == 7 and days[0]["today"] and [t.title for t in days[2]["tasks"]] == ["Ship it"]
-    told = data["activity"][0]
-    assert (told["who"], told["verb"], told["name"], told["after"]) == (
-        "You",
-        "moved",
-        "Ship it",
-        "to In progress",
-    )
+    told = next(item for item in data["activity"] if item["verb"] == "moved")  # same-instant rows may tie
+    assert (told["who"], told["name"], told["after"]) == ("You", "Ship it", "to In progress")
 
 
 def test_today_page_renders(app, signed_in):
