@@ -11,6 +11,11 @@
 </svg>
 {%- endmacro %}
 
+{% macro avatar(owner, class="cn-avatar") -%}
+{% if owner.avatar_name %}<img class="{{ class }}" src="{{ url_for('account.avatar', v=owner.avatar_name[:8]) }}" alt="" width="64" height="64">
+{%- else %}<span class="{{ class }} cn-avatar-initials" aria-hidden="true">{{ owner.initials }}</span>{% endif %}
+{%- endmacro %}
+
 {% macro flashes() -%}
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}

@@ -326,6 +326,8 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
 }
 .cn-panel > h2:first-child:has(> i:first-child)::before { display: none; }
 .cn-panel + .cn-panel { margin-top: var(--cn-space-5); }
+/* Side by side in a grid, panels align on their top edge. */
+:is([class*="-grid"], .cn-connections) > .cn-panel + .cn-panel { margin-top: 0; }
 .cn-panel h2 { font-size: var(--cn-text-lg); margin-bottom: var(--cn-space-1); }
 .cn-panel-lead { color: var(--cn-text-muted); margin-bottom: var(--cn-space-4); }
 
@@ -347,3 +349,21 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
 .cn-activity code { font-size: var(--cn-text-sm); color: var(--cn-text); }
 .cn-level-warning code { color: var(--cn-warning); }
 .cn-level-error code, .cn-level-critical code { color: var(--cn-danger); }
+
+/* Avatar: the owner's picture, or their initials on a stone of the mark colour. */
+.cn-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  border-radius: 42% 42% 46% 46%;
+  object-fit: cover;
+  font-size: var(--cn-text-xs);
+  font-weight: var(--cn-weight-strong);
+  letter-spacing: 0.02em;
+}
+.cn-avatar-initials { background: var(--cn-mark); color: var(--cn-on-accent); }
+.cn-header-profile { display: inline-flex; margin-left: var(--cn-space-2); border-radius: 50%; }
+.cn-header-profile .cn-avatar { box-shadow: 0 0 0 2px var(--cn-chrome-bg), 0 0 0 3px var(--cn-chrome-border); transition: box-shadow var(--cn-duration-fast) var(--cn-easing); }
+.cn-header-profile:hover .cn-avatar { box-shadow: 0 0 0 2px var(--cn-chrome-bg), 0 0 0 3px var(--cn-mark); }

@@ -21,6 +21,21 @@ class Owner(BaseEntity):
     session_version: Mapped[int] = mapped_column(default=1, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     theme: Mapped[str] = mapped_column(String(32), default="auto", nullable=False)
+    # Profile. Kept on the owner while Cairn is single-user; moves to a user table with the
+    # same fields when collaborators arrive (D-034).
+    display_name: Mapped[str] = mapped_column(String(80), default="", nullable=False)
+    bio: Mapped[str] = mapped_column(String(300), default="", nullable=False)
+    avatar_name: Mapped[str | None] = mapped_column(String(64))  # stored file (storage_core)
+
+    @property
+    def shown_name(self) -> str:
+        return self.display_name or self.username
+
+    @property
+    def initials(self) -> str:
+        parts = self.shown_name.replace("_", " ").replace(".", " ").split()
+        letters = "".join(part[0] for part in parts[:2]) or self.username[:1]
+        return letters.upper()
 
     # Flask-Login interface. Written out instead of UserMixin, whose __eq__ (comparing get_id())
     # interferes with SQLAlchemy's identity map and recursed into attribute loading.

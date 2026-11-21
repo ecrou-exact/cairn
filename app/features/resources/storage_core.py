@@ -169,3 +169,33 @@ def remove_orphan_files(older_than: timedelta = timedelta(days=1)) -> int:
             path.unlink(missing_ok=True)
             removed += 1
     return removed
+
+
+AVATAR_SIZE = 256
+
+
+def store_avatar(stream: IO[bytes], max_bytes: int) -> str:
+    """A profile picture: cropped to a centred square, resized, saved as JPEG without metadata."""
+    base = root()
+    temp, _size, _sha = _receive(stream, max_bytes, base)
+    try:
+        try:
+            with Image.open(temp, formats=list(IMAGE_FORMATS)) as image:
+                width, height = image.size
+                if width * height > MAX_PIXELS:
+                    raise StorageError("This image is too large (more than 40 megapixels).")
+                image.load()
+                square = ImageOps.fit(
+                    ImageOps.exif_transpose(image).convert("RGB"), (AVATAR_SIZE, AVATAR_SIZE)
+                )
+        except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
+            raise StorageError("Use a PNG, JPEG, GIF or WebP picture.") from exc
+        name = secrets.token_hex(16)
+        target = base / name[:2] / name
+        target.parent.mkdir(exist_ok=True)
+        out = io.BytesIO()
+        square.save(out, format="JPEG", quality=88)
+        target.write_bytes(out.getvalue())
+        return name
+    finally:
+        temp.unlink(missing_ok=True)

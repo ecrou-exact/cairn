@@ -64,6 +64,12 @@ Goal: owner approves architecture + design direction.
 - [x] Custom task fields (text, number, date, link, choice list) defined in Settings, checked by the core (D-032)
 - [~] JSON schema registry shared by API, forms and MCP tools — schemas exist per feature (`core/schema/`), registry/`describe_schema` comes with the MCP server (Phase 5)
 
+## Interface and account (owner requests, 2026-11-21)
+- [x] Visual identity: contour header band, trail-marked sidebar, slabs instead of outlined boxes, Today at a glance, sign-in brand panel (D-033)
+- [x] Foldable menu, drawer menu on phones
+- [x] Profile (display name, about, picture) and connected accounts (GitHub, Claude API key, others) in the vault, checked by a job; GitHub previews of private issues / PRs (D-034)
+- [ ] Multi-user system (later, on request)
+
 ## Phase 4 — Graph (Pivotick, full integration per §4)
 - [ ] Graph wrapper + data adapter; node/edge type styling; `--pvt-*` theming
 - [ ] Layout switch remembered per view; write-path hooks → API; context menus; side panel editing

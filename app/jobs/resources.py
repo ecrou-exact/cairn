@@ -9,6 +9,7 @@ from app.core.extensions import db
 from app.core.jobs.context import JobContext
 from app.core.jobs.registry import register_handler
 from app.core.utils.settings import get_setting
+from app.features.connections import connections_core
 from app.features.resources import preview_core, resources_core
 
 
@@ -24,8 +25,14 @@ def preview(context: JobContext, payload: dict) -> dict:
         context.log("Link previews are turned off in the settings.")
         return {"skipped": True}
     context.log(f"Fetching {resource.url}")
+    ref = resource.meta.get("github") or {}
+    token = connections_core.token_for("github") if "number" in ref else None
     try:
-        found = preview_core.fetch(resource.url)
+        if token:
+            context.log("Using the connected GitHub account.")
+            found = preview_core.github_api(ref, token)
+        else:
+            found = preview_core.fetch(resource.url)
     except preview_core.PreviewError as exc:
         resources_core.apply_preview(resource.id, None, str(exc))
         db.session.commit()

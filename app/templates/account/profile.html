@@ -1,0 +1,67 @@
+{% extends "layout/shell.html" %}
+{% from "macros/ui.html" import avatar %}
+{% block title %}Profile{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/account/account.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/components/cn-upload.js') }}"></script>
+{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow">Account</div>
+  <h1>Profile</h1>
+  <p>How you appear in Cairn: in the header, on comments and in the history. Cairn has a single owner for now; these details carry over when collaborators arrive.</p>
+</header>
+
+<div class="cn-profile-grid">
+  <section class="cn-panel cn-profile-card" aria-labelledby="picture-title">
+    <h2 id="picture-title">Picture</h2>
+    <div class="cn-profile-hero">
+      {{ avatar(owner, "cn-avatar cn-avatar-xl") }}
+      <div>
+        <p class="cn-profile-name">{{ owner.shown_name }}</p>
+        <p class="cn-muted">@{{ owner.username }}</p>
+      </div>
+    </div>
+    <cn-upload max-mb="8" label="New picture" hint="PNG, JPEG, GIF or WebP up to 8 MB. Cropped to a square; location and camera details are removed.">
+      <form method="post" action="{{ url_for('account.upload_avatar') }}" enctype="multipart/form-data" class="cn-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="visually-hidden" for="avatar">New picture</label>
+        <input class="form-control" id="avatar" type="file" name="avatar" accept="image/png,image/jpeg,image/gif,image/webp">
+        <button class="btn btn-outline-secondary" type="submit" data-upload-submit>Upload</button>
+      </form>
+    </cn-upload>
+    {% if owner.avatar_name %}
+    <form method="post" action="{{ url_for('account.remove_avatar') }}" class="mt-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-link btn-sm" type="submit">Remove the picture (use my initials)</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="cn-panel" aria-labelledby="about-title">
+    <h2 id="about-title">About you</h2>
+    <form method="post" action="{{ url_for('account.save_profile') }}" class="cn-stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="cn-field">
+        <label class="form-label" for="display_name">Display name</label>
+        <input class="form-control" id="display_name" name="display_name" maxlength="80" value="{{ owner.display_name }}" placeholder="{{ owner.username }}">
+        <div class="form-text">Shown instead of your username. Signing in still uses <strong>{{ owner.username }}</strong>.</div>
+      </div>
+      <div class="cn-field">
+        <label class="form-label" for="bio">About</label>
+        <textarea class="form-control" id="bio" name="bio" maxlength="300" rows="3" placeholder="What you work on, in a line or two.">{{ owner.bio }}</textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </form>
+    <hr>
+    <p class="cn-muted mb-1">Also part of your account:</p>
+    <ul class="cn-profile-links">
+      <li><a href="{{ url_for('connections.index') }}"><i class="fa-solid fa-plug" aria-hidden="true"></i> Connected accounts</a> — GitHub, Claude and other services</li>
+      <li><a href="{{ url_for('account.security') }}"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Security</a> — password and two-factor sign-in</li>
+      <li><a href="{{ url_for('settings.index') }}"><i class="fa-solid fa-palette" aria-hidden="true"></i> Theme and settings</a></li>
+    </ul>
+  </section>
+</div>
+{% endblock %}

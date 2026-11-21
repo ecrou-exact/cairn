@@ -175,3 +175,65 @@ def totp_disable():
     else:
         flash("Two-factor sign-in is off.", "warning")
     return redirect(url_for("account.security"))
+
+
+# -- profile ---------------------------------------------------------------------------------
+
+
+@account.get("/account/profile")
+def profile():
+    return render_template("account/profile.html", owner=_me())
+
+
+@account.post("/account/profile")
+def save_profile():
+    core.update_profile(_me(), request.form.get("display_name", ""), request.form.get("bio", ""))
+    flash("Profile saved.", "success")
+    return redirect(url_for("account.profile"))
+
+
+@account.post("/account/profile/avatar")
+def upload_avatar():
+    from werkzeug.exceptions import RequestEntityTooLarge
+
+    from app.features.resources.storage_core import StorageError
+
+    try:
+        picture = request.files.get("avatar")
+    except RequestEntityTooLarge:
+        picture = None
+    if picture is None or not picture.filename:
+        flash("Choose a picture first.", "warning")
+        return redirect(url_for("account.profile"))
+    try:
+        core.set_avatar(_me(), picture.stream)
+    except StorageError as exc:
+        flash(str(exc), "danger")
+    else:
+        flash("Picture updated.", "success")
+    return redirect(url_for("account.profile"))
+
+
+@account.post("/account/profile/avatar/remove")
+def remove_avatar():
+    core.remove_avatar(_me())
+    flash("Picture removed: your initials are shown instead.", "success")
+    return redirect(url_for("account.profile"))
+
+
+@account.get("/account/avatar")
+def avatar():
+    from flask import send_file
+
+    from app.features.resources import storage_core
+
+    owner = _me()
+    if not owner.avatar_name:
+        abort(404)
+    path = storage_core.path_of(owner.avatar_name)
+    if not path.is_file():
+        abort(404)
+    response = send_file(path, mimetype="image/jpeg", max_age=0, conditional=True)
+    response.headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
+    response.headers["Cache-Control"] = "private, no-cache"
+    return response

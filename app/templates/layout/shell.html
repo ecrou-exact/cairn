@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/ui.html" import brand_mark, flashes %}
+{% from "macros/ui.html" import brand_mark, flashes, avatar %}
 
 {% block body %}
 {% set nav_groups = [
@@ -10,6 +10,7 @@
     ("resources.index", "fa-paperclip", "Resources"),
   ]),
   ("System", [
+    ("connections.index", "fa-plug", "Accounts"),
     ("jobs.index", "fa-gears", "Jobs"),
     ("trash.index", "fa-trash-can", "Trash"),
     ("settings.index", "fa-sliders", "Settings"),
@@ -40,6 +41,7 @@
       {% endif %}
       <cn-live-status class="cn-live-status" hidden></cn-live-status>
       <a class="cn-icon-button" href="{{ url_for('account.security') }}" title="Security"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span class="visually-hidden">Security</span></a>
+      <a class="cn-header-profile" href="{{ url_for('account.profile') }}" title="{{ current_user.shown_name }} — profile">{{ avatar(current_user) }}<span class="visually-hidden">Your profile</span></a>
       <form method="post" action="{{ url_for('account.logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="cn-icon-button" type="submit" title="Sign out"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i><span class="visually-hidden">Sign out</span></button>

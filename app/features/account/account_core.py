@@ -186,3 +186,43 @@ def verify_totp(owner: Owner, code: str) -> bool:
         log_action("auth.totp_failed", target_type="owner", target_id=owner.id, level="warning")
         db.session.commit()
     return ok
+
+
+# -- profile ---------------------------------------------------------------------------------
+
+AVATAR_MAX_BYTES = 8 * 1024 * 1024
+
+
+def update_profile(owner: Owner, display_name: str, bio: str) -> None:
+    display_name, bio = " ".join(display_name.split())[:80], bio.strip()[:300]
+    diff = {
+        k: [getattr(owner, k), v]
+        for k, v in (("display_name", display_name), ("bio", bio))
+        if getattr(owner, k) != v
+    }
+    if not diff:
+        return
+    owner.display_name, owner.bio = display_name, bio
+    log_action("account.profile", target_type="owner", target_id=owner.id, diff=diff)
+    db.session.commit()
+
+
+def set_avatar(owner: Owner, stream) -> None:
+    from app.features.resources import storage_core
+
+    name = storage_core.store_avatar(stream, AVATAR_MAX_BYTES)
+    old, owner.avatar_name = owner.avatar_name, name
+    log_action("account.avatar", target_type="owner", target_id=owner.id)
+    db.session.commit()
+    if old:
+        storage_core.remove(old)
+
+
+def remove_avatar(owner: Owner) -> None:
+    from app.features.resources import storage_core
+
+    if owner.avatar_name:
+        old, owner.avatar_name = owner.avatar_name, None
+        log_action("account.avatar_removed", target_type="owner", target_id=owner.id)
+        db.session.commit()
+        storage_core.remove(old)

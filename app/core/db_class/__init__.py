@@ -1,3 +1,13 @@
 """Import every model module so SQLAlchemy and Alembic see all tables."""
 
-from app.core.db_class import activity, comment, job, owner, planning, resource, secret, setting  # noqa: F401
+from app.core.db_class import (  # noqa: F401
+    activity,
+    comment,
+    connection,
+    job,
+    owner,
+    planning,
+    resource,
+    secret,
+    setting,
+)

@@ -53,6 +53,42 @@ def github_ref(url: str) -> dict[str, Any] | None:
     return ref
 
 
+def github_api(ref: dict[str, Any], token: str) -> dict[str, str]:
+    """Title and state of an issue or pull request through the GitHub API, with the owner's
+    connected account: works for private repositories too."""
+    import json
+
+    if "number" not in ref:
+        raise PreviewError("Only issues and pull requests are read through the API.")
+    kind = "pulls" if ref["item"] == "pull request" else "issues"
+    url = f"https://api.github.com/repos/{ref['repo']}/{kind}/{ref['number']}"
+    if ref["item"] == "discussion":
+        raise PreviewError("Discussions are not read through the API yet.")
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": USER_AGENT,
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:  # noqa: S310  # nosec B310
+            data = json.loads(response.read(MAX_BYTES))
+    except urllib.error.HTTPError as exc:
+        raise PreviewError(f"GitHub answered {exc.code}.") from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise PreviewError(f"Could not reach GitHub ({getattr(exc, 'reason', exc)}).") from exc
+    state = "merged" if data.get("merged_at") else data.get("state", "")
+    author = (data.get("user") or {}).get("login", "")
+    return {
+        "title": _clean(data.get("title") or "", 200),
+        "description": _clean(f"{ref['item'].capitalize()} #{ref['number']} · {state} · by {author}", 500),
+        "site": "GitHub",
+    }
+
+
 def github_title(ref: dict[str, Any]) -> str:
     """A readable default title from a GitHub reference: `owner/repo#12`, `repo: path`."""
     if "number" in ref:
