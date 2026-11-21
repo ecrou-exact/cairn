@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="{{ current_user.theme if current_user.is_authenticated else 'auto' }}">
+<html lang="en" data-theme="{{ current_user.theme if current_user.is_authenticated else 'auto' }}"{% if request.cookies.get('cn_nav') == 'collapsed' %} class="cn-nav-collapsed"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
