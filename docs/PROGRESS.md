@@ -28,7 +28,7 @@ Goal: owner approves architecture + design direction.
 - [x] §19 questions answered (owner delegated, D-014)
 - [x] Architecture and design direction approved (D-014)
 
-## Phase 2 — Foundations  *(current)*
+## Phase 2 — Foundations  *(done except deployment files, saved views and CI on three OS — needs a push)*
 - [x] Repo skeleton (app factory, `features/` layout, uv + `uv.lock`, ruff, bandit, pytest, `manage.py`) — pre-commit still to add
 - [x] Cross-platform base: `pathlib`, `platformdirs` data dir, argv-only subprocess, CI matrix ubuntu / macos / windows × Python 3.12 / 3.13
 - [x] Config from env/.env, SQLAlchemy + Alembic, SQLite dev / PostgreSQL extra, JSON settings (`app/settings/`) with typed overrides, Settings page + API (D-022)
@@ -45,14 +45,17 @@ Goal: owner approves architecture + design direction.
 - [~] `manage.py` works on all OS (setup / start / serve threaded / worker) — `install.sh`, systemd units, Docker Compose still to do
 - **Done when:** login, theme switch, empty app shell, jobs page and live push work end to end, tests green on all three OS in CI.
 
-## Phase 3 — Core planning
-- [ ] Projects CRUD (§2.1), tasks + subtasks (§2.2), configurable types/statuses/workflow
-- [ ] Dependencies (task→task, external conditions), cycle detection, blocked state, critical path
+## Phase 3 — Core planning  *(current)*
+- [x] Projects CRUD (§2.1): list (cards/table, stats), page with its tasks, form, colours, delete with its tasks, trash
+- [x] Tasks + subtasks (§2.2), configurable types / statuses / workflow transitions / default status (D-023)
+- [x] Dependencies (blocks, follows, relates, duplicates), cycle detection naming the loop, blocked state everywhere, "why blocked" chain — critical path left for the graph (Phase 4)
 - [ ] Resources + resource library
-- [ ] Quick-add with NL parsing; full tabbed form; inline + bulk edit; pickers; drag&drop/paste upload; Markdown editor with Vitrine preview; templates
-- [ ] Priority score (configurable weights, "explain why"), "What should I do now?", deadline risk
-- [ ] History/undo UI, command palette (Ctrl/Cmd+K), shortcuts
-- [ ] JSON schema registry shared by API, forms and MCP tools
+- [x] Quick add with natural-language parsing and live preview, duplicate detection; full tabbed form; Markdown editors through Vitrine; unsaved-changes guard
+- [ ] Inline + bulk edit, file upload / paste, templates
+- [x] Priority score (configurable weights, explanation), "What should I do now?", needs-attention radar — deadline risk on dependency chains still to do
+- [x] History with undo per action (D-024), trash with restore and delete for good, command palette (Ctrl/Cmd+K) — keyboard shortcuts beyond the palette to do
+- [x] Time tracking (start / stop, time spent vs estimate) (D-025)
+- [~] JSON schema registry shared by API, forms and MCP tools — schemas exist per feature (`core/schema/`), registry/`describe_schema` comes with the MCP server (Phase 5)
 
 ## Phase 4 — Graph (Pivotick, full integration per §4)
 - [ ] Graph wrapper + data adapter; node/edge type styling; `--pvt-*` theming

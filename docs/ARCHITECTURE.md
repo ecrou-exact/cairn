@@ -109,6 +109,13 @@ Configurable lists (types, statuses, workflow transitions, priorities, score wei
 - Live pages pass the last event id read before their data (`<meta name="cn-events-after">`); `<cn-live-status>` in the header shows the connection state.
 - Event types so far: `job.changed`, `job.progress`, `job.log`, `setting.changed`.
 
+## 3b. Planning (Phase 3)
+- Code: `features/projects/` and `features/tasks/` (`tasks_core`, `dependencies_core` with `refresh_derived`, `score_core`, `quickadd_core`, `timer_core`, `workflow`), `features/trash/`, `features/history/`; API in `api/planning_api.py`; schemas in `core/schema/planning.py`.
+- **Score** (`score_core.py`): `project weight × Σ weight × value`, each value in 0..1 — priority (critical 1, high .7, medium .4, low .1), importance and urgency ((n−1)/4), deadline (1 when due or late, down to 0 at `deadline_horizon_days`), hard deadline (the deadline value again), unblocks (open tasks waiting on it transitively, /5, max 1), quick win (1/(1+h/4), .5 without estimate), age (days/30, max 1). Weights: setting `tasks.score_weights`. Every task keeps the breakdown shown on its page.
+- **What should I do now?** open, not blocked, not waiting, `do_on`/`start_on` not in the future, by score.
+- **History:** one batch per owner action, undo per batch (D-024). Soft delete everywhere; hard delete only from `/trash`.
+- **Front end:** `cn-quick-add` (live parse preview), `cn-task-picker` (combobox over `/api/search`), `cn-palette` (Ctrl/Cmd+K), `cn-timer`, `cn-form-guard` (unsaved changes), `cn-confirm`.
+
 ## 5b. Lists, settings, display
 - **Lists:** a feature declares a `ListSpec` (sortable, searchable, filters, tiebreak) and calls `run_list(spec, query, request.args)`; anything undeclared in the URL is ignored. Macros in `templates/macros/list.html`, styles in `css/components/list.css`. The API returns the same page as JSON (`schema/common.page_dict`).
 - **Settings:** defaults in `app/settings/<key>.json`, overrides in `setting_override` (with the default they were made from, to flag "new default"). Typed by `SETTING_TYPES`; page `/settings`, API `/api/settings`.

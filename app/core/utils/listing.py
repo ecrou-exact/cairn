@@ -14,32 +14,45 @@ from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlencode
 
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import ColumnElement, Select, func, or_, select
 from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.extensions import db
 from app.core.utils.settings import get_setting
+
+Sortable = InstrumentedAttribute | ColumnElement
 
 MAX_SEARCH_LENGTH = 200
 
 
 @dataclass(frozen=True)
 class FilterSpec:
+    """A filter on `column` (value equality), or on named `conditions` (value -> SQL clause).
+
+    Several values chosen for one filter are OR-ed; different filters are AND-ed.
+    """
+
     name: str
     label: str
-    column: InstrumentedAttribute
+    column: InstrumentedAttribute | None
     choices: tuple[tuple[str, str], ...]  # (value, label)
+    conditions: Mapping[str, ColumnElement] | None = None
+
+    def clause(self, values: list[str]) -> ColumnElement:
+        if self.conditions is not None:
+            return or_(*(self.conditions[value] for value in values))
+        return self.column.in_(values)
 
 
 @dataclass(frozen=True)
 class ListSpec:
-    sortable: Mapping[str, InstrumentedAttribute]
+    sortable: Mapping[str, Sortable]
     default_sort: str
     default_direction: str = "desc"
     searchable: tuple[InstrumentedAttribute, ...] = ()
     filters: tuple[FilterSpec, ...] = ()
     views: tuple[str, ...] = ("table", "cards")
-    tiebreak: InstrumentedAttribute | None = None  # unique column: stable pages when sort values tie
+    tiebreak: Sortable | None = None  # unique column: stable pages when sort values tie
 
 
 @dataclass
@@ -133,7 +146,7 @@ def _positive_int(raw: str | None, default: int) -> int:
     return value if value > 0 else default
 
 
-def _escape_like(text: str) -> str:
+def escape_like(text: str) -> str:
     """The search is a plain substring: `%` and `_` typed by the owner are not wildcards."""
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
@@ -150,7 +163,7 @@ def run_list(spec: ListSpec, query: Select, args: Mapping[str, Any]) -> ListPage
     search = (args.get("q") or "").strip()[:MAX_SEARCH_LENGTH]
 
     if search and spec.searchable:
-        pattern = f"%{search.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')}%"
+        pattern = f"%{escape_like(search)}%"
         query = query.where(or_(*(column.ilike(pattern, escape="\\") for column in spec.searchable)))
 
     active: dict[str, list[str]] = {}
@@ -161,7 +174,7 @@ def run_list(spec: ListSpec, query: Select, args: Mapping[str, Any]) -> ListPage
         values = [value for value in raw if value in allowed]
         active[flt.name] = values
         if values:
-            query = query.where(flt.column.in_(values))
+            query = query.where(flt.clause(values))
 
     total = db.session.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
     pages = max(1, math.ceil(total / per_page))

@@ -1,0 +1,16 @@
+{
+  "label": "Priority score weights",
+  "category": "Tasks",
+  "description": "How much each factor counts in the computed priority score (0–100). Each factor is first brought between 0 and 1; see docs/ARCHITECTURE.md §3b for the formula. The project weight then multiplies the total.",
+  "value": {
+    "priority": 30,
+    "importance": 15,
+    "urgency": 15,
+    "deadline": 25,
+    "hard_deadline_bonus": 10,
+    "unblocks": 15,
+    "quick_win": 5,
+    "age": 5,
+    "deadline_horizon_days": 14
+  }
+}

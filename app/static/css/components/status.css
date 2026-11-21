@@ -25,6 +25,10 @@
 .cn-status-succeeded { background: var(--cn-success-soft); color: var(--cn-success); }
 .cn-status-failed { background: var(--cn-danger-soft); color: var(--cn-danger); }
 .cn-status-cancelled { background: var(--cn-warning-soft); color: var(--cn-warning); }
+/* Task statuses are coloured by their kind (tasks.workflow setting). */
+.cn-status-active { background: var(--cn-info-soft); color: var(--cn-info); }
+.cn-status-waiting { background: var(--cn-warning-soft); color: var(--cn-warning); }
+.cn-status-done { background: var(--cn-success-soft); color: var(--cn-success); }
 
 @media (prefers-reduced-motion: no-preference) {
   .cn-status-running::before { animation: cn-pulse 1.4s var(--cn-easing) infinite; }

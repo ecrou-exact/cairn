@@ -14,7 +14,18 @@
 {% macro flashes() -%}
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
+    {% if category == "undo" %}
+    <div class="alert alert-success cn-undo-flash" role="status">
+      <span>{{ message.text }}</span>
+      <form method="post" action="{{ url_for('history.undo', batch_id=message.batch) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ request.full_path }}">
+        <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i><span class="ms-1">Undo</span></button>
+      </form>
+    </div>
+    {% else %}
     <div class="alert alert-{{ category if category in ['success', 'warning', 'danger', 'info'] else 'info' }}" role="{{ 'alert' if category == 'danger' else 'status' }}">{{ message }}</div>
+    {% endif %}
   {% endfor %}
 {% endwith %}
 {%- endmacro %}

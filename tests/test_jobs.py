@@ -199,6 +199,7 @@ def test_jobs_api(app, signed_in):
     assert [t["type"] for t in signed_in.get("/api/jobs/types").json] == [
         "system.prune",
         "system.self_check",
+        "tasks.rescore",
         "test.manual",
     ]
 

@@ -11,6 +11,7 @@ from flask import has_request_context, request
 from app.core.db_class.activity import Activity
 from app.core.extensions import db
 from app.core.utils.actor import current_actor
+from app.core.utils.history import current_batch
 
 LEVELS = ("debug", "info", "warning", "error", "critical")
 _log = logging.getLogger("cairn.activity")
@@ -29,8 +30,10 @@ def log_action(
     """Add an activity row to the current session (committed with the change itself).
 
     `action` is dot-namespaced (`task.create`, `auth.login_failed`). `diff` maps a
-    field to `[old, new]`. Secrets never go in `diff` or `meta`.
+    field to `[old, new]`. Secrets never go in `diff` or `meta`. Inside
+    `history.batch()`, the row joins the current batch (undo, §2.10).
     """
+
     if level not in LEVELS:
         raise ValueError(f"Unknown level '{level}'.")
     entry = Activity(
@@ -41,7 +44,7 @@ def log_action(
         target_id=str(target_id) if target_id is not None else None,
         diff=diff,
         meta=meta,
-        batch_id=batch_id,
+        batch_id=batch_id or current_batch(),
     )
     if has_request_context():
         entry.ip = request.remote_addr

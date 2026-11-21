@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   {% if events_after is defined %}<meta name="cn-events-after" content="{{ events_after }}">{% endif %}
   <title>{% block title %}{% endblock %} · Cairn</title>
   <link rel="icon" href="{{ url_for('static', filename='image/favicon.svg') }}" type="image/svg+xml">
@@ -18,6 +19,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/status.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/live-status.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/dialog.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components/palette.css') }}">
   {% block styles %}{% endblock %}
 </head>
 <body>

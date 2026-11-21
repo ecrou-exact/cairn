@@ -1,0 +1,17 @@
+{
+  "label": "Task types",
+  "category": "Tasks",
+  "description": "Kinds of task, with their Font Awesome icon. `#type` in quick add picks one.",
+  "value": {
+    "feature": {"label": "Feature", "icon": "fa-star"},
+    "bug": {"label": "Bug", "icon": "fa-bug"},
+    "refactor": {"label": "Refactor", "icon": "fa-code-branch"},
+    "docs": {"label": "Docs", "icon": "fa-book"},
+    "review": {"label": "Review", "icon": "fa-magnifying-glass"},
+    "research": {"label": "Research", "icon": "fa-flask"},
+    "release": {"label": "Release", "icon": "fa-rocket"},
+    "ops": {"label": "Ops", "icon": "fa-server"},
+    "meeting": {"label": "Meeting", "icon": "fa-people-group"},
+    "personal": {"label": "Personal", "icon": "fa-user"}
+  }
+}

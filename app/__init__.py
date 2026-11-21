@@ -74,9 +74,13 @@ def _register_blueprints(app: Flask) -> None:
     from app import jobs as _handlers  # noqa: F401  (registers every job handler)
     from app.features.account.account import account
     from app.features.events.events import events
+    from app.features.history.history import history
     from app.features.home.home import health, home
     from app.features.jobs.jobs import jobs
+    from app.features.projects.projects import projects
     from app.features.settings.settings import settings
+    from app.features.tasks.tasks import tasks
+    from app.features.trash.trash import trash
 
-    for blueprint in (account, home, health, jobs, settings, events):
+    for blueprint in (account, home, health, jobs, settings, events, projects, tasks, trash, history):
         app.register_blueprint(blueprint)

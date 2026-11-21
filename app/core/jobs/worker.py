@@ -1,4 +1,4 @@
-"""The worker process: one thread pool per lane, heartbeats, crash recovery, daily schedules.
+"""The worker process: one thread pool per lane, heartbeats, crash recovery, recurring jobs.
 
 Runs in its own process (`python manage.py worker`), never inside the web server: a web
 server recycles or times out its workers, which would kill long jobs (same reasoning as
@@ -27,7 +27,7 @@ from app.core.utils.settings import get_setting
 _log = logging.getLogger("cairn.worker")
 POLL_SECONDS = 1.0
 HEARTBEAT_SECONDS = 30
-DAILY = {"system.prune": timedelta(days=1)}
+RECURRING = {"system.prune": timedelta(days=1), "tasks.rescore": timedelta(hours=6)}
 LOCK_NAME = "worker.lock"
 
 
@@ -116,15 +116,15 @@ class Worker:
                             running = list(self._running)
                         jobs_core.heartbeat(running)
                         jobs_core.recover_stale()
-                        self._schedule_daily()
+                        self._schedule_recurring()
                         last_beat = time.monotonic()
                 except Exception:
                     _log.exception("Housekeeping failed")
                     db.session.rollback()
                 self.stop_event.wait(5)
 
-    def _schedule_daily(self) -> None:
-        for job_type, every in DAILY.items():
+    def _schedule_recurring(self) -> None:
+        for job_type, every in RECURRING.items():
             last = jobs_core.last_created(job_type)
             if last is None or utcnow() - last >= every:
                 jobs_core.enqueue(job_type)

@@ -1,0 +1,76 @@
+{% extends "layout/shell.html" %}
+{% import "macros/form.html" as f %}
+{% block title %}{{ "Edit " ~ task.title if task else "New task" }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-form-guard.js') }}"></script>
+{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('tasks.detail', task_id=task.id) if task else url_for('tasks.index') }}">{{ task.title if task else "Tasks" }}</a></div>
+  <h1>{{ "Edit task" if task else "New task" }}</h1>
+</header>
+
+{% set tab_errors = {
+  "essentials": ["title", "description_md", "project_id", "parent_id", "type", "status", "priority", "tags"],
+  "planning": ["importance", "urgency", "start_on", "due_on", "hard_deadline", "do_on", "estimate_hours", "assignee"],
+  "claude": ["claude_instructions_md"],
+  "advanced": ["checklist", "acceptance_md"],
+} %}
+{{ f.form_error(errors) }}
+
+<form method="post" class="cn-task-form" novalidate>
+  <cn-form-guard></cn-form-guard>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if values.get("parent_id") %}<input type="hidden" name="parent_id" value="{{ values.parent_id }}">{% endif %}
+  <ul class="nav nav-tabs" role="tablist">
+    {% for key, label in [("essentials", "Essentials"), ("planning", "Planning"), ("claude", "Claude"), ("advanced", "Checklist & criteria")] %}
+    {% set has_error = tab_errors[key] | select("in", errors) | list %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if loop.first %}active{% endif %}" id="tab-{{ key }}" data-bs-toggle="tab" data-bs-target="#pane-{{ key }}" type="button" role="tab" aria-controls="pane-{{ key }}" aria-selected="{{ 'true' if loop.first else 'false' }}">
+        {{ label }}{% if has_error %} <span class="cn-badge cn-badge-warning">{{ has_error | length }}</span>{% endif %}
+      </button>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="tab-content cn-panel cn-tab-panel">
+    <div class="tab-pane fade show active" id="pane-essentials" role="tabpanel" aria-labelledby="tab-essentials">
+      {{ f.text("title", "Title", values, errors, required=True, hint="Short and imperative: “Fix the login redirect”.", attrs={"maxlength": 200, "autofocus": "autofocus"}) }}
+      <div class="cn-form-grid">
+        {{ f.select("project_id", "Project", values, errors, project_choices, empty="No project (personal)") }}
+        {{ f.select("type", "Type", values, errors, type_choices) }}
+        {{ f.select("status", "Status", values, errors, status_choices) }}
+        {{ f.select("priority", "Priority", values, errors, [("critical", "Critical"), ("high", "High"), ("medium", "Medium"), ("low", "Low")]) }}
+      </div>
+      {{ f.text("tags", "Tags", values, errors, hint="Separated by commas.") }}
+      {{ f.markdown("description_md", "Description", values, errors) }}
+    </div>
+    <div class="tab-pane fade" id="pane-planning" role="tabpanel" aria-labelledby="tab-planning">
+      <div class="cn-form-grid">
+        {{ f.select("importance", "Importance", values, errors, [(1, "1 — trivial"), (2, "2"), (3, "3 — normal"), (4, "4"), (5, "5 — essential")]) }}
+        {{ f.select("urgency", "Urgency", values, errors, [(1, "1 — whenever"), (2, "2"), (3, "3 — normal"), (4, "4"), (5, "5 — now")]) }}
+        {{ f.text("start_on", "Start", values, errors, type="date", hint="Not proposed before this day.") }}
+        {{ f.text("do_on", "Do on", values, errors, type="date", hint="The day you plan to work on it.") }}
+        {{ f.text("due_on", "Due", values, errors, type="date") }}
+        {{ f.text("estimate_hours", "Estimate (hours)", values, errors, type="number", attrs={"min": "0.25", "step": "0.25"}) }}
+      </div>
+      {{ f.checkbox("hard_deadline", "Hard deadline (a release, an event): weighs more in the score", values, errors) }}
+      {{ f.text("assignee", "Assignee", values, errors, hint="me, claude, or a collaborator's name.") }}
+    </div>
+    <div class="tab-pane fade" id="pane-claude" role="tabpanel" aria-labelledby="tab-claude">
+      {{ f.markdown("claude_instructions_md", "Instructions for Claude", values, errors, hint="How this task must be done, constraints, what to avoid. Sent with every run on this task.") }}
+    </div>
+    <div class="tab-pane fade" id="pane-advanced" role="tabpanel" aria-labelledby="tab-advanced">
+      {{ f.textarea("checklist", "Checklist", values, errors, rows=6, mono=True, hint="One step per line; start a line with [x] when it is done.") }}
+      {{ f.markdown("acceptance_md", "Acceptance criteria", values, errors) }}
+    </div>
+  </div>
+  <div class="cn-form-actions">
+    <button class="btn btn-primary" type="submit">{{ "Save" if task else "Create the task" }}</button>
+    <a class="btn btn-link" href="{{ url_for('tasks.detail', task_id=task.id) if task else url_for('tasks.index') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

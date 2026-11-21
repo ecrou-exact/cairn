@@ -1,0 +1,76 @@
+{# Form fields fed by plain values + an errors dict (field -> message), as routes pass them
+   with app.core.utils.web.FormErrors. Every field gets a label, its error and aria wiring. #}
+
+{% macro _error(name, errors) -%}
+{% if errors.get(name) %}<div class="invalid-feedback d-block" id="{{ name }}-error">{{ errors[name] }}</div>{% endif %}
+{%- endmacro %}
+
+{% macro _aria(name, errors, hint) -%}
+{% set ids = [] %}{% if errors.get(name) %}{% set _ = ids.append(name ~ "-error") %}{% endif %}{% if hint %}{% set _ = ids.append(name ~ "-hint") %}{% endif %}
+{% if ids %}aria-describedby="{{ ids | join(' ') }}"{% endif %} {% if errors.get(name) %}aria-invalid="true"{% endif %}
+{%- endmacro %}
+
+{% macro text(name, label, values, errors, type="text", hint=None, required=False, attrs={}) -%}
+<div class="cn-field">
+  <label class="form-label" for="{{ name }}">{{ label }}{% if required %} <span class="cn-required" aria-hidden="true">*</span>{% endif %}</label>
+  <input class="form-control{% if errors.get(name) %} is-invalid{% endif %}" id="{{ name }}" name="{{ name }}" type="{{ type }}"
+         value="{{ values.get(name, '') if values.get(name) is not none else '' }}" {% if required %}required{% endif %}
+         {% for key, value in attrs.items() %}{{ key }}="{{ value }}" {% endfor %}{{ _aria(name, errors, hint) }}>
+  {% if hint %}<div class="form-text" id="{{ name }}-hint">{{ hint }}</div>{% endif %}
+  {{ _error(name, errors) }}
+</div>
+{%- endmacro %}
+
+{% macro textarea(name, label, values, errors, rows=4, hint=None, mono=False) -%}
+<div class="cn-field">
+  <label class="form-label" for="{{ name }}">{{ label }}</label>
+  <textarea class="form-control{% if mono %} cn-code-fallback{% endif %}{% if errors.get(name) %} is-invalid{% endif %}" id="{{ name }}" name="{{ name }}" rows="{{ rows }}" {{ _aria(name, errors, hint) }}>{{ values.get(name, '') or '' }}</textarea>
+  {% if hint %}<div class="form-text" id="{{ name }}-hint">{{ hint }}</div>{% endif %}
+  {{ _error(name, errors) }}
+</div>
+{%- endmacro %}
+
+{% macro markdown(name, label, values, errors, hint=None) -%}
+<div class="cn-field">
+  <span class="form-label d-block" id="{{ name }}-label">{{ label }}</span>
+  <cn-vitrine kind="markdown" vt-mode="edit" vt-variant="full" vt-tabs="true" vt-download="false" vt-label="{{ label }}" vt-max-height="22rem">
+    <label class="visually-hidden" for="{{ name }}">{{ label }} (Markdown)</label>
+    <textarea class="form-control" id="{{ name }}" name="{{ name }}" rows="6" {{ _aria(name, errors, hint) }}>{{ values.get(name, '') or '' }}</textarea>
+  </cn-vitrine>
+  {% if hint %}<div class="form-text" id="{{ name }}-hint">{{ hint }}</div>{% endif %}
+  {{ _error(name, errors) }}
+</div>
+{%- endmacro %}
+
+{% macro select(name, label, values, errors, choices, hint=None, empty=None) -%}
+{# choices: list of (value, label) #}
+<div class="cn-field">
+  <label class="form-label" for="{{ name }}">{{ label }}</label>
+  <select class="form-select{% if errors.get(name) %} is-invalid{% endif %}" id="{{ name }}" name="{{ name }}" {{ _aria(name, errors, hint) }}>
+    {% if empty is not none %}<option value="">{{ empty }}</option>{% endif %}
+    {% for value, text in choices %}
+      <option value="{{ value }}" {% if (values.get(name) | string) == (value | string) %}selected{% endif %}>{{ text }}</option>
+    {% endfor %}
+  </select>
+  {% if hint %}<div class="form-text" id="{{ name }}-hint">{{ hint }}</div>{% endif %}
+  {{ _error(name, errors) }}
+</div>
+{%- endmacro %}
+
+{% macro checkbox(name, label, values, errors, hint=None) -%}
+{% set checked = values.get(name) in (true, "on", "true", "1") %}
+<div class="cn-field form-check">
+  <input class="form-check-input" type="checkbox" id="{{ name }}" name="{{ name }}" {% if checked %}checked{% endif %} {{ _aria(name, errors, hint) }}>
+  <label class="form-check-label" for="{{ name }}">{{ label }}</label>
+  {% if hint %}<div class="form-text" id="{{ name }}-hint">{{ hint }}</div>{% endif %}
+  {{ _error(name, errors) }}
+</div>
+{%- endmacro %}
+
+{% macro form_error(errors) -%}
+{% if errors %}
+<div class="alert alert-danger" role="alert">
+  {% if errors.get("") %}{{ errors[""] }}{% else %}Some fields need a fix: {{ errors | length }} {{ "problem" if errors | length == 1 else "problems" }} below.{% endif %}
+</div>
+{% endif %}
+{%- endmacro %}

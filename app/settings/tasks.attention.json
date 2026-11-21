@@ -1,0 +1,6 @@
+{
+  "label": "Needs attention",
+  "category": "Tasks",
+  "description": "When the Today page flags a task: due within this many days, or active with no change for this many days.",
+  "value": {"due_soon_days": 3, "stale_active_days": 5}
+}

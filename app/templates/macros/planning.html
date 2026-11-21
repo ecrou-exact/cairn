@@ -1,0 +1,103 @@
+{# Pieces shared by every page that shows tasks and projects. #}
+
+{% macro type_icon(task, types) -%}
+{% set info = types.get(task.type) %}
+<i class="fa-solid {{ info.icon if info else 'fa-circle' }} cn-type-icon" title="{{ info.label if info else task.type }}" aria-hidden="true"></i><span class="visually-hidden">{{ info.label if info else task.type }}:</span>
+{%- endmacro %}
+
+{% macro priority(task) -%}
+<span class="cn-priority cn-priority-{{ task.priority }}">{{ task.priority }}</span>
+{%- endmacro %}
+
+{% macro task_status(task) -%}
+<span class="cn-status cn-status-{{ task.status | status_kind }}">{{ task.status | status_label }}</span>
+{%- endmacro %}
+
+{% macro due(task) -%}
+{% if task.due_on %}
+  {% set days = (task.due_on - today()).days %}
+  <time class="cn-due{% if task.is_open and days < 0 %} cn-due-late{% elif task.is_open and days <= 2 %} cn-due-soon{% endif %}" datetime="{{ task.due_on.isoformat() }}" title="{{ 'Hard deadline' if task.hard_deadline else 'Due date' }}">
+    {% if task.hard_deadline %}<i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">Hard deadline:</span>{% endif %}
+    {{ task.due_on | relative_day }}
+  </time>
+{% endif %}
+{%- endmacro %}
+
+{% macro blocked_badge(task) -%}
+{% if task.is_open and task.blocked_by_count %}
+<span class="cn-badge cn-badge-warning" title="Waiting on {{ task.blocked_by_count }} open task{{ 's' if task.blocked_by_count > 1 }}"><i class="fa-solid fa-link-slash" aria-hidden="true"></i> blocked</span>
+{% endif %}
+{%- endmacro %}
+
+{% macro project_chip(project) -%}
+{% if project %}<a class="cn-project-chip cn-color-{{ project.color }}" href="{{ url_for('projects.detail', slug=project.slug) }}"><i class="fa-solid {{ project.icon }}" aria-hidden="true"></i>{{ project.name }}</a>{% endif %}
+{%- endmacro %}
+
+{% macro score(task) -%}
+{% if task.is_open %}<span class="cn-score" title="Priority score — open the task to see why">{{ "%.0f" | format(task.score) }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro quick_add(placeholder="Add a task: fix login for rulezet by friday #bug !high ~2h", project=None, parent=None) -%}
+<form class="cn-quick-add" method="post" action="{{ url_for('tasks.quick_add') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="next" value="{{ request.full_path }}">
+  {% if project %}<input type="hidden" name="project_id" value="{{ project.id }}">{% endif %}
+  {% if parent %}<input type="hidden" name="parent_id" value="{{ parent.id }}">{% endif %}
+  <cn-quick-add {% if project %}project-id="{{ project.id }}"{% endif %}>
+    <label class="visually-hidden" for="quick-add-{{ parent.id if parent else (project.id if project else 'all') }}">Quick add</label>
+    <i class="fa-solid fa-plus" aria-hidden="true"></i>
+    <input class="form-control" id="quick-add-{{ parent.id if parent else (project.id if project else 'all') }}" name="text" maxlength="500" autocomplete="off" required placeholder="{{ placeholder }}">
+  </cn-quick-add>
+  <button class="btn btn-primary" type="submit">Add</button>
+</form>
+{%- endmacro %}
+
+{% macro task_rows(page, types, show_project=True) -%}
+{% from "macros/list.html" import sort_header %}
+<div class="cn-table-wrap">
+  <table class="table cn-table cn-task-table">
+    <thead>
+      <tr>
+        {{ sort_header(page, "title", "Task") }}
+        {% if show_project %}<th scope="col">Project</th>{% endif %}
+        {{ sort_header(page, "status", "Status") }}
+        {{ sort_header(page, "priority", "Priority") }}
+        {{ sort_header(page, "due", "Due") }}
+        {{ sort_header(page, "score", "Score") }}
+      </tr>
+    </thead>
+    <tbody>
+      {% for task in page.items %}
+      <tr data-task-id="{{ task.id }}" class="{% if not task.is_open %}cn-task-closed{% endif %}">
+        <td class="cn-task-title-cell">
+          {{ type_icon(task, types) }}
+          <a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a>
+          {{ blocked_badge(task) }}
+          {% for tag in task.tags[:3] %}<span class="cn-tag">#{{ tag }}</span>{% endfor %}
+        </td>
+        {% if show_project %}<td>{{ project_chip(task.project) }}</td>{% endif %}
+        <td>{{ task_status(task) }}</td>
+        <td>{{ priority(task) }}</td>
+        <td>{{ due(task) }}</td>
+        <td>{{ score(task) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}
+
+{% macro task_cards(page, types, show_project=True) -%}
+<ul class="cn-cards">
+  {% for task in page.items %}
+  <li class="cn-card cn-task-card{% if not task.is_open %} cn-task-closed{% endif %}" data-task-id="{{ task.id }}">
+    <div class="cn-card-head">
+      <span>{{ type_icon(task, types) }} <a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a></span>
+      {{ score(task) }}
+    </div>
+    <div class="cn-card-tags">{{ task_status(task) }} {{ priority(task) }} {{ blocked_badge(task) }} {{ due(task) }}</div>
+    {% if show_project and task.project %}<div>{{ project_chip(task.project) }}</div>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{%- endmacro %}

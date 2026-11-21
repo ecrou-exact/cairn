@@ -3,15 +3,31 @@
 
 {% block body %}
 {% set nav_items = [
-  ("home.index", "fa-house", "Today"),
+  ("home.index", "fa-sun", "Today"),
+  ("tasks.index", "fa-list-check", "Tasks"),
+  ("projects.index", "fa-folder-tree", "Projects"),
   ("jobs.index", "fa-gears", "Jobs"),
+  ("trash.index", "fa-trash-can", "Trash"),
   ("settings.index", "fa-sliders", "Settings"),
 ] %}
+{% set header_timer = running_timer() %}
 <a class="cn-skip-link" href="#main">Skip to content</a>
 <div class="cn-shell">
   <header class="cn-header">
     <a class="cn-brand" href="{{ url_for('home.index') }}">{{ brand_mark() }}<span>Cairn</span></a>
     <div class="cn-header-actions">
+      <button class="btn btn-sm btn-outline-secondary cn-palette-button" type="button" data-open-palette>
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="ms-2">Search or run…</span><kbd class="ms-2">Ctrl K</kbd>
+      </button>
+      {% if header_timer %}{% set entry, timed = header_timer %}
+      <cn-timer class="cn-timer" started="{{ entry.started_at.isoformat() }}">
+        <a href="{{ url_for('tasks.detail', task_id=timed.id) }}" title="{{ timed.title }}"><i class="fa-solid fa-stopwatch" aria-hidden="true"></i><span class="cn-timer-title">{{ timed.title }}</span> <span data-elapsed></span></a>
+        <form method="post" action="{{ url_for('tasks.stop_timer') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+          <button class="btn btn-sm btn-link" type="submit" title="Stop the timer"><i class="fa-solid fa-pause" aria-hidden="true"></i><span class="visually-hidden">Stop the timer</span></button>
+        </form>
+      </cn-timer>
+      {% endif %}
       <cn-live-status class="cn-live-status" hidden></cn-live-status>
       <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('account.security') }}">
         <i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span class="ms-2">Security</span>
@@ -42,9 +58,12 @@
     </div>
   </main>
 </div>
+<cn-palette></cn-palette>
 {% endblock %}
 
 {% block shell_scripts %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-live-status.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-confirm.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-palette.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-timer.js') }}"></script>
 {% endblock %}

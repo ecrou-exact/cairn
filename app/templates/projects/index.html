@@ -1,0 +1,63 @@
+{% extends "layout/shell.html" %}
+{% from "macros/list.html" import toolbar, sort_header, pagination, empty_state %}
+{% block title %}Projects{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+{% endblock %}
+{% block content %}
+<header class="cn-page-header cn-page-header-actions">
+  <div>
+    <div class="cn-eyebrow">Planning</div>
+    <h1>Projects</h1>
+    <p>Repositories and side projects, with what is open, blocked and late in each.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('projects.new') }}"><i class="fa-solid fa-plus" aria-hidden="true"></i><span class="ms-2">New project</span></a>
+</header>
+
+{{ toolbar(page, "Search projects") }}
+
+{% if page.items %}
+  {% if page.view == "cards" %}
+  <ul class="cn-cards cn-project-cards">
+    {% for project in page.items %}{% set st = stats[project.id] %}
+    <li class="cn-card cn-project-card cn-color-{{ project.color }}">
+      <div class="cn-card-head">
+        <a href="{{ url_for('projects.detail', slug=project.slug) }}"><i class="fa-solid {{ project.icon }} cn-project-icon" aria-hidden="true"></i>{{ project.name }}</a>
+        {% if project.status != "active" %}<span class="cn-badge">{{ project.status }}</span>{% endif %}
+      </div>
+      {% if project.github_repo %}<code class="cn-muted">{{ project.github_repo }}</code>{% endif %}
+      {% if st.open + st.closed %}<meter class="cn-project-meter" min="0" max="{{ st.open + st.closed }}" value="{{ st.closed }}" aria-label="{{ st.closed }} of {{ st.open + st.closed }} tasks done"></meter>{% endif %}
+      <dl class="cn-card-meta">
+        <div><dt>Open</dt><dd>{{ st.open }}</dd></div>
+        <div><dt>Done</dt><dd>{{ st.closed }}</dd></div>
+        {% if st.blocked %}<div><dt>Blocked</dt><dd>{{ st.blocked }}</dd></div>{% endif %}
+        {% if st.overdue %}<div><dt>Late</dt><dd class="cn-due-late">{{ st.overdue }}</dd></div>{% endif %}
+        {% if st.next_due %}<div><dt>Next due</dt><dd>{{ st.next_due | relative_day }}</dd></div>{% endif %}
+      </dl>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="cn-table-wrap">
+    <table class="table cn-table">
+      <thead><tr>{{ sort_header(page, "name", "Project") }}{{ sort_header(page, "status", "Status") }}<th scope="col">Open</th><th scope="col">Done</th><th scope="col">Late</th><th scope="col">Next due</th>{{ sort_header(page, "updated", "Updated") }}</tr></thead>
+      <tbody>
+        {% for project in page.items %}{% set st = stats[project.id] %}
+        <tr>
+          <td><a class="cn-color-{{ project.color }}" href="{{ url_for('projects.detail', slug=project.slug) }}"><i class="fa-solid {{ project.icon }} cn-project-icon" aria-hidden="true"></i>{{ project.name }}</a></td>
+          <td>{{ project.status }}</td><td>{{ st.open }}</td><td>{{ st.closed }}</td>
+          <td>{% if st.overdue %}<span class="cn-due-late">{{ st.overdue }}</span>{% else %}0{% endif %}</td>
+          <td>{{ st.next_due | relative_day if st.next_due else "—" }}</td>
+          <td><time datetime="{{ project.updated_at.isoformat() }}">{{ project.updated_at.strftime("%d %b") }}</time></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {{ pagination(page) }}
+{% else %}
+  {{ empty_state(page, "No projects yet", "A project groups tasks, links and instructions for Claude. Create your first one.") }}
+{% endif %}
+{% endblock %}

@@ -126,3 +126,21 @@
 ## D-022 · 2026-11-21 · accepted — REST API as plain blueprints, settings typed by pydantic
 - `/api/*` blueprints in `app/api/` instead of Flask-RESTX (not needed for a single-owner app; one dependency less). Inputs validated by `app/core/schema/` models (`extra="forbid"`), errors as `{"error", "details"}` with 4xx codes. Same session auth and CSRF header as the pages; MCP gets its own auth in Phase 5.
 - Every `app/settings/<key>.json` has a pydantic type in `SETTING_TYPES` (tested): an override must fit it (e.g. `jobs.lanes` must keep every lane).
+
+## D-023 · 2026-11-21 · accepted — Planning model and derived columns
+- `Project`, `Task`, `Dependency`, `TimeEntry` in `db_class/planning.py`. Statuses, workflow transitions, the default status, task types and score weights are settings (`tasks.*.json`), typed and checked for consistency (`Workflow` schema).
+- Status *kinds* (open, active, waiting, done, cancelled) drive behaviour, not status names: renaming or adding statuses never breaks the logic.
+- `is_open`, `blocked_by_count`, `unblocks_count`, `score`, `score_explain` are stored columns, recomputed by `refresh_derived()` after every planning change and every 6 h (job `tasks.rescore`). Stored so lists filter and sort on them in SQL (§14.3); written without touching `updated_at` so "untouched for N days" stays true.
+- `blocks` + `follows` edges must stay acyclic together; a refused link names the loop. Dependencies are links, hard-deleted, kept in the activity log for undo.
+- "Today" is the server's local date: Cairn runs on the owner's machine or server.
+
+## D-024 · 2026-11-21 · accepted — History batches own the transaction
+- `history.batch()` groups every activity row of one owner action; the outermost batch commits or rolls back everything. Undo replays inverses registered per action (`register_undo`) through the same core functions, inside a new batch: undo is validated, logged and itself undoable. A batch containing an action without an inverse (purge, timer) cannot be undone.
+- Routes open the batch themselves to show an Undo button with the right batch id (`flash_undo`).
+
+## D-025 · 2026-11-21 · accepted — Features beyond the brief, kept because they remove daily friction
+- **Quick-add preview:** what was understood is shown as chips while typing, with possible duplicates (difflib ratio ≥ 0.82 against open tasks).
+- **Needs attention:** overdue, due soon (hard deadline flagged, still blocked flagged), active but untouched for N days, marked blocked with nothing left blocking. Thresholds in `tasks.attention`.
+- **Unblock impact and blocking chain:** "finishing this unblocks N tasks" and the transitive chain of open blockers on a blocked task.
+- **Time tracking:** one running timer; "Start working" moves the task to the first active status; closing or deleting a task stops its timer; time spent vs estimate on the task.
+- Quick add understands French weekday names and "demain" as well as English.

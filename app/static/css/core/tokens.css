@@ -54,6 +54,14 @@
   --cn-duration: 200ms;
   --cn-easing: cubic-bezier(0.2, 0, 0, 1);
 
+  /* Project colours: mid tones that read on light and dark themes (PROJECT_COLORS). */
+  --cn-palette-terracotta: #c8643c;
+  --cn-palette-moss: #5f8a4e;
+  --cn-palette-slate: #6b7b8c;
+  --cn-palette-plum: #8e5b8a;
+  --cn-palette-ochre: #b8892c;
+  --cn-palette-sea: #3f8a8c;
+
   /* QR codes must stay dark-on-white in every theme to scan reliably */
   --cn-qr-bg: #ffffff;
 

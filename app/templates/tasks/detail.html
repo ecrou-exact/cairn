@@ -1,0 +1,229 @@
+{% extends "layout/shell.html" %}
+{% from "macros/planning.html" import type_icon, priority, task_status, due, project_chip, quick_add, blocked_badge %}
+{% block title %}{{ task.title }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-task-picker.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-quick-add.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/planning/live-task.js') }}"></script>
+{% endblock %}
+{% block content %}
+<nav class="cn-crumbs" aria-label="Breadcrumb">
+  <a href="{{ url_for('tasks.index') }}">Tasks</a>
+  {% if task.project %}<span aria-hidden="true">/</span>{{ project_chip(task.project) }}{% endif %}
+  {% for parent in ancestors %}<span aria-hidden="true">/</span><a href="{{ url_for('tasks.detail', task_id=parent.id) }}">{{ parent.title }}</a>{% endfor %}
+</nav>
+
+<header class="cn-task-header" id="task" data-task-id="{{ task.id }}" data-updated="{{ task.updated_at.isoformat() }}">
+  <h1>{{ type_icon(task, types) }} {{ task.title }}</h1>
+  <div class="cn-task-meta">
+    {{ task_status(task) }} {{ priority(task) }} {{ blocked_badge(task) }} {{ due(task) }}
+    {% for tag in task.tags %}<span class="cn-tag">#{{ tag }}</span>{% endfor %}
+    <span class="cn-muted">· {{ task.assignee }}</span>
+  </div>
+  <div class="cn-task-actions">
+    {% if task.is_open %}
+      {% if timing %}
+      <form method="post" action="{{ url_for('tasks.stop_timer') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">
+        <button class="btn btn-outline-secondary" type="submit"><i class="fa-solid fa-pause" aria-hidden="true"></i><span class="ms-2">Stop the timer</span></button>
+      </form>
+      {% else %}
+      <form method="post" action="{{ url_for('tasks.start_timer', task_id=task.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-play" aria-hidden="true"></i><span class="ms-2">Start working</span></button>
+      </form>
+      {% endif %}
+    {% endif %}
+    {% for status in next_statuses %}
+    <form method="post" action="{{ url_for('tasks.change_status', task_id=task.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="{{ status.key }}">
+      <button class="btn btn-sm {{ 'btn-success-soft' if status.kind == 'done' else 'btn-outline-secondary' }}" type="submit">{{ status.label }}</button>
+    </form>
+    {% endfor %}
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('tasks.edit', task_id=task.id) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="ms-1">Edit</span></a>
+    <cn-confirm message="Move “{{ task.title }}” to the trash?" detail="{% if subtasks %}Its {{ subtasks | length }} subtask{{ 's' if subtasks | length > 1 }} go with it. {% endif %}You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
+      <form method="post" action="{{ url_for('tasks.delete', task_id=task.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ url_for('projects.detail', slug=task.project.slug) if task.project else url_for('tasks.index') }}">
+        <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
+      </form>
+    </cn-confirm>
+  </div>
+  <div class="cn-live-notice" id="task-changed" hidden role="status"><span>This task was changed elsewhere.</span> <a href="{{ request.path }}">Reload</a></div>
+</header>
+
+{% if chain %}
+<section class="cn-panel cn-blocked-panel" aria-labelledby="chain-title">
+  <h2 id="chain-title"><i class="fa-solid fa-link-slash" aria-hidden="true"></i> Why it is blocked</h2>
+  <ul class="cn-chain">
+    {% for depth, blocker in chain %}
+    <li class="cn-chain-depth-{{ [depth, 4] | min }}">
+      <a href="{{ url_for('tasks.detail', task_id=blocker.id) }}">{{ blocker.title }}</a>
+      {{ task_status(blocker) }}{% if blocker.blocked_by_count %} <span class="cn-muted">itself blocked</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<div class="cn-task-layout">
+  <div class="cn-task-main">
+    <section class="cn-panel" aria-labelledby="desc-title">
+      <h2 id="desc-title">Description</h2>
+      {% if task.description_md %}
+      <script type="application/json" id="task-description">{{ task.description_md | tojson }}</script>
+      <cn-vitrine kind="markdown" source="task-description"></cn-vitrine>
+      {% else %}
+      <p class="cn-muted">No description. <a href="{{ url_for('tasks.edit', task_id=task.id) }}">Add one</a>.</p>
+      {% endif %}
+    </section>
+
+    {% if task.checklist %}
+    <section class="cn-panel" id="checklist" aria-labelledby="checklist-title">
+      <h2 id="checklist-title">Checklist <span class="cn-muted">{{ task.checklist | selectattr("done") | list | length }} / {{ task.checklist | length }}</span></h2>
+      <ul class="cn-checklist">
+        {% for item in task.checklist %}
+        <li>
+          <form method="post" action="{{ url_for('tasks.toggle_item', task_id=task.id, index=loop.index0) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="cn-check{% if item.done %} cn-check-done{% endif %}" type="submit" aria-pressed="{{ 'true' if item.done else 'false' }}">
+              <i class="fa-{{ 'solid fa-square-check' if item.done else 'regular fa-square' }}" aria-hidden="true"></i>
+              <span>{{ item.text }}</span>
+            </button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    {% if task.acceptance_md %}
+    <section class="cn-panel" aria-labelledby="acceptance-title">
+      <h2 id="acceptance-title">Acceptance criteria</h2>
+      <script type="application/json" id="task-acceptance">{{ task.acceptance_md | tojson }}</script>
+      <cn-vitrine kind="markdown" source="task-acceptance"></cn-vitrine>
+    </section>
+    {% endif %}
+
+    <section class="cn-panel" aria-labelledby="subtasks-title">
+      <h2 id="subtasks-title">Subtasks{% if subtasks %} <span class="cn-muted">{{ subtasks | rejectattr("is_open") | list | length }} / {{ subtasks | length }} done</span>{% endif %}</h2>
+      {% if subtasks %}
+      <ul class="cn-subtasks">
+        {% for sub in subtasks %}
+        <li class="{% if not sub.is_open %}cn-task-closed{% endif %}">
+          {{ type_icon(sub, types) }} <a href="{{ url_for('tasks.detail', task_id=sub.id) }}">{{ sub.title }}</a>
+          {{ task_status(sub) }} {{ blocked_badge(sub) }} {{ due(sub) }}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {{ quick_add("Add a subtask…", project=task.project, parent=task) }}
+    </section>
+
+    <section class="cn-panel" id="dependencies" aria-labelledby="deps-title">
+      <h2 id="deps-title">Dependencies</h2>
+      {% set groups = [("blocked_by", "Blocked by"), ("blocks", "Blocks"), ("follows", "Comes after"), ("followed_by", "Comes before"), ("relates", "Related to"), ("duplicates", "Duplicates")] %}
+      {% set any_dep = dependencies.values() | map("length") | sum %}
+      {% if any_dep %}
+      <dl class="cn-deps">
+        {% for key, label in groups if dependencies[key] %}
+        <dt>{{ label }}</dt>
+        <dd>
+          <ul>
+            {% for dep, other in dependencies[key] %}
+            <li>
+              <a href="{{ url_for('tasks.detail', task_id=other.id) }}">{{ other.title }}</a> {{ task_status(other) }}
+              {% if dep.note %}<span class="cn-muted">— {{ dep.note }}</span>{% endif %}
+              <form method="post" action="{{ url_for('tasks.remove_dependency', task_id=task.id, dependency_id=dep.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-link btn-sm cn-remove" type="submit" title="Remove this link"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="visually-hidden">Remove the link to {{ other.title }}</span></button>
+              </form>
+            </li>
+            {% endfor %}
+          </ul>
+        </dd>
+        {% endfor %}
+      </dl>
+      {% else %}
+      <p class="cn-muted">No dependency. Link a task that must be done first, or one this task unblocks.</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('tasks.add_dependency', task_id=task.id) }}" class="cn-dep-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="visually-hidden" for="dep-direction">This task</label>
+        <select class="form-select" id="dep-direction" name="direction">
+          <option value="blocked_by">is blocked by</option>
+          <option value="blocks">blocks</option>
+          <option value="follows">comes after</option>
+          <option value="relates">relates to</option>
+          <option value="duplicates">duplicates</option>
+        </select>
+        <cn-task-picker name="other_id" exclude="{{ task.id }}" label="Task to link"></cn-task-picker>
+        <button class="btn btn-outline-secondary" type="submit">Link</button>
+      </form>
+    </section>
+
+    {% if task.claude_instructions_md %}
+    <section class="cn-panel" aria-labelledby="claude-title">
+      <h2 id="claude-title">Instructions for Claude</h2>
+      <script type="application/json" id="task-claude">{{ task.claude_instructions_md | tojson }}</script>
+      <cn-vitrine kind="markdown" source="task-claude"></cn-vitrine>
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="cn-task-side">
+    <section class="cn-panel" aria-labelledby="score-title">
+      <h2 id="score-title">Score {% if task.is_open %}<span class="cn-score cn-score-big">{{ "%.0f" | format(task.score) }}</span>{% endif %}</h2>
+      {% if task.is_open %}
+      {% if task.unblocks_count %}<p class="cn-unblocks"><i class="fa-solid fa-unlock" aria-hidden="true"></i> Finishing it unblocks <strong>{{ task.unblocks_count }}</strong> task{{ 's' if task.unblocks_count > 1 }}.</p>{% endif %}
+      <table class="cn-explain">
+        <caption class="visually-hidden">How the score is made</caption>
+        {% for item in task.score_explain %}
+        <tr class="{% if item.points == 0 %}cn-muted{% endif %}">
+          <th scope="row">{{ item.label }}</th><td>{{ item.detail }}</td><td class="cn-num">{% if item.points is not none %}+{{ item.points }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      <p class="form-text"><a href="{{ url_for('settings.index', _anchor='tasks.score_weights') }}">Change the weights</a></p>
+      {% else %}
+      <p class="cn-muted">Closed {% if task.completed_at %}on {{ task.completed_at.strftime("%d %b %Y") }}{% endif %}.</p>
+      {% endif %}
+    </section>
+
+    <section class="cn-panel" aria-labelledby="plan-title">
+      <h2 id="plan-title">Planning</h2>
+      <dl class="cn-facts">
+        <div><dt>Importance</dt><dd>{{ task.importance }} / 5</dd></div>
+        <div><dt>Urgency</dt><dd>{{ task.urgency }} / 5</dd></div>
+        {% if task.start_on %}<div><dt>Start</dt><dd>{{ task.start_on | relative_day }}</dd></div>{% endif %}
+        {% if task.do_on %}<div><dt>Do on</dt><dd>{{ task.do_on | relative_day }}</dd></div>{% endif %}
+        {% if task.due_on %}<div><dt>Due</dt><dd>{{ task.due_on | relative_day }}{% if task.hard_deadline %} (hard){% endif %}</dd></div>{% endif %}
+        <div><dt>Estimate</dt><dd>{{ ("%g h" | format(task.estimate_hours)) if task.estimate_hours else "—" }}</dd></div>
+        <div><dt>Time spent</dt><dd>{{ task.tracked_seconds | duration }}{% if task.estimate_hours and task.tracked_seconds > task.estimate_hours * 3600 %} <span class="cn-badge cn-badge-warning">over</span>{% endif %}</dd></div>
+      </dl>
+      {% if time_entries %}
+      <details class="cn-time-entries"><summary>Work sessions</summary>
+        <ul>{% for entry in time_entries %}<li><time datetime="{{ entry.started_at.isoformat() }}">{{ entry.started_at.strftime("%d %b %H:%M") }}</time> · {{ ((entry.ended_at - entry.started_at).total_seconds() | int) | duration }}</li>{% endfor %}</ul>
+      </details>
+      {% endif %}
+    </section>
+
+    <section class="cn-panel" aria-labelledby="history-title">
+      <h2 id="history-title">History</h2>
+      <ol class="cn-history">
+        {% for entry in history %}
+        <li>
+          <time datetime="{{ entry.created_at.isoformat() }}">{{ entry.created_at.strftime("%d %b %H:%M") }}</time>
+          <span class="cn-actor">{{ entry.actor }}</span>
+          <span>{{ entry.action.split(".")[1].replace("_", " ") }}{% if entry.diff and entry.action == "task.update" %}: {{ entry.diff.keys() | map("replace", "_md", "") | map("replace", "_", " ") | join(", ") }}{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+  </aside>
+</div>
+{% endblock %}

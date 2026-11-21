@@ -1,0 +1,26 @@
+{
+  "label": "Task workflow",
+  "category": "Tasks",
+  "description": "Task statuses in board order, what each one means (open, active, waiting, done, cancelled) which status may follow which, and the status of a new task. A task left in a status that no longer exists keeps it until edited.",
+  "value": {
+    "default": "todo",
+    "statuses": [
+      {"key": "backlog", "label": "Backlog", "kind": "open"},
+      {"key": "todo", "label": "To do", "kind": "open"},
+      {"key": "in_progress", "label": "In progress", "kind": "active"},
+      {"key": "in_review", "label": "In review", "kind": "active"},
+      {"key": "blocked", "label": "Blocked", "kind": "waiting"},
+      {"key": "done", "label": "Done", "kind": "done"},
+      {"key": "cancelled", "label": "Cancelled", "kind": "cancelled"}
+    ],
+    "transitions": {
+      "backlog": ["todo", "in_progress", "cancelled"],
+      "todo": ["backlog", "in_progress", "blocked", "done", "cancelled"],
+      "in_progress": ["todo", "in_review", "blocked", "done", "cancelled"],
+      "in_review": ["in_progress", "blocked", "done", "cancelled"],
+      "blocked": ["todo", "in_progress", "cancelled"],
+      "done": ["todo", "in_progress"],
+      "cancelled": ["backlog", "todo"]
+    }
+  }
+}

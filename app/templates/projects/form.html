@@ -1,0 +1,55 @@
+{% extends "layout/shell.html" %}
+{% import "macros/form.html" as f %}
+{% block title %}{{ "Edit " ~ project.name if project else "New project" }}{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-form-guard.js') }}"></script>
+{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('projects.detail', slug=project.slug) if project else url_for('projects.index') }}">{{ project.name if project else "Projects" }}</a></div>
+  <h1>{{ "Edit project" if project else "New project" }}</h1>
+</header>
+{{ f.form_error(errors) }}
+<form method="post" class="cn-panel cn-project-form" novalidate>
+  <cn-form-guard></cn-form-guard>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="cn-form-grid">
+    {{ f.text("name", "Name", values, errors, required=True, attrs={"maxlength": 120, "autofocus": "autofocus"}) }}
+    {{ f.text("slug", "Slug", values, errors, hint="In the URL. Left empty, it is made from the name.") }}
+    {{ f.select("status", "Status", values, errors, statuses) }}
+    {{ f.text("weight", "Weight in the score", values, errors, type="number", hint="1 is neutral; 2 makes its tasks count twice.", attrs={"min": "0.25", "max": "3", "step": "0.25"}) }}
+  </div>
+  <fieldset class="cn-field">
+    <legend class="form-label">Colour</legend>
+    <div class="cn-color-picker">
+      {% for color in colors %}
+      <label class="cn-color-option cn-color-{{ color }}">
+        <input type="radio" name="color" value="{{ color }}" {% if values.get("color") == color %}checked{% endif %}>
+        <span class="cn-color-dot" aria-hidden="true"></span><span>{{ color }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {{ f.text("icon", "Icon", values, errors, hint="A Font Awesome solid icon name, e.g. fa-shield-halved, fa-rocket, fa-book.") }}
+  {{ f.markdown("description_md", "Description", values, errors) }}
+  <h2 class="cn-form-section">Code</h2>
+  <div class="cn-form-grid">
+    {{ f.text("github_repo", "GitHub repository", values, errors, hint="owner/repo") }}
+    {{ f.text("default_branch", "Default branch", values, errors) }}
+  </div>
+  {{ f.text("local_path", "Local path", values, errors, hint="Where the repository is cloned on this machine.") }}
+  {{ f.text("stack", "Stack", values, errors, hint="Languages and frameworks, separated by commas.") }}
+  {{ f.textarea("links", "Links", values, errors, rows=3, mono=True, hint="One per line: Docs | https://…") }}
+  {{ f.text("tags", "Tags", values, errors, hint="Separated by commas.") }}
+  <h2 class="cn-form-section">Claude</h2>
+  {{ f.markdown("claude_instructions_md", "Instructions for Claude", values, errors, hint="Rules for every run on this project's tasks; merged into its generated CLAUDE.md.") }}
+  <div class="cn-form-actions">
+    <button class="btn btn-primary" type="submit">{{ "Save" if project else "Create the project" }}</button>
+    <a class="btn btn-link" href="{{ url_for('projects.detail', slug=project.slug) if project else url_for('projects.index') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}
