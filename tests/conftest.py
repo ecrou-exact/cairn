@@ -27,6 +27,7 @@ def app():
     with app.app_context():
         db.session.remove()
         db.drop_all()
+        db.engine.dispose()  # close pooled SQLite connections (ResourceWarning on Python 3.13+)
 
 
 @pytest.fixture()

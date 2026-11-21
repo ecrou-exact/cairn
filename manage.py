@@ -111,11 +111,13 @@ def main() -> int:
     migrate = sub.add_parser("migrate", help="create a migration")
     migrate.add_argument("message")
     migrate.set_defaults(func=cmd_migrate)
-    test = sub.add_parser("test", help="run tests")
-    test.add_argument("pytest_args", nargs=argparse.REMAINDER)
-    test.set_defaults(func=cmd_test)
+    sub.add_parser("test", help="run tests (extra arguments go to pytest)").set_defaults(func=cmd_test)
     sub.add_parser("check", help="lint + security scan + tests").set_defaults(func=cmd_check)
-    args = parser.parse_args()
+    args, extra = parser.parse_known_args()
+    if args.command == "test":
+        args.pytest_args = extra
+    elif extra:
+        parser.error(f"unrecognized arguments: {' '.join(extra)}")
     return args.func(args)
 
 
