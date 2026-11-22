@@ -34,9 +34,12 @@ def _resource_or_404(resource_id: uuid.UUID):
         abort(404)
 
 
-def _kinds() -> list[tuple[str, str, str]]:
-    """(kind, label, icon) of what the owner can create by hand, for the "New" links."""
-    return [(k, resources_core.KIND_LABELS[k], resources_core.KIND_ICONS[k]) for k in CREATABLE_KINDS]
+def _kinds() -> list[tuple[str, str, str, str]]:
+    """(kind, label, icon, hint) of what the owner can create by hand, for the "New" links."""
+    return [
+        (k, resources_core.KIND_LABELS[k], resources_core.KIND_ICONS[k], resources_core.KIND_HINTS[k])
+        for k in CREATABLE_KINDS
+    ]
 
 
 def _form(kind: str, values, errors=None, resource=None, status=200):

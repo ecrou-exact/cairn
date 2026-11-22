@@ -20,7 +20,7 @@
 
 {% if not resource %}
 <nav class="cn-kind-links" aria-label="Kind of resource">
-  {% for value, text, icon in kinds %}
+  {% for value, text, icon, _hint in kinds %}
   <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('resources.new', kind=value, attach=attach or None, next=back or None) }}" {% if value == kind %}aria-current="page"{% endif %}><i class="fa-solid {{ icon }}" aria-hidden="true"></i><span class="ms-1">{{ text }}</span></a>
   {% endfor %}
   <span class="cn-muted">Files and images: drop them on the library or on a task.</span>

@@ -62,7 +62,7 @@
       <button class="btn btn-outline-secondary" type="submit">Attach</button>
     </form>
 
-    <cn-upload max-mb="{{ max_mb }}" paste="page" label="Files and images" hint="Drop files here, choose them, or paste a screenshot anywhere on this page. Up to {{ max_mb }} MB each.">
+    <cn-upload size="compact" max-mb="{{ max_mb }}" paste="page" target="this {{ target_type }}" label="Files and images" hint="Or drop them anywhere on this page, or paste a screenshot.">
       <form method="post" action="{{ url_for('resources.upload') }}" enctype="multipart/form-data" class="cn-inline-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}"><input type="hidden" name="attach" value="{{ attach }}">
         <label class="visually-hidden" for="upload-{{ target.id }}">Files to attach</label>

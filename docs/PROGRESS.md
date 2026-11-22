@@ -68,6 +68,7 @@ Goal: owner approves architecture + design direction.
 - [x] Visual identity: contour header band, trail-marked sidebar, slabs instead of outlined boxes, Today at a glance, sign-in brand panel (D-033)
 - [x] Foldable menu, drawer menu on phones
 - [x] Profile (display name, about, picture) and connected accounts (GitHub, Claude API key, others) in the vault, checked by a job; GitHub previews of private issues / PRs (D-034)
+- [x] One look on every page (D-042): dark contour page bands, stone buttons, field wells, filters folded behind a button, floating bulk bar, stone empty states, restyled drop zone with drop-anywhere
 - [ ] Multi-user system (later, on request)
 
 ## Phase 4 — Graph (Pivotick, full integration per §4)  *(current)*
@@ -79,6 +80,7 @@ Goal: owner approves architecture + design direction.
 - [x] Find in the graph (`/`): any task of the view by its title, subtasks inside a case included; the view glides to the card that holds it, selected, side panel open (D-040)
 - [ ] Collapse/expand, clustering, data table; encodings still to add (running agent, instance — with Phases 5 and 8)
 - [x] Edit from the graph's side panel: move to an allowed status, link to another card (blocks, blocked by, comes after, relates); the graph and the panel follow live
+- [x] Path above the graph (All projects / project / case) with Up and Backspace to go back one level (D-042)
 - [x] Link mode (L or the link button): touch what comes first, then what it blocks; works by touch on phones; filters by state (ready, blocked, late, due soon) and tag, a case kept when a subtask matches
 - [ ] 300+ node tuning
 

@@ -369,3 +369,77 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
 .cn-home-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--cn-space-3); margin-bottom: var(--cn-space-3); }
 .cn-home-head h2 { margin: 0; }
 .cn-home-head a { font-size: var(--cn-text-sm); color: var(--cn-text-muted); }
+
+/* -- Global look (D-042): the Today style on every page -------------------------------- */
+
+/* Background: warm, with a faint glow of the mark and contour lines at the top */
+body {
+  background:
+    radial-gradient(900px 420px at 78% -120px, color-mix(in srgb, var(--cn-mark) 8%, transparent), transparent 70%),
+    var(--cn-bg);
+  background-attachment: fixed;
+}
+.cn-main { position: relative; isolation: isolate; }
+.cn-main::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 26rem;
+  z-index: -1;
+  background: color-mix(in srgb, var(--cn-border-strong) 45%, transparent);
+  mask: url("../../img/contours.svg") 100% 0 / 70rem auto no-repeat, linear-gradient(to bottom, var(--cn-text), transparent);
+  mask-composite: intersect;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+/* Page headers: a compact dark contour band, like Today's */
+.cn-page-header {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: var(--cn-space-5) var(--cn-space-6);
+  margin-bottom: var(--cn-space-5);
+  background:
+    radial-gradient(600px 260px at 85% 120%, color-mix(in srgb, var(--cn-mark) 26%, transparent), transparent 70%),
+    var(--cn-chrome-bg);
+  color: var(--cn-chrome-text);
+  border-radius: var(--cn-radius-slab);
+  box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--cn-chrome-bg) 60%, transparent);
+}
+.cn-page-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--cn-chrome-line);
+  mask: url("../../img/contours.svg") 100% 50% / 60rem auto no-repeat;
+}
+.cn-page-header h1 { color: var(--cn-chrome-text); font-size: clamp(1.6rem, 2.4vw, 2.1rem); }
+.cn-page-header .cn-eyebrow { color: var(--cn-mark); }
+.cn-page-header p {
+  color: var(--cn-chrome-muted);
+  max-width: 44rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cn-page-header a:not(.btn) { color: var(--cn-chrome-muted); }
+.cn-page-header a:not(.btn):hover { color: var(--cn-chrome-text); }
+.cn-page-header .btn-outline-secondary,
+.cn-page-header .btn-outline-primary {
+  --bs-btn-color: var(--cn-chrome-text);
+  --bs-btn-bg: color-mix(in srgb, var(--cn-chrome-text) 8%, transparent);
+  --bs-btn-hover-bg: color-mix(in srgb, var(--cn-chrome-text) 14%, transparent);
+  --bs-btn-hover-color: var(--cn-chrome-text);
+  --bs-btn-active-bg: color-mix(in srgb, var(--cn-chrome-text) 18%, transparent);
+  --bs-btn-active-color: var(--cn-chrome-text);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cn-chrome-text) 10%, transparent);
+}
+.cn-page-header .btn-outline-secondary i, .cn-page-header .btn-outline-primary i { color: var(--cn-mark); }
+.cn-page-header .cn-muted, .cn-page-header small { color: var(--cn-chrome-muted); }
+
+/* Panel and card titles: a stone, a stronger title, a hairline under the head */
+.cn-panel > header:first-child { padding-bottom: var(--cn-space-3); margin-bottom: var(--cn-space-3); border-bottom: 1px dashed var(--cn-border); }
+.cn-panel h2 { letter-spacing: -0.02em; }

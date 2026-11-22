@@ -132,7 +132,8 @@ Configurable lists (types, statuses, workflow transitions, priorities, score wei
 - `static/js/graph/graph.js`: Pivotick in `viewer` mode, cards from `node.getData()`, Cairn chrome (zoom, find, link mode, critical path, side panel, peek), live diffing; styles in `static/css/graph/graph.css` (`--pvt-*` bridge included). D-035.
 
 ## 5b. Lists, settings, display
-- **Lists:** a feature declares a `ListSpec` (sortable, searchable, filters, tiebreak) and calls `run_list(spec, query, request.args)`; anything undeclared in the URL is ignored. Macros in `templates/macros/list.html`, styles in `css/components/list.css`. The API returns the same page as JSON (`schema/common.page_dict`).
+- **Lists:** a feature declares a `ListSpec` (sortable, searchable, filters, tiebreak) and calls `run_list(spec, query, request.args)`; anything undeclared in the URL is ignored. Macros in `templates/macros/list.html` (search and view switch visible, filters folded in a `<details>` panel), styles in `css/components/list.css`.
+- **Uploads:** `<cn-upload>` (`js/components/cn-upload.js`) wraps Vitrine's `vt-upload`, styled through its parts in `css/components/upload.css`; `paste="page"` adds paste and drop anywhere on the page. The API returns the same page as JSON (`schema/common.page_dict`).
 - **Settings:** defaults in `app/settings/<key>.json`, overrides in `setting_override` (with the default they were made from, to flag "new default"). Typed by `SETTING_TYPES`; page `/settings`, API `/api/settings`.
 - **Code, JSON, logs:** always `<cn-vitrine>` (D-019).
 

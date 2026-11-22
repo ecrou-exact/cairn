@@ -519,16 +519,26 @@ function mount(stage) {
     stage.querySelector('[data-graph-empty]').hidden = total > 0;
     const crumbs = document.querySelector('[data-graph-crumbs]');
     if (crumbs && current.breadcrumb) {
-      const parts = [];
-      current.breadcrumb.forEach((step, index) => {
+      // The path above the graph: All projects / project / case / …, the last one is here.
+      crumbs.replaceChildren(...current.breadcrumb.map((step, index) => {
+        const li = el('li');
         const last = index === current.breadcrumb.length - 1;
-        if (index) parts.push(icon('fa-solid fa-chevron-right cn-crumb-sep'));
         const item = last ? el('span', 'cn-crumb-current', step.label) : el('a', '', step.label);
         if (last) item.setAttribute('aria-current', 'page');
         else item.href = step.url;
-        parts.push(item);
-      });
-      crumbs.replaceChildren(...parts);
+        if (index === 0) item.prepend(icon('fa-solid fa-mountain-sun'), document.createTextNode(' '));
+        li.append(item);
+        return li;
+      }));
+      const up = document.querySelector('[data-graph-up]');
+      const parent = current.breadcrumb.at(-2);
+      if (up) {
+        up.hidden = !parent;
+        if (parent) {
+          up.href = parent.url;
+          up.title = `Up to “${parent.label}” (Backspace)`;
+        }
+      }
     }
   }
 
@@ -591,6 +601,11 @@ function mount(stage) {
       if (linking) setLinking(false);
     }
     const typing = event.composedPath()[0]?.matches?.('input, textarea, select, [contenteditable]');
+    const up = document.querySelector('[data-graph-up]');
+    if (!typing && !compact && event.key === 'Backspace' && up && !up.hidden) {
+      event.preventDefault();
+      window.location.assign(up.href);
+    }
     if (!typing && !compact && event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey && !event.altKey) {
       setLinking(!linking);
     }

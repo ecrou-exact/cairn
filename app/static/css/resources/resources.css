@@ -30,10 +30,48 @@
 .cn-resource-new { margin: 0; font-size: var(--cn-text-sm); color: var(--cn-text-muted); }
 
 /* Library */
-.cn-library-add { display: grid; gap: var(--cn-space-3); }
+.cn-library-add { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(16rem, 1fr); gap: var(--cn-space-4); margin-bottom: var(--cn-space-5); }
+@media (max-width: 900px) { .cn-library-add { grid-template-columns: 1fr; } }
+.cn-library-drop { display: grid; gap: var(--cn-space-3); align-content: start; }
+.cn-library-drop vt-upload::part(zone) { min-height: 12rem; }
+.cn-drop-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--cn-space-2); font-size: var(--cn-text-xs); color: var(--cn-text-muted); }
+.cn-drop-facts li { display: inline-flex; align-items: center; gap: var(--cn-space-2); padding: 2px var(--cn-space-3); border-radius: var(--cn-radius-pill); background: var(--cn-surface-sunken); cursor: help; }
+.cn-drop-facts i { color: var(--cn-mark); }
+
+/* "Create": a grid of stones, the kind's colour, its name (what it is for in the tooltip) */
+.cn-create { display: grid; gap: var(--cn-space-3); align-content: start; }
+.cn-create h2 { font-size: var(--cn-text-md); margin: 0; }
+.cn-create-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--cn-space-2); }
+.cn-create-item {
+  display: grid;
+  justify-items: center;
+  gap: var(--cn-space-2);
+  padding: var(--cn-space-3) var(--cn-space-2);
+  border-radius: var(--cn-radius-lg);
+  background: var(--cn-surface-sunken);
+  color: var(--cn-text);
+  text-decoration: none;
+  font-size: var(--cn-text-sm);
+  transition: background var(--cn-duration) var(--cn-easing), transform var(--cn-duration) var(--cn-easing), box-shadow var(--cn-duration) var(--cn-easing);
+}
+.cn-main a.cn-create-item:hover, .cn-create-item:focus-visible { background: var(--cn-surface-raised); color: var(--cn-text); text-decoration: none; transform: translateY(-2px); box-shadow: var(--cn-slab-hover); }
+.cn-create-icon {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.4rem;
+  border-radius: 12px 12px 15px 15px;
+  background: color-mix(in srgb, currentcolor 16%, var(--cn-surface));
+  color: var(--cn-text-muted);
+  font-size: var(--cn-text-lg);
+}
+.cn-create-item.cn-kind-url .cn-create-icon, .cn-create-item.cn-kind-github .cn-create-icon { color: var(--cn-info); }
+.cn-create-item.cn-kind-snippet .cn-create-icon, .cn-create-item.cn-kind-tool .cn-create-icon { color: var(--cn-palette-moss); }
+.cn-create-item.cn-kind-note .cn-create-icon { color: var(--cn-palette-ochre); }
+.cn-create-item.cn-kind-file .cn-create-icon { color: var(--cn-palette-plum); }
+
 .cn-kind-links { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: center; margin-bottom: var(--cn-space-3); }
 .cn-kind-links [aria-current="page"] { background: var(--cn-accent-soft); border-color: var(--cn-accent); }
-.cn-library-add .cn-kind-links { margin-bottom: 0; }
 .cn-resource-cards .cn-card { align-content: start; }
 .cn-resource-cards .cn-card-head > div { min-width: 0; overflow-wrap: anywhere; }
 .cn-resource-preview { display: block; margin: calc(var(--cn-space-4) * -1) calc(var(--cn-space-4) * -1) 0; border-radius: var(--cn-radius-lg) var(--cn-radius-lg) 0 0; overflow: hidden; background: var(--cn-surface-sunken); }

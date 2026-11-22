@@ -175,13 +175,30 @@
 .cn-attention-unblocked i { color: var(--cn-success); }
 
 /* Bulk edit and inline editing */
+/* The bulk bar floats at the bottom, dark like the header, once a task is ticked (D-042) */
 .cn-bulk {
+  position: fixed;
+  bottom: var(--cn-space-5);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 25;
   display: flex; flex-wrap: wrap; gap: var(--cn-space-2) var(--cn-space-4); align-items: center;
-  padding: var(--cn-space-2) var(--cn-space-3); margin-bottom: var(--cn-space-2);
-  border: var(--cn-border-width) dashed var(--cn-border); border-radius: var(--cn-radius);
-  font-size: var(--cn-text-sm); color: var(--cn-text-muted);
+  width: fit-content;
+  max-width: calc(100vw - 2rem);
+  margin: 0;
+  padding: var(--cn-space-2) var(--cn-space-3) var(--cn-space-2) var(--cn-space-4);
+  background: var(--cn-chrome-bg);
+  color: var(--cn-chrome-text);
+  border-radius: var(--cn-radius-slab);
+  box-shadow: 0 0 0 1px var(--cn-chrome-border), 0 18px 40px -16px color-mix(in srgb, var(--cn-chrome-bg) 65%, transparent);
+  font-size: var(--cn-text-sm);
+  animation: cn-rise var(--cn-duration) var(--cn-easing);
 }
-.cn-bulk-active { border-style: solid; border-color: var(--cn-accent); background: var(--cn-accent-soft); color: var(--cn-text); }
+body:not(:has(input[form="bulk-form"]:checked)) .cn-bulk { display: none; }
+.cn-bulk .form-select, .cn-bulk .form-control { background-color: var(--cn-chrome-field); border-color: var(--cn-chrome-border); color: var(--cn-chrome-text); box-shadow: none; }
+.cn-bulk .btn-outline-secondary { --bs-btn-bg: color-mix(in srgb, var(--cn-chrome-text) 8%, transparent); --bs-btn-color: var(--cn-chrome-text); --bs-btn-hover-bg: color-mix(in srgb, var(--cn-chrome-text) 14%, transparent); --bs-btn-hover-color: var(--cn-chrome-text); box-shadow: none; }
+.cn-bulk-count::before { content: ""; display: inline-block; width: 0.6rem; height: 0.45rem; margin-right: var(--cn-space-2); border-radius: 3px 3px 4px 4px; background: var(--cn-mark); }
+@keyframes cn-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .cn-bulk-count { font-weight: var(--cn-weight-medium); }
 .cn-bulk-actions { display: flex; flex-wrap: wrap; gap: var(--cn-space-1); align-items: center; }
 .cn-bulk-actions .form-select, .cn-bulk-tags { width: auto; max-width: 10rem; }

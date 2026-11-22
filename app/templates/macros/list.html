@@ -8,21 +8,35 @@
     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
     <input class="form-control" id="list-q" type="search" name="q" value="{{ page.search }}" placeholder="{{ search_label }}…" maxlength="200">
   </div>
-  {% for flt in page.spec.filters %}
-    {% set chosen = page.active_filters.get(flt.name, []) %}
-    <div class="cn-list-filter">
-      <label class="visually-hidden" for="list-{{ flt.name }}">{{ flt.label }}</label>
-      <select class="form-select" id="list-{{ flt.name }}" name="{{ flt.name }}">
-        <option value="">{{ flt.label }}: any</option>
-        {% for value, label in flt.choices %}
-          <option value="{{ value }}" {% if value in chosen %}selected{% endif %}>{{ flt.label }}: {{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-  {% endfor %}
   {% for name, value in page.hidden_fields("page", search=True) %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
-  <button class="btn btn-outline-secondary" type="submit">Apply</button>
-  {% if page.has_filters %}<a class="btn btn-link" href="{{ page.clear_url() }}">Clear</a>{% endif %}
+  {% if page.has_filters %}<a class="btn btn-sm cn-list-clear" href="{{ page.clear_url() }}" title="Clear the search and filters"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="visually-hidden">Clear the search and filters</span></a>{% endif %}
+  {% if page.spec.filters %}
+  {% set active = page.active_filters.values() | select | list | length %}
+  {# Filters stay folded away (D-042): a button with how many are on, a panel when opened. #}
+  <details class="cn-list-more">
+    <summary class="btn btn-outline-secondary{{ ' is-active' if active }}" title="Filters">
+      <i class="fa-solid fa-sliders" aria-hidden="true"></i><span class="cn-list-more-label">Filters</span>
+      {% if active %}<span class="cn-list-more-count" aria-label="{{ active }} on">{{ active }}</span>{% endif %}
+    </summary>
+    <div class="cn-list-more-panel">
+      {% for flt in page.spec.filters %}
+        {% set chosen = page.active_filters.get(flt.name, []) %}
+        <label class="cn-list-filter">
+          <span>{{ flt.label }}</span>
+          <select class="form-select form-select-sm" id="list-{{ flt.name }}" name="{{ flt.name }}">
+            <option value="">Any</option>
+            {% for value, label in flt.choices %}
+              <option value="{{ value }}" {% if value in chosen %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      {% endfor %}
+      <button class="btn btn-primary btn-sm" type="submit">Show</button>
+    </div>
+  </details>
+  {% else %}
+  <button class="visually-hidden" type="submit">Search</button>
+  {% endif %}
   <div class="cn-list-views" role="group" aria-label="Display">
     {% for view, icon, label in [("table", "fa-table-list", "Table"), ("cards", "fa-grip", "Cards")] if view in page.spec.views %}
       <a class="btn btn-sm btn-outline-secondary" href="{{ page.url(view=view) }}" {% if page.view == view %}aria-current="true"{% endif %}>

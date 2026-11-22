@@ -50,44 +50,89 @@
   --bs-info-border-subtle: var(--cn-info);
 }
 
+/* Buttons are stones: a little rounder at the bottom, raised, the main one lit by the mark. */
+.btn {
+  --bs-btn-border-radius: 10px 10px 13px 13px;
+  --bs-btn-font-weight: var(--cn-weight-medium);
+  --bs-btn-padding-x: 0.95rem;
+  --bs-btn-focus-box-shadow: 0 0 0 3px color-mix(in srgb, var(--cn-focus) 35%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cn-space-2);
+  transition: background var(--cn-duration-fast) var(--cn-easing), box-shadow var(--cn-duration) var(--cn-easing), transform var(--cn-duration-fast) var(--cn-easing), color var(--cn-duration-fast) var(--cn-easing);
+}
+.btn-sm { --bs-btn-border-radius: 8px 8px 11px 11px; --bs-btn-padding-x: 0.7rem; }
+.btn:active { transform: translateY(1px); }
+.btn > i + span.ms-1, .btn > i + span.ms-2 { margin-left: 0 !important; }
+
 .btn-primary {
   --bs-btn-bg: var(--cn-accent);
-  --bs-btn-border-color: var(--cn-accent);
+  --bs-btn-border-color: transparent;
   --bs-btn-color: var(--cn-on-accent);
   --bs-btn-hover-bg: var(--cn-accent-hover);
-  --bs-btn-hover-border-color: var(--cn-accent-hover);
+  --bs-btn-hover-border-color: transparent;
   --bs-btn-hover-color: var(--cn-on-accent);
   --bs-btn-active-bg: var(--cn-accent-hover);
-  --bs-btn-active-border-color: var(--cn-accent-hover);
+  --bs-btn-active-border-color: transparent;
   --bs-btn-active-color: var(--cn-on-accent);
   --bs-btn-disabled-bg: var(--cn-accent);
-  --bs-btn-disabled-border-color: var(--cn-accent);
+  --bs-btn-disabled-border-color: transparent;
   --bs-btn-disabled-color: var(--cn-on-accent);
+  background-image: linear-gradient(to bottom, color-mix(in srgb, var(--cn-mark) 55%, transparent), transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--cn-chrome-text) 18%, transparent), 0 6px 16px -8px color-mix(in srgb, var(--cn-accent) 80%, transparent);
 }
+.btn-primary:hover { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--cn-chrome-text) 22%, transparent), 0 10px 22px -10px color-mix(in srgb, var(--cn-accent) 90%, transparent); transform: translateY(-1px); }
 
-.btn-outline-secondary {
+.btn-outline-secondary,
+.btn-outline-primary {
   --bs-btn-color: var(--cn-text);
-  --bs-btn-border-color: var(--cn-border-strong);
-  --bs-btn-hover-bg: var(--cn-surface-sunken);
-  --bs-btn-hover-color: var(--cn-text);
-  --bs-btn-hover-border-color: var(--cn-border-strong);
+  --bs-btn-bg: var(--cn-surface-raised);
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-bg: var(--cn-surface-raised);
+  --bs-btn-hover-color: var(--cn-accent);
+  --bs-btn-hover-border-color: transparent;
   --bs-btn-active-bg: var(--cn-surface-sunken);
   --bs-btn-active-color: var(--cn-text);
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-border-color: transparent;
+  box-shadow: var(--cn-slab-shadow);
+}
+.btn-outline-secondary:hover,
+.btn-outline-primary:hover { box-shadow: var(--cn-slab-hover); transform: translateY(-1px); }
+.btn-outline-secondary i, .btn-outline-primary i { color: var(--cn-text-muted); }
+.btn-outline-secondary:hover i, .btn-outline-primary:hover i { color: var(--cn-accent); }
+
+.btn-outline-danger {
+  --bs-btn-color: var(--cn-danger);
+  --bs-btn-bg: var(--cn-surface-raised);
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-bg: var(--cn-danger);
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-hover-color: var(--cn-on-accent);
+  box-shadow: var(--cn-slab-shadow);
 }
 
+/* Fields: sunken wells, a ring of the focus colour when active */
 .form-control,
 .form-select {
   background-color: var(--cn-surface-raised);
-  border-color: var(--cn-border-strong);
+  border-color: color-mix(in srgb, var(--cn-border-strong) 70%, transparent);
+  border-radius: 10px;
   color: var(--cn-text);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--cn-text) 6%, transparent);
+  transition: border-color var(--cn-duration-fast) var(--cn-easing), box-shadow var(--cn-duration-fast) var(--cn-easing);
 }
-
+.form-control-sm, .form-select-sm { border-radius: 8px; }
+.form-control:hover, .form-select:hover { border-color: var(--cn-border-strong); }
 .form-control:focus,
 .form-select:focus {
   background-color: var(--cn-surface-raised);
   border-color: var(--cn-focus);
   color: var(--cn-text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cn-focus) 22%, transparent);
 }
+.form-control::placeholder { color: var(--cn-text-faint); }
 
 .card {
   --bs-card-bg: var(--cn-surface);

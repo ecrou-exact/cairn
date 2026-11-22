@@ -2,6 +2,7 @@
 {% from "macros/ui.html" import avatar %}
 {% block title %}Profile{% endblock %}
 {% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/upload.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/account/account.css') }}">
 {% endblock %}
 {% block scripts %}
@@ -24,7 +25,7 @@
         <p class="cn-muted">@{{ owner.username }}</p>
       </div>
     </div>
-    <cn-upload max-mb="8" label="New picture" hint="PNG, JPEG, GIF or WebP up to 8 MB. Cropped to a square; location and camera details are removed.">
+    <cn-upload size="compact" max-mb="8" label="New picture" hint="PNG, JPEG, GIF or WebP up to 8 MB. Cropped to a square; location and camera details are removed.">
       <form method="post" action="{{ url_for('account.upload_avatar') }}" enctype="multipart/form-data" class="cn-inline-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label class="visually-hidden" for="avatar">New picture</label>

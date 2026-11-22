@@ -1,0 +1,98 @@
+/* <cn-upload>: Vitrine's <vt-upload> drop zone in Cairn's look (styled through its parts),
+   and the page-wide drop overlay. */
+
+cn-upload { display: block; }
+cn-upload vt-upload { display: block; width: 100%; flex: 1 1 100%; }
+cn-upload form:has(vt-upload) { display: block; margin: 0; }
+
+cn-upload vt-upload::part(label) {
+  font-size: var(--cn-text-xs);
+  font-weight: var(--cn-weight-strong);
+  text-transform: uppercase;
+  letter-spacing: var(--cn-tracking-caps);
+  color: var(--cn-text-faint);
+}
+cn-upload vt-upload::part(hint) { font-size: var(--cn-text-xs); color: var(--cn-text-muted); }
+
+/* The zone: a sunken stone with a soft glow of the mark, an inner dashed trail */
+cn-upload vt-upload::part(zone) {
+  min-height: 9.5rem;
+  border: 0;
+  border-radius: var(--cn-radius-slab);
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--cn-mark) 9%, transparent), transparent 70%),
+    var(--cn-surface-sunken);
+  outline: 1.5px dashed color-mix(in srgb, var(--cn-border-strong) 80%, transparent);
+  outline-offset: -10px;
+  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--cn-text) 8%, transparent);
+  color: var(--cn-text-muted);
+  transition: background var(--cn-duration) var(--cn-easing), outline-color var(--cn-duration) var(--cn-easing), transform var(--cn-duration) var(--cn-easing);
+}
+cn-upload vt-upload:hover::part(zone) {
+  outline-color: color-mix(in srgb, var(--cn-mark) 55%, transparent);
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--cn-mark) 15%, transparent), transparent 70%),
+    var(--cn-surface-sunken);
+}
+cn-upload.is-dragging vt-upload::part(zone) {
+  outline: 2px solid var(--cn-mark);
+  background:
+    radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--cn-mark) 24%, transparent), transparent 75%),
+    var(--cn-accent-soft);
+  transform: scale(1.01);
+  color: var(--cn-text);
+}
+cn-upload vt-upload::part(browse) { color: var(--cn-accent); font-weight: var(--cn-weight-strong); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+/* Files being sent */
+cn-upload vt-upload::part(list) { gap: var(--cn-space-2); }
+cn-upload vt-upload::part(file) {
+  border: 0;
+  border-radius: var(--cn-radius-lg);
+  background: var(--cn-surface-raised);
+  box-shadow: var(--cn-slab-shadow);
+}
+cn-upload vt-upload::part(thumbnail) { border-radius: var(--cn-radius-sm); }
+cn-upload vt-upload::part(progress) { accent-color: var(--cn-mark); }
+
+/* Compact zone beside other fields (task, project, profile) */
+cn-upload[size="compact"] vt-upload::part(zone) { min-height: 5.5rem; }
+
+/* Drop anywhere on the page */
+.cn-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: grid;
+  place-items: center;
+  padding: var(--cn-space-6);
+  background: color-mix(in srgb, var(--cn-chrome-bg) 72%, transparent);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  animation: cn-drop-in var(--cn-duration) var(--cn-easing);
+}
+.cn-drop-overlay[hidden] { display: none; }
+.cn-drop-card {
+  display: grid;
+  justify-items: center;
+  gap: var(--cn-space-2);
+  width: min(32rem, 100%);
+  padding: var(--cn-space-6) var(--cn-space-5);
+  border-radius: var(--cn-radius-slab);
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--cn-mark) 20%, transparent), transparent 70%),
+    var(--cn-surface-raised);
+  outline: 2px dashed var(--cn-mark);
+  outline-offset: -12px;
+  box-shadow: var(--cn-slab-hover);
+  text-align: center;
+  color: var(--cn-text);
+}
+.cn-drop-card i { font-size: 2rem; color: var(--cn-mark); }
+.cn-drop-card strong { font-size: var(--cn-text-lg); letter-spacing: -0.01em; }
+.cn-drop-card span { font-size: var(--cn-text-sm); color: var(--cn-text-muted); }
+@keyframes cn-drop-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .cn-drop-overlay { animation: none; }
+  cn-upload.is-dragging vt-upload::part(zone) { transform: none; }
+}

@@ -3,6 +3,7 @@
 {% block title %}{{ root.title if root else "Graph" }}{% endblock %}
 {% block styles %}
 {{ graph_assets() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
 {% endblock %}
 {% block scripts %}
@@ -11,7 +12,7 @@
 {% block content %}
 <header class="cn-page-header cn-page-header-actions">
   <div>
-    <nav class="cn-graph-crumbs" aria-label="Where you are in the plan" data-graph-crumbs></nav>
+    <div class="cn-eyebrow">Plan</div>
     <h1>{{ root.title if root else (project.name if project else "Graph") }}</h1>
     <p>{% if root %}Its parts from left to right: what must come first on the left. Click a case with subtasks to go one level deeper.{% else %}Your plan from left to right: what must come first on the left, what it opens up to its right. Cases with subtasks open their own graph.{% endif %}</p>
   </div>
@@ -31,22 +32,38 @@
       <label class="btn btn-sm" title="Every task at once"><input class="visually-hidden" type="radio" name="level" value="all" {% if level == 'all' %}checked{% endif %}><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span>Everything</span></label>
     </div>
     {% endif %}
-    <label class="visually-hidden" for="graph-state">Show</label>
-    <select class="form-select" id="graph-state" name="state">
-      <option value="">Every open task</option>
-      {% for key, label in states.items() %}<option value="{{ key }}" {% if state == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
-    </select>
-    {% if tags %}
-    <label class="visually-hidden" for="graph-tag">Tag</label>
-    <select class="form-select" id="graph-tag" name="tag">
-      <option value="">Any tag</option>
-      {% for name in tags %}<option value="{{ name }}" {% if tag == name %}selected{% endif %}>#{{ name }}</option>{% endfor %}
-    </select>
-    {% endif %}
-    <label class="cn-switch"><input type="checkbox" name="closed" value="1" {% if closed %}checked{% endif %}><span>Done tasks</span></label>
-    <button class="btn btn-outline-secondary btn-sm" type="submit">Show</button>
+    {% set active = (1 if state else 0) + (1 if tag else 0) + (1 if closed else 0) %}
+    <details class="cn-list-more">
+      <summary class="btn btn-outline-secondary btn-sm{{ ' is-active' if active }}" title="Filters">
+        <i class="fa-solid fa-sliders" aria-hidden="true"></i><span class="cn-list-more-label">Filters</span>
+        {% if active %}<span class="cn-list-more-count" aria-label="{{ active }} on">{{ active }}</span>{% endif %}
+      </summary>
+      <div class="cn-list-more-panel">
+        <label class="cn-list-filter"><span>Show</span>
+          <select class="form-select form-select-sm" id="graph-state" name="state">
+            <option value="">Every open task</option>
+            {% for key, label in states.items() %}<option value="{{ key }}" {% if state == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </label>
+        {% if tags %}
+        <label class="cn-list-filter"><span>Tag</span>
+          <select class="form-select form-select-sm" id="graph-tag" name="tag">
+            <option value="">Any</option>
+            {% for name in tags %}<option value="{{ name }}" {% if tag == name %}selected{% endif %}>#{{ name }}</option>{% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        <label class="cn-switch"><input type="checkbox" name="closed" value="1" {% if closed %}checked{% endif %}><span>Done tasks</span></label>
+        <button class="btn btn-primary btn-sm" type="submit">Show</button>
+      </div>
+    </details>
   </div>
 </form>
+
+<nav class="cn-graph-path" aria-label="Where you are in the plan">
+  <a class="btn btn-sm btn-outline-secondary cn-graph-up" data-graph-up hidden href="/graph" title="Up one level (Backspace)"><i class="fa-solid fa-arrow-turn-up" aria-hidden="true"></i><span>Up</span></a>
+  <ol class="cn-graph-crumbs" data-graph-crumbs></ol>
+</nav>
 
 {{ graph_stage(graph_query) }}
 {% endblock %}

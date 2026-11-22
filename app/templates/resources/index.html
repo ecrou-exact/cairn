@@ -4,6 +4,7 @@
 {% block title %}Resources{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/upload.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
 {% endblock %}
 {% block scripts %}
@@ -19,20 +20,33 @@
   </div>
 </header>
 
-<section class="cn-panel cn-library-add" aria-label="Add to the library">
-  <nav class="cn-kind-links" aria-label="New resource">
-    {% for kind, label, icon in kinds %}
-    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('resources.new', kind=kind) }}"><i class="fa-solid {{ icon }}" aria-hidden="true"></i><span class="ms-1">{{ label }}</span></a>
-    {% endfor %}
+<section class="cn-library-add" aria-label="Add to the library">
+  <div class="cn-panel cn-library-drop">
+    <cn-upload max-mb="{{ max_mb }}" paste="page" label="Upload files and images">
+      <form method="post" action="{{ url_for('resources.upload') }}" enctype="multipart/form-data" class="cn-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+        <label class="visually-hidden" for="library-upload">Files to upload</label>
+        <input class="form-control" id="library-upload" type="file" name="files" multiple>
+        <button class="btn btn-outline-secondary" type="submit" data-upload-submit>Upload</button>
+      </form>
+    </cn-upload>
+    <ul class="cn-drop-facts">
+      <li title="Paste a screenshot anywhere on this page"><i class="fa-solid fa-paste" aria-hidden="true"></i>Paste</li>
+      <li title="Images lose their location and camera details"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i>No metadata</li>
+      <li title="A file already in the library is not stored twice"><i class="fa-solid fa-clone" aria-hidden="true"></i>No duplicates</li>
+    </ul>
+  </div>
+  <nav class="cn-panel cn-create" aria-labelledby="create-title">
+    <h2 id="create-title">Create</h2>
+    <ul class="cn-create-list">
+      {% for kind, label, icon, hint in kinds %}
+      <li><a class="cn-create-item cn-kind-{{ kind }}" href="{{ url_for('resources.new', kind=kind) }}" title="{{ hint }}">
+        <span class="cn-create-icon"><i class="fa-solid {{ icon }}" aria-hidden="true"></i></span>
+        <strong>{{ label }}</strong>
+      </a></li>
+      {% endfor %}
+    </ul>
   </nav>
-  <cn-upload max-mb="{{ max_mb }}" paste="page" label="Upload files and images" hint="Drop files here, choose them, or paste a screenshot anywhere on this page. Up to {{ max_mb }} MB each; a file already in the library is not stored twice.">
-    <form method="post" action="{{ url_for('resources.upload') }}" enctype="multipart/form-data" class="cn-inline-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
-      <label class="visually-hidden" for="library-upload">Files to upload</label>
-      <input class="form-control" id="library-upload" type="file" name="files" multiple>
-      <button class="btn btn-outline-secondary" type="submit" data-upload-submit>Upload</button>
-    </form>
-  </cn-upload>
 </section>
 
 <div class="cn-live-notice" id="list-changed" data-resource-library hidden role="status">

@@ -49,6 +49,14 @@ KIND_ICONS = {
     "note": "fa-note-sticky",
     "github": "fa-code-pull-request",
 }
+KIND_HINTS = {
+    "url": "A web page, with its title and preview",
+    "file": "A path to a file or folder on this machine",
+    "snippet": "Code or a command to copy again",
+    "tool": "An app or service you use, with its link",
+    "note": "A few lines of Markdown",
+    "github": "An issue, pull request or repository",
+}
 TARGETS = {"project": Project, "task": Task}
 FIELDS = ("title", "description_md", "url", "body", "language", "path", "icon", "tags")
 

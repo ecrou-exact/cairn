@@ -6,6 +6,7 @@
 {% block title %}{{ task.title }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/upload.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
 {{ graph_assets() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments/comments.css') }}">

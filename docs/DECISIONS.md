@@ -239,3 +239,13 @@
 - Smart App Control (enforcement mode) refuses unsigned native modules. On the owner's machine it blocks uv's managed CPython builds (`_sqlite3.pyd`) and SQLAlchemy's Cython modules; pydantic-core, cryptography, argon2, Pillow, psutil and PyYAML load.
 - **Fix on such a machine, nothing changed in the repo:** the signed python.org interpreter (`uv sync --python <python.org python.exe>`, or the `UV_PYTHON` user variable) and SQLAlchemy in pure Python, set in the user's uv config (`%APPDATA%\uv\uv.toml`: `no-binary-package = ["sqlalchemy"]`, `[extra-build-variables] sqlalchemy = { DISABLE_SQLALCHEMY_CEXT = "1" }`). The full suite passes this way on Python 3.15.
 - `.python-version` stays 3.12 (Ubuntu 24.04's default, D-001); Linux and other Windows machines keep the compiled SQLAlchemy.
+
+## D-042 · 2026-11-22 · accepted — One look on every page, less text, filters folded away
+- Owner feedback: the file drop zone was ugly; buttons, card heads and the background must have more style and be the same everywhere; more visual, less text; the filters must be hidden.
+- **Page headers** are a compact dark contour band (Today's hero language) on every page; their intro is one line. **Background**: a warm glow of the mark and faint contour lines at the top of the content.
+- **Buttons are stones** (rounder at the bottom): the primary one lit by the mark with a soft glow, the others raised slabs without outline that lift on hover. **Fields** are wells with a focus ring. Card heads and panel headers get a hairline under the title.
+- **Filters folded away:** every list's filters (and the graph's state, tag, done tasks) live behind a "Filters" button showing how many are on, in a panel that opens on click (`<details>`, no script); search and the view switch stay visible; a cross clears everything.
+- **Bulk edit** appears only once a task is ticked (CSS `:has`), as a dark bar floating at the bottom of the screen. **Empty states** are a stone with the icon, a title and one line.
+- **Uploads:** Vitrine's `vt-upload` restyled through its `::part()`s (`css/components/upload.css`); `<cn-upload>` sets `is-dragging` on itself (Vitrine's own state is not reachable from outside) and, with `paste="page"`, takes files **dropped anywhere on the page**, with a full-page overlay saying where they go. The library's add block: a large drop zone with three short chips (details in tooltips) beside a grid of "Create" stones.
+- **Graph path:** above the graph, `All projects / project / case` with an **Up** button (and `Backspace`) to go back one level.
+

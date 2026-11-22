@@ -223,11 +223,17 @@
 .cn-gpeek-facts { margin: 0; font-size: var(--cn-text-xs); color: var(--cn-chrome-muted); text-transform: capitalize; }
 .cn-gpeek-hint { margin: 0; font-size: var(--cn-text-xs); color: var(--cn-mark); }
 
-/* Breadcrumb above the title */
-.cn-graph-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cn-space-2); font-size: var(--cn-text-sm); color: var(--cn-text-muted); min-height: 1.5rem; }
-.cn-graph-crumbs a { color: var(--cn-text-muted); }
-.cn-crumb-sep { font-size: 0.6rem; color: var(--cn-text-faint); }
-.cn-crumb-current { color: var(--cn-text); font-weight: var(--cn-weight-medium); }
+/* The path above the graph: where you are, and one level up */
+.cn-graph-toolbar { position: relative; }
+.cn-graph-path { display: flex; align-items: center; gap: var(--cn-space-3); margin-bottom: var(--cn-space-3); min-height: 2rem; }
+.cn-graph-up[hidden] { display: none; }
+.cn-graph-crumbs { display: flex; flex-wrap: wrap; align-items: center; margin: 0; padding: 0; list-style: none; font-size: var(--cn-text-sm); color: var(--cn-text-muted); }
+.cn-graph-crumbs li { display: inline-flex; align-items: center; }
+.cn-graph-crumbs li + li::before { content: "/"; margin: 0 var(--cn-space-2); color: var(--cn-text-faint); font-weight: var(--cn-weight-regular); }
+.cn-graph-crumbs a { color: var(--cn-text-muted); padding: 2px var(--cn-space-2); border-radius: var(--cn-radius-pill); }
+.cn-main .cn-graph-crumbs a:hover { background: var(--cn-surface-sunken); color: var(--cn-text); text-decoration: none; }
+.cn-graph-crumbs a i { color: var(--cn-mark); }
+.cn-crumb-current { color: var(--cn-text); font-weight: var(--cn-weight-strong); padding: 2px var(--cn-space-2); border-radius: var(--cn-radius-pill); background: var(--cn-surface); box-shadow: var(--cn-slab-shadow); }
 
 /* Critical-path switch, on the stage itself */
 .cn-graph-critical-toggle { position: absolute; top: var(--cn-space-4); right: var(--cn-space-4); z-index: 4; }
