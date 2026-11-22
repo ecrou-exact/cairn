@@ -101,7 +101,8 @@ Goal: owner approves architecture + design direction.
 - [ ] Intake → changeset → approval → graph
 - [ ] Ask Claude to fill a task from a few words (read-only research run → changeset), owner request 2026-11-21 (D-029)
 - [ ] GitHub accounts, inbox, link/sync, webhooks or polling
-- [ ] Instances: definitions, registry, port allocation (psutil, works on all OS), supervision, logs (`vt-log`), header indicator
+- [x] Instances: definitions per project, start / stop / restart in a terminal (logs with history), port check and next free port as PORT, listening ports shown as links (D-053)
+- [ ] Instances: indicator in the header, restart on crash, registry across projects
 
 ## Phase 9 — Modules  ·  Phase 10 — Calendar & activity  ·  Phase 11 — Hardening & release
 - [ ] Module registry, event automations, task action modules

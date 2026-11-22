@@ -75,3 +75,20 @@
 }
 .cn-terminal-screen { width: 100%; height: 100%; }
 .cn-claude-terminal.is-ended { opacity: 0.85; }
+
+/* Project instances (D-053) */
+.cn-instances { list-style: none; margin: var(--cn-space-3) 0; padding: 0; display: grid; gap: var(--cn-space-2); }
+.cn-instance { display: flex; align-items: center; gap: var(--cn-space-3); padding: var(--cn-space-3) var(--cn-space-4); border-radius: var(--cn-radius-lg); background: var(--cn-surface-sunken); }
+.cn-instance-dot { width: 0.65rem; height: 0.65rem; border-radius: 50%; background: var(--cn-text-faint); flex: none; }
+.cn-instance.is-running .cn-instance-dot { background: var(--cn-success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--cn-success) 22%, transparent); }
+.cn-instance-body { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.cn-instance-name { margin: 0; font-weight: var(--cn-weight-strong); }
+.cn-instance-command, .cn-instance-ports { margin: 0; font-size: var(--cn-text-xs); display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: center; }
+.cn-instance-actions { display: flex; gap: var(--cn-space-1); align-items: center; }
+.cn-instance-actions form { margin: 0; }
+.cn-instance-form { display: grid; grid-template-columns: 1fr 2fr; gap: var(--cn-space-3); align-items: end; }
+.cn-instance-form .btn { justify-self: start; }
+.cn-port { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: var(--cn-radius-pill); background: var(--cn-success-soft); color: var(--cn-success); font-family: var(--cn-font-mono); font-size: var(--cn-text-xs); text-decoration: none; }
+.cn-main a.cn-port:hover { background: var(--cn-success); color: var(--cn-on-accent); text-decoration: none; }
+.cn-instance-mark { display: grid; place-items: center; width: 4.5rem; height: 4.5rem; flex: none; border-radius: 16px 16px 20px 20px; background: color-mix(in srgb, var(--cn-success) 18%, transparent); color: var(--cn-success); font-size: 1.6rem; }
+@media (max-width: 800px) { .cn-instance { flex-wrap: wrap; } .cn-instance-form { grid-template-columns: 1fr; } }

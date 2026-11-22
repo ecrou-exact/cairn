@@ -81,6 +81,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.features.graph.graph import graph
     from app.features.history.history import history
     from app.features.home.home import health, home
+    from app.features.instances.instances import instances
     from app.features.jobs.jobs import jobs
     from app.features.projects.projects import projects
     from app.features.resources.resources import resources
@@ -101,6 +102,7 @@ def _register_blueprints(app: Flask) -> None:
         resources,
         comments,
         claude,
+        instances,
         connections,
         trash,
         history,

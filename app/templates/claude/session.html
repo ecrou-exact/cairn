@@ -12,23 +12,27 @@
 {% endblock %}
 {% block content %}
 <section class="cn-claude-band" data-claude-card="{{ session.id }}" aria-labelledby="session-title">
-  {{ gauge(session.usage, "lg") }}
+  {% if session.kind == "claude" %}{{ gauge(session.usage, "lg") }}{% else %}<span class="cn-instance-mark" aria-hidden="true"><i class="fa-solid fa-server"></i></span>{% endif %}
   <div class="cn-claude-band-main">
     <nav class="cn-claude-band-crumbs" aria-label="Breadcrumb">
-      <a href="{{ url_for('claude.index') }}">Claude</a>
-      {% if session.project %}<span aria-hidden="true">/</span><a href="{{ url_for('projects.detail', slug=session.project.slug, tab='claude') }}">{{ session.project.name }}</a>{% endif %}
+      <a href="{{ url_for('claude.index') }}">{{ "Claude" if session.kind == "claude" else "Running" }}</a>
+      {% if session.project %}<span aria-hidden="true">/</span><a href="{{ url_for('projects.detail', slug=session.project.slug, tab=('claude' if session.kind == 'claude' else 'instances')) }}">{{ session.project.name }}</a>{% endif %}
       {% if session.task %}<span aria-hidden="true">/</span><a href="{{ url_for('tasks.detail', task_id=session.task.id, tab='claude') }}">{{ session.task.title }}</a>{% endif %}
     </nav>
     <h1 id="session-title">{{ session.title }}</h1>
     <p class="cn-claude-card-facts">
       <span class="cn-claude-state" data-claude-state>{{ "running" if session.running else "ended" }}</span>
+      {% if session.kind == "claude" %}
       {% if session.usage.model %}<span>{{ session.usage.model | replace("claude-", "") }}</span>{% endif %}
       <span data-claude-tokens>{{ tokens(session.usage) }}</span>
+      {% else %}
+      {% for port in session.ports %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer">localhost:{{ port }}</a>{% else %}{% if session.port %}<span>PORT={{ session.port }}</span>{% endif %}{% endfor %}
+      {% endif %}
       <code>{{ session.cwd }}</code>
     </p>
   </div>
   {% if session.running %}
-  <cn-confirm message="Close this Claude session?" detail="Like closing its terminal: Claude stops here. Its conversation stays in Claude Code (claude --resume)." confirm-label="Close it" danger>
+  <cn-confirm message="{{ 'Close this Claude session?' if session.kind == 'claude' else 'Stop this instance?' }}" detail="{{ 'Like closing its terminal: Claude stops here. Its conversation stays in Claude Code (claude --resume).' if session.kind == 'claude' else 'Its process and the ones it started are stopped.' }}" confirm-label="{{ 'Close it' if session.kind == 'claude' else 'Stop it' }}" danger>
     <form method="post" action="{{ url_for('claude.stop', session_id=session.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-outline-light" type="submit"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span>Close</span></button>

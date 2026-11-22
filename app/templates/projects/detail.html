@@ -74,6 +74,7 @@
       ("plan", "fa-diagram-project", "Plan", None),
       ("tasks", "fa-list-check", "Tasks", stats.open),
       ("claude", "fa-terminal", "Claude", None),
+      ("instances", "fa-server", "Instances", None),
       ("about", "fa-circle-info", "About", (resources | length) + (comments | length))] %}
   <a class="cn-tab" href="{{ url_for('projects.detail', slug=project.slug, tab=key) }}" {% if tab == key %}aria-current="page"{% endif %}>
     <i class="fa-solid {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>{% if count %}<span class="cn-tab-count">{{ count }}</span>{% endif %}
@@ -119,6 +120,63 @@
   {% if project.local_path %}{{ start_form(project=project, label="Open Claude in this project") }}
   {% else %}<p class="cn-muted">Claude Code opens in the project's folder: <a href="{{ url_for('projects.edit', slug=project.slug) }}">set its local folder</a> first.</p>{% endif %}
   {% if claude.sessions %}<ul class="cn-claude-cards">{% for s in claude.sessions %}{{ session_card(s) }}{% endfor %}</ul>{% endif %}
+</section>
+
+{% elif tab == "instances" %}
+{% set here = request.full_path.rstrip('?') %}
+<section class="cn-panel cn-instances-panel" aria-labelledby="instances-title">
+  <header class="cn-home-head"><h2 id="instances-title">Instances</h2>
+    {% if project.local_path %}<code>{{ project.local_path }}</code>{% endif %}</header>
+  {% if not project.local_path %}
+  <p class="cn-muted">Instances run in the project's folder: <a href="{{ url_for('projects.edit', slug=project.slug) }}">set its local folder</a> first.</p>
+  {% endif %}
+  {% if instances %}
+  <ul class="cn-instances">
+    {% for item in instances %}{% set inst, live = item.instance, item.running %}
+    <li class="cn-instance {{ 'is-running' if live else '' }}">
+      <span class="cn-instance-dot" aria-hidden="true"></span>
+      <div class="cn-instance-body">
+        <p class="cn-instance-name">{{ inst.name }}{% if live %} <span class="cn-badge cn-badge-success">running</span>{% elif item.last and item.last.exit_code not in (none, 0) %} <span class="cn-badge cn-badge-warning">exited {{ item.last.exit_code }}</span>{% endif %}</p>
+        <p class="cn-instance-command"><code>{{ inst.command }}</code>{% if inst.subfolder %} <span class="cn-muted">in {{ inst.subfolder }}</span>{% endif %}</p>
+        {% if live %}
+        <p class="cn-instance-ports">
+          {% for port in item.ports %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> localhost:{{ port }}</a>{% else %}<span class="cn-muted">{% if live.port %}PORT={{ live.port }} · {% endif %}not listening yet</span>{% endfor %}
+        </p>
+        {% elif inst.port %}<p class="cn-instance-ports cn-muted">port {{ inst.port }}</p>{% endif %}
+      </div>
+      <div class="cn-instance-actions">
+        {% for action, icon, label, show in [("start", "fa-play", "Start", not live), ("restart", "fa-rotate", "Restart", live), ("stop", "fa-stop", "Stop", live)] if show %}
+        <form method="post" action="{{ url_for('instances.act', instance_id=inst.id, action=action) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+          <button class="btn btn-sm {{ 'btn-primary' if action == 'start' else 'btn-outline-secondary' }}" type="submit" {% if not project.local_path %}disabled{% endif %}><i class="fa-solid {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span></button>
+        </form>
+        {% endfor %}
+        {% if live %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.session', session_id=live.id) }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Logs</span></a>{% endif %}
+        {% if not live %}
+        <form method="post" action="{{ url_for('instances.act', instance_id=inst.id, action='delete') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+          <button class="cn-icon-button" type="submit" title="Remove (undoable)"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Remove {{ inst.name }}</span></button>
+        </form>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="cn-muted">No instance yet. Add the commands that run this project: its dev server, a worker, the tests in watch mode.</p>
+  {% endif %}
+  <details class="cn-fold" {% if not instances %}open{% endif %}>
+    <summary><i class="fa-solid fa-plus" aria-hidden="true"></i> Add a command</summary>
+    <form class="cn-fold-body cn-instance-form" method="post" action="{{ url_for('instances.create') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+      <input type="hidden" name="project_id" value="{{ project.id }}">
+      <label class="cn-claude-field"><span>Name</span><input class="form-control" name="name" required maxlength="80" placeholder="Dev server"></label>
+      <label class="cn-claude-field"><span>Command</span><input class="form-control" name="command" required maxlength="1000" placeholder="npm run dev"></label>
+      <label class="cn-claude-field"><span>Subfolder (optional)</span><input class="form-control" name="subfolder" maxlength="300" placeholder="frontend"></label>
+      <label class="cn-claude-field"><span>Port (optional, given as PORT)</span><input class="form-control" name="port" type="number" min="1" max="65535" placeholder="5173"></label>
+      <button class="btn btn-primary" type="submit">Add</button>
+    </form>
+  </details>
 </section>
 
 {% else %}

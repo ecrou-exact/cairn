@@ -13,6 +13,7 @@ from app.core.utils.web import FormErrors, flash_undo, validate
 from app.features.claude import claude_core
 from app.features.comments import comments_core
 from app.features.graph.graph import graph_view, with_graph_csp
+from app.features.instances import instances_core
 from app.features.projects import project_links_core, projects_core
 from app.features.projects.projects_forms import values_from_form, values_from_project
 from app.features.resources import resources_core
@@ -21,7 +22,7 @@ from app.features.tasks.tasks import list_context
 
 projects = Blueprint("projects", __name__)
 
-TABS = ("plan", "tasks", "claude", "about")
+TABS = ("plan", "tasks", "claude", "instances", "about")
 
 
 def _project_or_404(slug: str):
@@ -99,6 +100,7 @@ def detail(slug: str):
             tab=tab,
             links=project_links_core.for_project(project.id),
             claude=claude_core.overview(project_id=project.id) if tab == "claude" else None,
+            instances=instances_core.for_project(project.id) if tab == "instances" else None,
             **graph_view(request.args, project=project),
             stats=projects_core.stats([project.id])[project.id],
             next_up=tasks_core.next_actions(limit=3, project_id=project.id),

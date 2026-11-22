@@ -70,7 +70,8 @@ class TerminalError(ValueError):
 class Terminal:
     session_id: uuid.UUID
     pty: Pty
-    rules: Path | None = None
+    files: tuple[Path, ...] = ()  # removed when the session ends (rules, MCP config)
+    kind: str = "claude"
     chunks: deque = field(default_factory=deque)  # (seq, text)
     size: int = 0
     seq: int = 0
@@ -362,42 +363,78 @@ def _launch(
             "Claude Code was not found on this machine. Install it, or set its path in Accounts."
         )
     cli_session_id = resume or uuid.uuid4()  # names the transcript Claude Code writes (context gauge)
+
+    def build(session: ClaudeSession) -> tuple[list[str], tuple[Path, ...]]:
+        rules, mcp = _rules_file(session.id, project), _mcp_config(session.id)
+        return command(executable, cli_session_id, message, rules, resume=bool(resume), mcp=mcp), (rules, mcp)
+
+    return open_session(
+        kind="claude",
+        folder=folder,
+        title=title,
+        build=build,
+        env=_environment(),
+        project=project,
+        task=task,
+        cli_session_id=cli_session_id,
+        cols=cols,
+        rows=rows,
+        meta={"preset": preset},
+    )
+
+
+def open_session(
+    *,
+    kind: str,
+    folder: Path,
+    title: str,
+    build,
+    env: dict[str, str],
+    project: Project | None = None,
+    task: Task | None = None,
+    cli_session_id: uuid.UUID | None = None,
+    instance_id: uuid.UUID | None = None,
+    port: int | None = None,
+    cols: int = 120,
+    rows: int = 32,
+    meta: dict[str, Any] | None = None,
+) -> ClaudeSession:
+    """Run a program in a terminal Cairn keeps (D-050, D-053): the session row, the terminal,
+    the reader thread, the log and the event. `build(session)` gives the argv and the files
+    to remove when it ends (it may need the session's id)."""
     with batch():
         session = ClaudeSession(
+            kind=kind,
             project_id=project.id if project else None,
             task_id=task.id if task else None,
+            instance_id=instance_id,
+            port=port,
             cwd=str(folder),
-            cli_session_id=cli_session_id,
+            cli_session_id=cli_session_id or uuid.uuid4(),
             title=title[:200],
         )
         db.session.add(session)
         db.session.flush()
-        rules = _rules_file(session.id, project)
-        argv = command(
-            executable, cli_session_id, message, rules, resume=bool(resume), mcp=_mcp_config(session.id)
-        )
-
+        argv, files = build(session)
         try:
-            pty = Pty.spawn(argv, cwd=str(folder), env=_environment(), cols=cols, rows=rows)
+            pty = Pty.spawn(argv, cwd=str(folder), env=env, cols=cols, rows=rows)
         except OSError as exc:
-            raise TerminalError(f"Claude Code could not start: {exc}") from exc
+            for path in files:
+                path.unlink(missing_ok=True)
+            raise TerminalError(f"{title} could not start: {exc}") from exc
         session.pid = pty.pid
         log_action(
-            "claude_session.start",
+            f"{kind}_session.start",
             target_type="claude_session",
             target_id=session.id,
-            meta={
-                "cwd": session.cwd,
-                "task": str(task.id) if task else None,
-                "preset": preset,
-            },
+            meta={"cwd": session.cwd, "task": str(task.id) if task else None, **(meta or {})},
         )
-        publish("claude.changed", {"id": str(session.id), "status": "running"})
-    terminal = Terminal(session.id, pty, rules)
+        publish(f"{kind}.changed", {"id": str(session.id), "status": "running"})
+    terminal = Terminal(session.id, pty, tuple(files), kind)
     with _lock:
         _terminals[session.id] = terminal
     app = current_app._get_current_object()
-    threading.Thread(target=_pump, args=(app, terminal), name=f"claude-{session.id}", daemon=True).start()
+    threading.Thread(target=_pump, args=(app, terminal), name=f"{kind}-{session.id}", daemon=True).start()
     return session
 
 
@@ -414,9 +451,8 @@ def _pump(app: Any, terminal: Terminal) -> None:
             terminal.append(text)
     terminal.finish()
     code = terminal.pty.exit_code()
-    if terminal.rules is not None:  # the rules and MCP files only live as long as their session
-        terminal.rules.unlink(missing_ok=True)
-        terminal.rules.with_name(f"{terminal.session_id}.mcp.json").unlink(missing_ok=True)
+    for path in terminal.files:  # the rules and MCP files only live as long as their session
+        path.unlink(missing_ok=True)
     with app.app_context(), acting_as("system"):
         _ended(terminal.session_id, code, "")
     with _lock:
@@ -435,18 +471,18 @@ def _ended(session_id: uuid.UUID, code: int | None, reason: str) -> None:
             reason,
         )
         log_action(
-            "claude_session.end",
+            f"{session.kind}_session.end",
             target_type="claude_session",
             target_id=session.id,
             meta={"exit_code": code, "reason": reason},
         )
-        publish("claude.changed", {"id": str(session_id), "status": "ended"})
+        publish(f"{session.kind}.changed", {"id": str(session_id), "status": "ended"})
 
 
 def write(session_id: uuid.UUID, text: str) -> None:
     terminal = _terminal(session_id)
     if terminal.ended:
-        raise TerminalError("This Claude session has ended.")
+        raise TerminalError("This session has ended.")
     terminal.pty.write(text)
 
 
@@ -476,14 +512,23 @@ def is_running(session_id: uuid.UUID) -> bool:
 def get(session_id: uuid.UUID) -> ClaudeSession:
     session = db.session.get(ClaudeSession, session_id)
     if session is None:
-        raise TerminalError("This Claude session does not exist.")
+        raise TerminalError("This session does not exist.")
     return session
 
 
-def sessions(*, project_id: uuid.UUID | None = None, task_id: uuid.UUID | None = None, limit: int = 50):
-    """Cairn's sessions, running first, then the most recent. A session recorded as running
-    whose terminal is gone (Cairn was restarted) is closed on the way."""
-    query = select(ClaudeSession).where(ClaudeSession.deleted_at.is_(None))
+def sessions(
+    *,
+    project_id: uuid.UUID | None = None,
+    task_id: uuid.UUID | None = None,
+    kind: str = "claude",
+    instance_id: uuid.UUID | None = None,
+    limit: int = 50,
+):
+    """Cairn's sessions of one kind, running first, then the most recent. A session recorded
+    as running whose terminal is gone (Cairn was restarted) is closed on the way."""
+    query = select(ClaudeSession).where(ClaudeSession.deleted_at.is_(None), ClaudeSession.kind == kind)
+    if instance_id is not None:
+        query = query.where(ClaudeSession.instance_id == instance_id)
     if project_id is not None:
         query = query.where(ClaudeSession.project_id == project_id)
     if task_id is not None:

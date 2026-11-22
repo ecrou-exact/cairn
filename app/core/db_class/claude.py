@@ -16,9 +16,26 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db_class.base import BaseEntity, UTCDateTime
 
 SESSION_STATUSES = ("running", "ended")
+SESSION_KINDS = ("claude", "instance")
+
+
+class ProjectInstance(BaseEntity):
+    """A command that runs a project (D-053): its dev server, a worker, tests in watch mode…
+    Started from Cairn in a terminal, in the project's folder (or a subfolder of it)."""
+
+    __tablename__ = "project_instance"
+
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("project.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    command: Mapped[str] = mapped_column(String(1000), nullable=False)
+    subfolder: Mapped[str] = mapped_column(String(300), default="", nullable=False)
+    port: Mapped[int | None] = mapped_column(Integer)
 
 
 class ClaudeSession(BaseEntity):
+    """A terminal Cairn runs (D-050, D-053): Claude Code (`kind` claude) or a project's
+    instance (`kind` instance)."""
+
     __tablename__ = "claude_session"
 
     project_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("project.id"), index=True)
@@ -28,6 +45,11 @@ class ClaudeSession(BaseEntity):
     cli_session_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(200), default="", nullable=False)
     status: Mapped[str] = mapped_column(String(10), default="running", nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(
+        String(10), default="claude", server_default="claude", nullable=False, index=True
+    )
+    instance_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("project_instance.id"), index=True)
+    port: Mapped[int | None] = mapped_column(Integer)  # the port given to an instance (PORT)
     pid: Mapped[int | None] = mapped_column(Integer)
     ended_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     exit_code: Mapped[int | None] = mapped_column(Integer)

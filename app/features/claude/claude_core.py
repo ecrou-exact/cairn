@@ -18,16 +18,28 @@ from app.features.claude import terminal_core, transcript_core
 def describe(session: ClaudeSession) -> dict[str, Any]:
     project = db.session.get(Project, session.project_id) if session.project_id else None
     task = db.session.get(Task, session.task_id) if session.task_id else None
-    usage = transcript_core.session_usage(session.cwd, str(session.cli_session_id))
+    usage = (
+        transcript_core.session_usage(session.cwd, str(session.cli_session_id))
+        if session.kind == "claude"
+        else transcript_core.Usage()
+    )
+    from app.features.instances import instances_core  # instances build on this module
+
+    running = terminal_core.is_running(session.id)
     return {
         "id": str(session.id),
+        "kind": session.kind,
+        "port": session.port,
+        "ports": instances_core.listening_ports(session.pid)
+        if running and session.kind == "instance"
+        else [],
         "url": f"/claude/sessions/{session.id}",
         "title": usage.title or session.title,
         "label": session.title,
         "cwd": session.cwd,
         "cli_session_id": str(session.cli_session_id),
         "status": session.status,
-        "running": terminal_core.is_running(session.id),
+        "running": running,
         "started": session.created_at.isoformat(),
         "ended": session.ended_at.isoformat() if session.ended_at else None,
         "exit_code": session.exit_code,
@@ -45,10 +57,16 @@ def overview(*, project_id: uuid.UUID | None = None, task_id: uuid.UUID | None =
     running outside Cairn."""
     rows = terminal_core.sessions(project_id=project_id, task_id=task_id)
     mine = [describe(row) for row in rows]
+    instances = [
+        describe(row)
+        for row in terminal_core.sessions(kind="instance", project_id=project_id, limit=30)
+        if terminal_core.is_running(row.id)
+    ]
     outside = [] if project_id or task_id else transcript_core.outside_sessions(terminal_core.running_pids())
     return {
         "sessions": mine,
         "outside": outside,
+        "instances": instances,
         "running": sum(1 for s in mine if s["running"]) + len(outside),
     }
 

@@ -48,5 +48,6 @@ class Pty:
         return getattr(self._process, "exitstatus", None)
 
     def kill(self) -> None:
-        if self.alive():
-            self._process.terminate(force=True)
+        """Stop the program and release the terminal (`close` also frees the sockets
+        pywinpty keeps; `terminate` alone leaves them open)."""
+        self._process.close(force=True)

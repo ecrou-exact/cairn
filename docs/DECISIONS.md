@@ -316,3 +316,12 @@
 - Argv order: the first message right after the executable, the variadic `--mcp-config` / `--allowedTools` last (they would swallow it); a message starting with "-" gets a leading space.
 - **Fresh sessions (fix, owner report):** a Claude opened in Cairn warned "Transcript saving is off — inherited CLAUDE_CODE_CHILD_SESSION marker": Cairn's server had been started from a Claude Code session and passed its markers on. The child environment now drops the markers a running Claude Code gives its children (`CLAUDECODE`, `CLAUDE_PID`, `CLAUDE_EFFORT`, `CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_EXECPATH`, `CLAUDE_AGENT_SDK_VERSION`, `CLAUDE_CODE_CHILD_*`, `CLAUDE_CODE_SESSION_*`, `CLAUDE_CODE_MESSAGING_*` — a token among them), and keeps the owner's own settings (`CLAUDE_CODE_USE_BEDROCK`, limits…).
 
+## D-053 · 2026-11-22 · accepted — Project instances run from Cairn
+- Owner request: launch a project's instances from Cairn (Phase 8, first part).
+- **`ProjectInstance`** (project, name, command, optional subfolder inside the project's folder, optional port): defined in the project's **Instances** tab or `/api/instances`; removing one is a soft delete, logged and undoable; a running one must be stopped first.
+- **Running:** the same terminals as Claude (`terminal_core.open_session`, now shared: one session row per run with `kind` claude / instance, files removed at the end, `<kind>.changed` events); logs in colour with their history, start / stop / restart, never two runs of one instance at once.
+- **Command:** the owner's text split into argv (no shell); the program is looked up on PATH. Windows runs `.cmd` / `.bat` scripts (npm, yarn, pnpm…) only through `cmd.exe /d /c`: those, and only those, go through it (the command is the owner's own).
+- **Ports:** an asked port is checked (bind on 127.0.0.1); if taken, the next free one within 50 is used and given as `PORT`. The ports the process and its children actually **listen** on (psutil) are shown as `localhost:<port>` links.
+- **Stopping** uses the terminal's `close(force=True)`: pywinpty's `terminate()` alone leaves its sockets open.
+- Next for Phase 8: a header indicator of running instances, restart on crash, an instance registry across projects.
+
