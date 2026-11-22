@@ -76,7 +76,8 @@ Goal: owner approves architecture + design direction.
 - [x] Left-to-right plan layout computed by Cairn (steps as columns, pinned cards, straight lines), opening view on what to do now
 - [x] Critical path computed and lit; side panel on click; live updates through SSE
 - [x] Levels: cases per project, a case opens its subtasks' graph with a breadcrumb, dependencies lifted between levels; hover peek; a graph on every task page (D-036)
-- [ ] Layout switch remembered per view; write-path hooks → API; context menus; side panel editing
+- [x] View remembered per graph for the session; right-click menu on cards; edits go through the API (D-043) — no layout switch: Cairn lays the plan out (D-035)
+- [x] Framing computed by Cairn (Pivotick's first fit off), table view in plan order (`t`), contour ground (D-043)
 - [x] Find in the graph (`/`): any task of the view by its title, subtasks inside a case included; the view glides to the card that holds it, selected, side panel open (D-040)
 - [ ] Collapse/expand, clustering, data table; encodings still to add (running agent, instance — with Phases 5 and 8)
 - [x] Edit from the graph's side panel: move to an allowed status, link to another card (blocks, blocked by, comes after, relates); the graph and the panel follow live

@@ -249,3 +249,10 @@
 - **Uploads:** Vitrine's `vt-upload` restyled through its `::part()`s (`css/components/upload.css`); `<cn-upload>` sets `is-dragging` on itself (Vitrine's own state is not reachable from outside) and, with `paste="page"`, takes files **dropped anywhere on the page**, with a full-page overlay saying where they go. The library's add block: a large drop zone with three short chips (details in tooltips) beside a grid of "Create" stones.
 - **Graph path:** above the graph, `All projects / project / case` with an **Up** button (and `Backspace`) to go back one level.
 
+## D-043 · 2026-11-22 · accepted — The graph frames itself; menu, remembered view, table, contour ground
+- **Framing by Cairn:** Pivotick's first fit measures the SVG, which misses the HTML cards, and waits up to ~3 s for them to settle before `ready`; on Cairn's instance it is replaced by a no-op (`fitAndCenterWhenSettled`), its late deferred fit is cancelled, and the simulation stops at once (`warmupTicks: 0, cooldownTime: 0`; every card is pinned). Cairn frames from the server's places (a card's `x, y` is its centre): the whole plan when readable, else zoomed on what to do now placed near the left so what it opens up is visible.
+- **Right-click menu** on a card (Pivotick's own is off): open the task, open its subtasks, link from here, details, move to an allowed status. Keyboard: arrows, Esc.
+- **Remembered view:** zoom and position per graph (path + query) in `sessionStorage`, so going down into a case and coming back Up lands where you were; the crosshair still goes back to "now". Session only: a new day opens on what to do now.
+- **Table view** (`t`): the same cards in plan order (step, task, project, status, priority, due, score, links), redrawn live; not sortable on purpose, the order is the plan's.
+- **Ground:** Cairn's contour lines in two large faint layers instead of Pivotick-style dots (owner request).
+

@@ -17,6 +17,8 @@ const HELP = [
   ['g then x', 'Trash'],
   ['g then s', 'Settings'],
   ['Backspace', 'Graph: up one level'],
+  ['t', 'Graph: as a table, in plan order'],
+  ['l', 'Graph: link two tasks'],
   ['?', 'This help'],
 ];
 let pending = null;

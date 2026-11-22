@@ -65,14 +65,28 @@
 /* The stage: a large slab with a faint dotted ground */
 .cn-graph {
   position: relative;
-  height: calc(100vh - var(--cn-header-height) - 15rem);
+  height: calc(100vh - var(--cn-header-height) - 21rem); /* band, toolbar and path above */
   min-height: 30rem;
   border-radius: var(--cn-radius-slab);
   box-shadow: var(--cn-slab-shadow);
   overflow: hidden;
+  isolation: isolate;
   background:
-    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--cn-border-strong) 55%, transparent) 1px, transparent 0) 0 0 / 22px 22px,
-    linear-gradient(to bottom, var(--cn-surface), color-mix(in srgb, var(--cn-surface-sunken) 70%, var(--cn-surface)));
+    radial-gradient(70% 60% at 85% 0%, color-mix(in srgb, var(--cn-mark) 7%, transparent), transparent 70%),
+    radial-gradient(60% 50% at 0% 100%, color-mix(in srgb, var(--cn-palette-moss) 6%, transparent), transparent 70%),
+    linear-gradient(to bottom, var(--cn-surface), color-mix(in srgb, var(--cn-surface-sunken) 75%, var(--cn-surface)));
+}
+/* The ground: Cairn's contour lines, faint, like a map under the trail */
+.cn-graph::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--cn-border-strong) 34%, transparent);
+  mask:
+    url("../../img/contours.svg") 100% 100% / 100rem auto no-repeat,
+    url("../../img/contours.svg") 0 0 / 80rem auto no-repeat;
+  pointer-events: none;
 }
 .cn-graph-canvas { position: absolute; inset: 0; }
 .cn-graph-canvas > .pivotick { width: 100%; height: 100%; }
@@ -335,3 +349,56 @@
 @media (max-width: 1100px) {
   .cn-graph-hint { top: calc(var(--cn-space-4) + 3rem); }
 }
+
+/* Right-click menu on a card */
+.cn-gmenu {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 7;
+  min-width: 14rem;
+  max-width: 20rem;
+  padding: var(--cn-space-1);
+  background: var(--cn-surface-raised);
+  border-radius: var(--cn-radius-lg);
+  box-shadow: var(--cn-slab-hover);
+  display: grid;
+  gap: 1px;
+}
+.cn-gmenu[hidden] { display: none; }
+.cn-gmenu-title { margin: 0; padding: var(--cn-space-2) var(--cn-space-3) var(--cn-space-1); font-size: var(--cn-text-xs); font-weight: var(--cn-weight-strong); color: var(--cn-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-gmenu-item { display: flex; align-items: center; gap: var(--cn-space-3); width: 100%; padding: var(--cn-space-2) var(--cn-space-3); border: 0; border-radius: var(--cn-radius); background: transparent; color: var(--cn-text); font-size: var(--cn-text-sm); text-align: left; }
+.cn-gmenu-item i { width: 1rem; text-align: center; color: var(--cn-text-faint); }
+.cn-gmenu-item:hover, .cn-gmenu-item:focus-visible { background: var(--cn-accent-soft); outline: none; }
+.cn-gmenu-item:hover i, .cn-gmenu-item:focus-visible i { color: var(--cn-accent); }
+.cn-gmenu-move i { font-size: 0.55rem; color: var(--cn-text-faint); }
+.cn-gmenu-move.cn-move-done i { color: var(--cn-success); }
+.cn-gmenu-move.cn-move-active i { color: var(--cn-info); }
+.cn-gmenu-move.cn-move-waiting i { color: var(--cn-warning); }
+.cn-gmenu-sep { margin: var(--cn-space-1) var(--cn-space-2); border: 0; border-top: 1px dashed var(--cn-border); opacity: 1; }
+
+/* The same cards as a table, in plan order */
+.cn-graph-table {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: auto;
+  padding: var(--cn-space-6) var(--cn-space-5) var(--cn-space-7) calc(var(--cn-space-5) + 3rem);
+  background: color-mix(in srgb, var(--cn-surface) 94%, transparent);
+  backdrop-filter: blur(3px);
+}
+.cn-graph-table[hidden] { display: none; }
+.cn-graph-tabled .cn-graph-find, .cn-graph-tabled .cn-graph-critical-toggle { display: none; }
+.cn-graph-table-toggle[aria-pressed="true"] { background: var(--cn-chrome-bg); color: var(--cn-chrome-text); }
+.cn-graph-table .cn-table { background: var(--cn-surface-raised); border-radius: var(--cn-radius-slab); box-shadow: var(--cn-slab-shadow); overflow: hidden; }
+.cn-gtable-step { font-family: var(--cn-font-mono); color: var(--cn-text-faint); width: 3.5rem; }
+.cn-gtable-task i { color: var(--cn-text-faint); }
+.cn-gtable-task small { color: var(--cn-text-muted); }
+.cn-gtable-score { font-family: var(--cn-font-mono); font-weight: var(--cn-weight-strong); color: var(--cn-accent); }
+.cn-gtable-prio { text-transform: capitalize; }
+.cn-gtable-prio.is-critical { color: var(--cn-danger); }
+.cn-gtable-prio.is-high { color: var(--cn-warning); }
+.cn-graph-table td.is-late { color: var(--cn-danger); font-weight: var(--cn-weight-medium); }
+.cn-graph-table td.is-soon { color: var(--cn-warning); }
+.cn-graph-table tr.is-critical td:first-child { box-shadow: inset 3px 0 0 var(--cn-mark); }
+.cn-graph-table .cn-gcard-flag, .cn-graph-table .cn-gcard-unlocks { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: var(--cn-radius-pill); font-size: var(--cn-text-xs); }

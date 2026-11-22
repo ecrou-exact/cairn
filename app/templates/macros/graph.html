@@ -9,6 +9,7 @@
     <button type="button" class="cn-icon-button" data-graph-action="out" title="Zoom out"><i class="fa-solid fa-minus" aria-hidden="true"></i><span class="visually-hidden">Zoom out</span></button>
     <button type="button" class="cn-icon-button" data-graph-action="now" title="Back to what to do now"><i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i><span class="visually-hidden">What to do now</span></button>
     <button type="button" class="cn-icon-button" data-graph-action="fit" title="See everything"><i class="fa-solid fa-expand" aria-hidden="true"></i><span class="visually-hidden">Fit</span></button>
+    <button type="button" class="cn-icon-button cn-graph-table-toggle" data-graph-action="table" aria-pressed="false" title="As a table, in plan order (T)"><i class="fa-solid fa-table-list" aria-hidden="true"></i><span class="visually-hidden">As a table</span></button>
     <button type="button" class="cn-icon-button cn-graph-link-toggle" data-graph-action="link" aria-pressed="false" title="Link two tasks (L): touch the one that comes first, then the one it blocks"><i class="fa-solid fa-link" aria-hidden="true"></i><span class="visually-hidden">Link two tasks</span></button>
   </div>
   {% if not compact %}
@@ -25,6 +26,8 @@
   <label class="cn-switch cn-switch-critical cn-graph-critical-toggle"><input type="checkbox" data-graph-critical><span><i class="fa-solid fa-route" aria-hidden="true"></i> Critical path <small data-graph-critical-summary></small></span></label>
   <aside class="cn-gpanel" data-graph-panel hidden aria-live="polite"></aside>
   <div class="cn-gpeek" data-graph-peek hidden aria-hidden="true"></div>
+  <div class="cn-gmenu" data-graph-menu hidden role="menu" aria-label="Task actions"></div>
+  <div class="cn-graph-table" data-graph-table hidden></div>
   <div class="cn-graph-legend" aria-label="Legend">
     <span class="cn-graph-count" data-graph-count></span>
     <span class="cn-graph-direction"><i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>first → later</span>

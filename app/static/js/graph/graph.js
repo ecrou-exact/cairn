@@ -17,6 +17,8 @@ import { api, debounce } from '../core/api.js';
 import { subscribe } from '../core/events.js';
 
 const READABLE = 0.6; // below this zoom the cards' text is too small to read
+const CARD_W = 224; // a card's size in graph units (graph_core.CARD_W / CARD_H)
+const CARD_H = 96;
 
 /** A design token's resolved colour, so the canvas follows the theme. */
 function token(name) {
@@ -283,9 +285,9 @@ function mount(stage) {
   function options() {
     return {
       isDirected: true,
-      UI: { mode: 'viewer', tooltip: { enabled: false } },
+      UI: { mode: 'viewer', tooltip: { enabled: false }, contextMenu: { enabled: false } },
       layout: { type: 'force' }, // every node is pinned (fx/fy): nothing is simulated
-      simulation: { useWorker: false },
+      simulation: { useWorker: false, warmupTicks: 0, cooldownTime: 0 }, // pinned: nothing to simulate
       render: {
         // Every task is a card: the card is the node (no shape behind it, edges land on it).
         defaultNodeStyle: { shape: 'none', html: card, text: '' },
@@ -295,12 +297,138 @@ function mount(stage) {
       callbacks: {
         onNodeClick: (_event, node) => (linking ? pickForLink(node) : showPanel(node.getData(), node.id)),
         onNodeDbclick: (_event, node) => { if (!linking) open(node.getData()); },
+        onNodeContextmenu: (event, node) => { if (!linking) showMenu(event, node); },
         onNodeHoverIn: (event, node) => showPeek(event, node),
         onNodeHoverOut: hidePeek,
-        onCanvasClick: () => { hidePanel(); hidePeek(); if (!linking) say(''); },
+        onCanvasClick: () => { hidePanel(); hidePeek(); hideMenu(); if (!linking) say(''); },
         onCanvasMousemove: movePeek,
+        onCanvasZoom: () => saveView(),
       },
     };
+  }
+
+  // -- right-click menu ----------------------------------------------------------------
+
+  const menu = stage.querySelector('[data-graph-menu]');
+
+  function hideMenu() {
+    if (menu) menu.hidden = true;
+  }
+
+  /** Open, go down, move to an allowed status, or start a link from this card. */
+  function showMenu(event, node) {
+    if (!menu) return;
+    hidePeek();
+    const d = node.getData();
+    const items = [];
+    const item = (iconClass, text, act, extra = '') => {
+      const button = el('button', `cn-gmenu-item ${extra}`);
+      button.type = 'button';
+      button.setAttribute('role', 'menuitem');
+      button.tabIndex = -1;
+      button.append(icon(`fa-solid ${iconClass}`), el('span', '', text));
+      button.addEventListener('click', () => { hideMenu(); act(); });
+      items.push(button);
+      return button;
+    };
+    const title = el('p', 'cn-gmenu-title', d.label);
+    item('fa-arrow-up-right-from-square', 'Open the task', () => window.location.assign(d.url));
+    if (d.drill && !d.isRoot) item('fa-layer-group', `Open its ${d.children} subtasks`, () => window.location.assign(d.drill));
+    item('fa-link', 'Link from here…', () => { setLinking(true); pickForLink(node); });
+    item('fa-circle-info', 'Details', () => showPanel(d, node.id));
+    const moves = (d.next || []).map((status) => item('fa-circle', `Move to ${status.label}`, async () => {
+      try {
+        await api(`/tasks/${node.id}/status`, { method: 'POST', body: { status: status.key } });
+        say(`“${d.label}” is now ${status.label}. Undo it from the task's history.`, 'ok');
+        later();
+      } catch (error) {
+        say(error.message, 'warn');
+      }
+    }, `cn-gmenu-move cn-move-${status.kind}`));
+    const parts = [title, ...items.slice(0, items.length - moves.length)];
+    if (moves.length) parts.push(el('hr', 'cn-gmenu-sep'), ...moves);
+    menu.replaceChildren(...parts);
+    menu.hidden = false;
+    const box = stage.getBoundingClientRect();
+    const x = Math.min(event.clientX - box.left, box.width - menu.offsetWidth - 8);
+    const y = Math.min(event.clientY - box.top, box.height - menu.offsetHeight - 8);
+    menu.style.transform = `translate(${Math.max(8, x)}px, ${Math.max(8, y)}px)`;
+    items[0].focus();
+  }
+
+  menu?.addEventListener('keydown', (event) => {
+    const items = [...menu.querySelectorAll('[role="menuitem"]')];
+    const at = items.indexOf(document.activeElement);
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      items[(at + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+    } else if (event.key === 'Escape' || event.key === 'Tab') {
+      event.preventDefault();
+      hideMenu();
+    }
+  });
+  document.addEventListener('pointerdown', (event) => { if (menu && !menu.hidden && !menu.contains(event.target)) hideMenu(); });
+
+  // -- the same cards as a table, in plan order ---------------------------------------
+
+  const tableBox = stage.querySelector('[data-graph-table]');
+  const tableButton = stage.querySelector('[data-graph-action="table"]');
+  let tableOn = false;
+
+  function drawTable() {
+    if (!tableBox || !tableOn) return;
+    const step = 224 + 104; // CARD_W + COL_GAP in graph_core: one column per step
+    const left = Math.min(...current.nodes.map((n) => n.x));
+    const rows = [...current.nodes].sort((a, b) => a.x - b.x || a.y - b.y);
+    const table = el('table', 'table cn-table');
+    const caption = el('caption', 'visually-hidden', 'The cards of this graph, in plan order');
+    const head = el('thead');
+    const hr = el('tr');
+    for (const label of ['Step', 'Task', 'Project', 'Status', 'Priority', 'Due', 'Score', 'Links']) {
+      const th = el('th', '', label);
+      th.scope = 'col';
+      hr.append(th);
+    }
+    head.append(hr);
+    const body = el('tbody');
+    for (const n of rows) {
+      const d = n.data;
+      const tr = el('tr', d.critical ? 'is-critical' : '');
+      const link = el('a', '', d.label);
+      link.href = d.drill && !d.isRoot ? d.drill : d.url;
+      const name = el('td', 'cn-gtable-task');
+      name.append(icon(`fa-solid ${d.typeIcon}`), document.createTextNode(' '), link);
+      if (d.children) name.append(el('small', '', ` ${d.childrenDone}/${d.children}`));
+      const links = el('td');
+      if (d.blocked) links.append(chip('cn-gcard-flag', 'fa-solid fa-link-slash', 'blocked'));
+      else if (d.unblocks) links.append(chip('cn-gcard-unlocks', 'fa-solid fa-unlock', String(d.unblocks)));
+      const due = el('td', d.dueState ? `is-${d.dueState}` : '', d.dueText || '—');
+      tr.append(
+        el('td', 'cn-gtable-step', Math.round((n.x - left) / step) + 1),
+        name,
+        el('td', '', d.project || '—'),
+        (() => { const td = el('td'); td.append(el('span', `cn-status cn-status-${d.statusKind}`, d.statusLabel)); return td; })(),
+        el('td', `cn-gtable-prio is-${d.priority}`, d.priority),
+        due,
+        el('td', 'cn-gtable-score', d.open ? d.score : '✓'),
+        links,
+      );
+      body.append(tr);
+    }
+    table.append(caption, head, body);
+    tableBox.replaceChildren(table);
+  }
+
+  function setTable(on) {
+    tableOn = on;
+    stage.classList.toggle('cn-graph-tabled', on);
+    tableButton?.setAttribute('aria-pressed', String(on));
+    if (tableBox) tableBox.hidden = !on;
+    if (on) {
+      hidePanel();
+      hideMenu();
+      drawTable();
+    }
   }
 
   // -- link mode -----------------------------------------------------------------------
@@ -405,7 +533,7 @@ function mount(stage) {
       }
       if (linking) setLinking(false);
       const zoom = graph.renderer.getZoomTransform().k;
-      viewAt(Math.max(zoom, compact ? 0.7 : 0.8), node.x + 112, node.y + 48);
+      viewAt(Math.max(zoom, compact ? 0.7 : 0.8), node.x, node.y);
       graph.deselectAll();
       graph.selectElement(node);
       showPanel(node.getData(), node.id);
@@ -463,6 +591,7 @@ function mount(stage) {
 
   function viewAt(scale, x, y, smooth = true) {
     const renderer = graph.renderer;
+    renderer.cancelDeferredFit?.(); // Pivotick's own late fit would undo this view
     const canvasSel = renderer.getCanvasSelection();
     const svg = canvasSel.node();
     const Transform = renderer.getZoomTransform().constructor;
@@ -475,19 +604,44 @@ function mount(stage) {
     return (ready.length ? ready : current.nodes).reduce((a, b) => (b.data.score > a.data.score ? b : a), current.nodes[0]);
   }
 
-  function openView(smooth = false) {
+  /** The whole plan in view, from the cards' own (pinned) places: Pivotick's own fit measures
+   *  the SVG, which does not see the size of HTML cards and can leave the view untouched. */
+  function fitAll(smooth = true) {
     if (!current.nodes.length) return;
+    const svg = graph.renderer.getCanvasSelection().node();
     const xs = current.nodes.map((n) => n.x);
     const ys = current.nodes.map((n) => n.y);
-    const width = Math.max(...xs) - Math.min(...xs) + 320;
-    const height = Math.max(...ys) - Math.min(...ys) + 160;
+    const left = Math.min(...xs) - CARD_W / 2 - 48; // a card's x, y is its centre
+    const top = Math.min(...ys) - CARD_H / 2 - 48;
+    const width = Math.max(...xs) + CARD_W / 2 + 48 - left;
+    const height = Math.max(...ys) + CARD_H / 2 + 48 - top;
+    const scale = Math.min(svg.clientWidth / width, svg.clientHeight / height, 1);
+    viewAt(scale, left + width / 2, top + height / 2, smooth);
+  }
+
+  function openView(smooth = false) {
+    if (!current.nodes.length) return;
     const svg = graph.renderer.getCanvasSelection().node();
+    if (!svg.clientWidth || !svg.clientHeight) return; // not laid out yet: the resize watch retries
+    const xs = current.nodes.map((n) => n.x);
+    const ys = current.nodes.map((n) => n.y);
+    const width = Math.max(...xs) - Math.min(...xs) + CARD_W + 96;
+    const height = Math.max(...ys) - Math.min(...ys) + CARD_H + 96;
     if (Math.min(svg.clientWidth / width, svg.clientHeight / height) >= READABLE) {
-      graph.renderer.fitAndCenter();
+      fitAll(smooth);
       return;
     }
+    // Too wide to read whole: zoom in on what to do now, placed near the left so what it opens
+    // up is in view to its right; never past the plan's edges; centred in height when it fits.
+    const scale = compact ? 0.7 : 0.8;
     const now = nowNode();
-    viewAt(compact ? 0.7 : 0.8, now.x + 112, now.y + 48, smooth);
+    const viewW = svg.clientWidth / scale;
+    const viewH = svg.clientHeight / scale;
+    const left = Math.max(Math.min(...xs) - CARD_W / 2 - 48, now.x - CARD_W / 2 - viewW * 0.18);
+    const top = height <= viewH
+      ? Math.min(...ys) - CARD_H / 2 - 48 + height / 2 - viewH / 2
+      : Math.max(Math.min(...ys) - CARD_H / 2 - 48, now.y - viewH / 2);
+    viewAt(scale, left + viewW / 2, top + viewH / 2, smooth);
   }
 
   function lightCritical(on) {
@@ -544,12 +698,54 @@ function mount(stage) {
 
   const query = () => stage.dataset.query || '';
 
+  // -- the view, remembered per graph for this browser session ---------------------------
+
+  const viewKey = `cn-graph-view:${window.location.pathname}?${query()}`;
+  let framed = false; // the first view is set: from then on, moves are remembered
+
+  function savedView() {
+    try {
+      const view = JSON.parse(window.sessionStorage.getItem(viewKey) || 'null');
+      return view && [view.k, view.x, view.y].every(Number.isFinite) ? view : null;
+    } catch {
+      return null;
+    }
+  }
+
+  const saveView = debounce(() => {
+    if (!graph || !framed) return;
+    const t = graph.renderer.getZoomTransform();
+    const svg = graph.renderer.getCanvasSelection().node();
+    if (!svg.clientWidth) return;
+    const view = { k: t.k, x: (svg.clientWidth / 2 - t.x) / t.k, y: (svg.clientHeight / 2 - t.y) / t.k };
+    try {
+      window.sessionStorage.setItem(viewKey, JSON.stringify(view));
+    } catch {
+      // storage full or refused: the view is simply not remembered
+    }
+  }, 300);
+
   async function load() {
     current = await api(`/graph?${query()}`);
     summary();
     graph = new Pivotick(canvas, { nodes: current.nodes, edges: current.edges }, options());
-    // Pivotick fits the whole plan first, then says `ready`: glide to "now" from there.
-    graph.on('ready', () => openView(true));
+    // Cairn frames the view itself (from the pinned places). Pivotick's own first fit waits for
+    // the HTML cards to stop changing size (up to ~3 s) before saying `ready`, then measures the
+    // SVG, which misses the cards: it is turned off on this instance. It runs after two awaits
+    // in Pivotick's start, so replacing it here, right after the constructor, is in time.
+    graph.renderer.fitAndCenterWhenSettled = () => Promise.resolve();
+    // Back on a view seen in this session (Up from a case, say): where it was left. Otherwise
+    // the opening view. Until the owner moves it, a stage that gets its size late is framed again.
+    const saved = savedView();
+    let touched = Boolean(saved);
+    graph.on('ready', () => {
+      if (saved) viewAt(saved.k, saved.x, saved.y, false);
+      else openView(true);
+      framed = true;
+    });
+    canvas.addEventListener('pointerdown', () => { touched = true; }, { once: true });
+    canvas.addEventListener('wheel', () => { touched = true; }, { once: true, passive: true });
+    new ResizeObserver(() => { if (!touched) openView(false); }).observe(canvas);
     stage.classList.remove('cn-graph-loading');
   }
 
@@ -573,6 +769,7 @@ function mount(stage) {
     for (const edge of next.edges) if (!edgesBefore.has(edge.id)) graph.addEdge(edge);
     current = next;
     summary();
+    drawTable();
     lightCritical(criticalOn);
     const still = selected && current.nodes.find((n) => n.id === selected);
     if (still && !panel.hidden) showPanel(still.data, still.id);
@@ -585,8 +782,9 @@ function mount(stage) {
       const action = button.dataset.graphAction;
       if (action === 'in') graph.renderer.zoomIn();
       else if (action === 'out') graph.renderer.zoomOut();
-      else if (action === 'fit') graph.renderer.fitAndCenter();
+      else if (action === 'fit') fitAll();
       else if (action === 'link') setLinking(!linking);
+      else if (action === 'table') setTable(!tableOn);
       else openView(true);
     });
   });
@@ -608,6 +806,9 @@ function mount(stage) {
     }
     if (!typing && !compact && event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.metaKey && !event.altKey) {
       setLinking(!linking);
+    }
+    if (!typing && !compact && event.key.toLowerCase() === 't' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      setTable(!tableOn);
     }
   });
 
