@@ -266,3 +266,7 @@
 - Owner feedback: too many things on the project and task pages.
 - The project band (with the **next task** to do there, in place of "Open the graph") over three tabs, each its own URL (`?tab=`, works without script): **Plan** (the project's full graph with its level and folded filters, and the projects it passes before / after), **Tasks** (quick add, templates, list), **About** (description and links, resources, discussion). A list search, filter, sort or page lands on Tasks.
 
+## D-046 · 2026-11-22 · accepted — 300+ cards: measured, nothing to change
+- Server (`tests/test_graph_scale.py`, kept in the suite): 360 tasks, 300 links, a subtask every sixth task → the three views (everything, cases, plan of projects) in ~0.4 s together; no two cards on one spot; the test fails above 3 s.
+- Browser (Pivotick 3.0.0 with 360 pinned HTML cards and Cairn's options, measured in Chrome on the owner's machine): first render ~0.8 s; a zoom or pan ~0.7 ms of script and layout on average, 3.2 ms at worst. The default "Cases" level draws far fewer cards; "Everything" is the only view at full size. No virtualisation needed.
+

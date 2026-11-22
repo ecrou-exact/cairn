@@ -71,7 +71,7 @@ Goal: owner approves architecture + design direction.
 - [x] One look on every page (D-042): dark contour page bands, stone buttons, field wells, filters folded behind a button, floating bulk bar, stone empty states, restyled drop zone with drop-anywhere
 - [ ] Multi-user system (later, on request)
 
-## Phase 4 — Graph (Pivotick, full integration per §4)  *(current)*
+## Phase 4 — Graph (Pivotick, full integration per §4)  *(done 2026-11-22)*
 - [x] Pivotick vendored, data adapter (`graph_core`, `/api/graph`), task cards as nodes, edge styles per kind, `--pvt-*` mapped to Cairn tokens, Cairn chrome (D-035)
 - [x] Left-to-right plan layout computed by Cairn (steps as columns, pinned cards, straight lines), opening view on what to do now
 - [x] Critical path computed and lit; side panel on click; live updates through SSE
@@ -79,14 +79,14 @@ Goal: owner approves architecture + design direction.
 - [x] View remembered per graph for the session; right-click menu on cards; edits go through the API (D-043) — no layout switch: Cairn lays the plan out (D-035)
 - [x] Framing computed by Cairn (Pivotick's first fit off), table view in plan order (`t`), contour ground (D-043)
 - [x] Find in the graph (`/`): any task of the view by its title, subtasks inside a case included; the view glides to the card that holds it, selected, side panel open (D-040)
-- [ ] Collapse/expand, clustering, data table; encodings still to add (running agent, instance — with Phases 5 and 8)
+- [x] Collapse/expand and clustering are the levels (cases, a case's own graph, everything; D-036); data table (D-043). Encodings of a running agent and of an instance come with Phases 5 and 8
 - [x] Edit from the graph's side panel: move to an allowed status, link to another card (blocks, blocked by, comes after, relates); the graph and the panel follow live
 - [x] The graph lives in the projects: plan of projects ordered by project links on the Projects page, a project's plan in its Plan tab, no Graph menu entry (D-044); project page in tabs (D-045)
 - [x] Path above the graph (All projects / project / case) with Up and Backspace to go back one level (D-042)
 - [x] Link mode (L or the link button): touch what comes first, then what it blocks; works by touch on phones; filters by state (ready, blocked, late, due soon) and tag, a case kept when a subtask matches
-- [ ] 300+ node tuning
+- [x] 300+ cards measured: ~0.4 s server, ~0.8 s first draw, < 4 ms per zoom (D-046)
 
-## Phase 5 — Claude
+## Phase 5 — Claude  *(current)*
 - [ ] App MCP server (typed tools, `describe_schema`, changeset tool, authz per scope)
 - [ ] Agent runner on Claude Agent SDK (`ClaudeSDKClient` per run, own asyncio loop in the worker), driving the local Claude Code by default (its own sign-in), API key as fallback (D-037) — Claude Code detection done in Accounts
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
