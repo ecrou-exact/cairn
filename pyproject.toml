@@ -26,6 +26,7 @@ dependencies = [
     "gunicorn>=23 ; sys_platform != 'win32'",
     "pillow>=11",
     "anthropic>=1.0",
+    "claude-agent-sdk>=0.2.187",
 ]
 
 [project.optional-dependencies]

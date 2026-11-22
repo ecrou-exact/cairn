@@ -21,7 +21,7 @@ Goal: owner approves architecture + design direction.
   - [x] Write `docs/OWNER_CONVENTIONS.md`
 - [~] Deep read of Pivotick source (constructor + data API verified, D-013; Simplify/filters/table/plugins still to read in Phase 4 prep) (typed API reference, Simplify, filters, legend, table, plugins, history, `_variables.scss`); confirm constructor signature
 - [x] Deep read of Vitrine source (configuration, theming, security, common attributes, vt-log, vt-json, editing; `main` built and vendored, D-019)
-- [ ] Read Agent SDK pages not yet covered (permissions, hooks, sessions, MCP, streaming input); verify per-run `ANTHROPIC_API_KEY` via `env`
+- [x] Read Agent SDK pages not yet covered (permissions, hooks, sessions, MCP, streaming input) and its source; per-run `env` verified (D-049) — sign-in question open
 - [x] Compare design skills, propose a base (D-009) — install after reading their source
 - [x] Write `docs/ARCHITECTURE.md`, `docs/SECURITY.md` (threat model), `CLAUDE.md` (proposed)
 - [x] Propose names + 3 logo directions (`docs/IDENTITY.md`, `docs/brand/`)
