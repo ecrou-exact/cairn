@@ -12,14 +12,16 @@ from app.features.tasks import dependencies_core, tasks_core
 
 
 def test_three_hundred_and_more_cards(ctx):
-    rng = random.Random(7)
+    rng = random.Random(7)  # noqa: S311 (test data, not security)
     projects = [projects_core.create(ProjectCreate(name=f"P{i}")) for i in range(4)]
     tasks = []
     for i in range(360):
         parent = tasks[rng.randrange(len(tasks))].id if tasks and i % 6 == 0 else None
         tasks.append(
             tasks_core.create(
-                TaskCreate(title=f"Task {i}", project_id=projects[i % 4].id, parent_id=parent, estimate_hours=2)
+                TaskCreate(
+                    title=f"Task {i}", project_id=projects[i % 4].id, parent_id=parent, estimate_hours=2
+                )
             )
         )
     pairs = {tuple(sorted(rng.sample(range(len(tasks)), 2))) for _ in range(300)}  # earlier → later: no cycle
