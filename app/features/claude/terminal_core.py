@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import threading
 import uuid
@@ -479,6 +480,13 @@ def _ended(session_id: uuid.UUID, code: int | None, reason: str) -> None:
         publish(f"{session.kind}.changed", {"id": str(session_id), "status": "ended"})
 
 
+def _remove_session_files(session_id: uuid.UUID) -> None:
+    """The rules and MCP files of a session whose reader could not remove them."""
+    folder = Path(current_app.config["CAIRN_DATA_DIR"]) / "claude"
+    for path in (folder / f"{session_id}.md", folder / f"{session_id}.mcp.json"):
+        path.unlink(missing_ok=True)
+
+
 def write(session_id: uuid.UUID, text: str) -> None:
     terminal = _terminal(session_id)
     if terminal.ended:
@@ -502,6 +510,24 @@ def output(session_id: uuid.UUID, after: int, wait: float = 0.0) -> tuple[list[t
     if terminal is None:
         return [], True
     return terminal.since(after, wait)
+
+
+# Escape sequences a terminal program prints (colours, cursor moves, titles), to strip them.
+ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]")
+
+
+def preview(session_id: uuid.UUID, lines: int = 8) -> list[str]:
+    """The last lines a terminal printed, as plain text (for a log-like program: an instance;
+    a full-screen program such as Claude Code redraws its screen and reads poorly this way)."""
+    with _lock:
+        terminal = _terminals.get(session_id)
+    if terminal is None:
+        return []
+    with terminal.cond:
+        tail = "".join(text for _, text in list(terminal.chunks)[-40:])[-12000:]
+    plain = ANSI.sub("", tail).replace("\r\n", "\n")
+    shown = [line.rsplit("\r", 1)[-1].rstrip() for line in plain.split("\n")]
+    return [line for line in shown if line.strip()][-lines:]
 
 
 def is_running(session_id: uuid.UUID) -> bool:
@@ -538,6 +564,7 @@ def sessions(
         if row.status == "running" and not is_running(row.id):
             with acting_as("system"):
                 _ended(row.id, None, "Cairn was restarted while it ran")
+            _remove_session_files(row.id)  # its reader died with the old process
     rows.sort(key=lambda r: (r.status != "running", -r.created_at.timestamp()))
     return rows
 

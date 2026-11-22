@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import re
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import psutil
@@ -38,6 +38,9 @@ class Usage:
     title: str = ""
     last_activity: float | None = None  # epoch seconds (transcript modified)
     transcript: bool = False
+    now: str = ""  # what Claude does or did last, in words
+    now_icon: str = ""
+    events: list = field(default_factory=list)  # the last few: {"at", "who", "icon", "label"}
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -72,21 +75,157 @@ def _tail_lines(path: Path) -> list[str]:
     return lines[1:] if end > TAIL_BYTES else lines  # the first line may be cut
 
 
-def read_usage(path: Path) -> Usage:
+EVENTS_KEPT = 8
+HOSTS = {  # a terminal or editor a Claude Code started outside Cairn runs in (by process name)
+    "code.exe": "VS Code",
+    "code": "VS Code",
+    "cursor.exe": "Cursor",
+    "cursor": "Cursor",
+    "windowsterminal.exe": "Windows Terminal",
+    "wt.exe": "Windows Terminal",
+    "idea64.exe": "JetBrains",
+    "pycharm64.exe": "PyCharm",
+    "webstorm64.exe": "WebStorm",
+    "iterm2": "iTerm2",
+    "terminal": "Terminal",
+    "gnome-terminal-server": "GNOME Terminal",
+    "konsole": "Konsole",
+    "alacritty": "Alacritty",
+    "kitty": "kitty",
+    "wezterm-gui": "WezTerm",
+    "tmux: server": "tmux",
+    "tmux": "tmux",
+    "claude.exe": "Claude",
+    "pwsh.exe": "PowerShell",
+    "powershell.exe": "PowerShell",
+    "cmd.exe": "Command Prompt",
+    "bash": "bash",
+    "zsh": "zsh",
+}
+EDITORS_FIRST = (
+    "VS Code",
+    "Cursor",
+    "JetBrains",
+    "PyCharm",
+    "WebStorm",
+    "Windows Terminal",
+    "iTerm2",
+    "tmux",
+)
+
+
+def _short(text: str, size: int = 90) -> str:
+    text = " ".join(str(text).split())
+    return text if len(text) <= size else text[: size - 1] + "…"
+
+
+def _relative(path: str, cwd: str) -> str:
+    try:
+        return str(Path(path).resolve().relative_to(Path(cwd).resolve())) or path
+    except (ValueError, OSError):
+        return path
+
+
+def describe_tool(name: str, data: dict, cwd: str) -> tuple[str, str]:
+    """A tool call in words, with an icon: what Claude is doing."""
+    data = data if isinstance(data, dict) else {}
+    target = _relative(str(data.get("file_path") or data.get("notebook_path") or ""), cwd)
+    if name in ("Edit", "MultiEdit", "NotebookEdit"):
+        return "fa-pen", f"Editing {target}"
+    if name == "Write":
+        return "fa-file-pen", f"Writing {target}"
+    if name == "Read":
+        return "fa-book-open", f"Reading {target}"
+    if name in ("Bash", "PowerShell"):
+        return "fa-terminal", _short(data.get("description") or f"Running {data.get('command', '')}")
+    if name == "Grep":
+        return "fa-magnifying-glass", f"Searching “{_short(data.get('pattern', ''), 50)}”"
+    if name == "Glob":
+        return "fa-folder-tree", f"Looking for {_short(data.get('pattern', ''), 50)}"
+    if name == "WebFetch":
+        return "fa-globe", f"Reading {_short(data.get('url', ''), 70)}"
+    if name == "WebSearch":
+        return "fa-globe", f"Searching the web: {_short(data.get('query', ''), 60)}"
+    if name in ("Agent", "Task"):
+        return "fa-users", f"Delegating: {_short(data.get('description', ''), 70)}"
+    if name == "TodoWrite":
+        return "fa-list-check", "Updating its to-do list"
+    if name == "AskUserQuestion":
+        return "fa-circle-question", "Asking you a question"
+    if name == "Skill":
+        return "fa-wand-magic-sparkles", f"Using the skill {data.get('skill', '')}"
+    if name == "ToolSearch":
+        return "fa-toolbox", "Loading tools"
+    if name.startswith("mcp__"):
+        _, server, tool = [*name.split("__", 2), "", ""][:3]
+        label = tool.replace("_", " ")
+        return (
+            ("fa-layer-group", f"Cairn: {label}") if server == "cairn" else ("fa-plug", f"{server}: {label}")
+        )
+    return "fa-gear", name
+
+
+def _events(entries: list[dict], cwd: str) -> list[dict]:
+    found = []
+    for entry in entries:
+        message, at = entry.get("message"), entry.get("timestamp")
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content")
+        if entry.get("type") == "user" and isinstance(content, str) and not content.startswith("<"):
+            found.append({"at": at, "who": "you", "icon": "fa-user", "label": _short(content)})
+        elif entry.get("type") == "assistant" and isinstance(content, list):
+            for block in content:
+                if not isinstance(block, dict):
+                    continue
+                if block.get("type") == "tool_use":
+                    icon, label = describe_tool(str(block.get("name", "")), block.get("input") or {}, cwd)
+                    found.append({"at": at, "who": "claude", "icon": icon, "label": label})
+                elif block.get("type") == "text" and str(block.get("text", "")).strip():
+                    found.append(
+                        {"at": at, "who": "claude", "icon": "fa-comment", "label": _short(block["text"])}
+                    )
+    return found[-EVENTS_KEPT:]
+
+
+def host_of(pid: int) -> str:
+    """The terminal or editor a process runs in, from its parents (the closest editor or
+    terminal app; a shell only if nothing better is found)."""
+    names = []
+    try:
+        process = psutil.Process(pid)
+        for _ in range(8):
+            process = process.parent()
+            if process is None:
+                break
+            name = HOSTS.get((process.name() or "").lower())
+            if name and name != "Claude":
+                names.append(name)
+    except psutil.Error:
+        pass
+    for wanted in EDITORS_FIRST:
+        if wanted in names:
+            return wanted
+    return names[0] if names else "a terminal"
+
+
+def read_usage(path: Path, cwd: str = "") -> Usage:
     """Context use, model and title of one transcript; an empty Usage when it is missing."""
     try:
         lines = _tail_lines(path)
         modified = path.stat().st_mtime
     except OSError:
         return Usage()
-    usage, title = None, ""
+    usage, title, entries = None, "", []
     for line in reversed(lines):
-        if usage is not None and title:
-            break
         try:
             entry = json.loads(line)
         except ValueError:
             continue
+        if len(entries) < 60:
+            entries.append(entry)
+        if usage is not None and title and len(entries) >= 60:
+            break
         if not title and entry.get("type") == "ai-title":
             title = str(entry.get("aiTitle") or "")[:200]
         message = entry.get("message")
@@ -100,7 +239,12 @@ def read_usage(path: Path) -> Usage:
                 usage = (used, str(message.get("model") or ""))
     used, model = usage or (0, "")
     window = _window(model, used)
+    events = _events(list(reversed(entries)), cwd)
+    last = next((e for e in reversed(events) if e["who"] == "claude"), None)
     return Usage(
+        now=last["label"] if last else "",
+        now_icon=last["icon"] if last else "",
+        events=events,
         context_tokens=used,
         window=window,
         percent=round(100 * used / window, 1) if window else 0.0,
@@ -112,7 +256,7 @@ def read_usage(path: Path) -> Usage:
 
 
 def session_usage(cwd: str, cli_session_id: str) -> Usage:
-    return read_usage(transcript_path(cwd, cli_session_id))
+    return read_usage(transcript_path(cwd, cli_session_id), cwd)
 
 
 def outside_sessions(known_pids: set[int]) -> list[dict]:
@@ -144,12 +288,13 @@ def outside_sessions(known_pids: set[int]) -> list[dict]:
             recent = []
         if recent:
             newest = max(recent, key=lambda p: p.stat().st_mtime)
-            usage, conversation = read_usage(newest), newest.stem
+            usage, conversation = read_usage(newest, cwd), newest.stem
         found.append(
             {
                 "pid": info["pid"],
                 "cwd": cwd,
                 "cli_session_id": conversation,
+                "host": host_of(info["pid"]),
                 "started": started,
                 "running_for": max(0, int(time.time() - started)) if started else None,
                 "usage": usage.as_dict(),
