@@ -143,3 +143,42 @@ def test_filters_keep_cases_leading_to_a_match(ctx):
 def test_graph_page_filters(app, signed_in):
     page = signed_in.get("/graph?state=late&tag=a+b")
     assert page.status_code == 200 and b"state=late" in page.data and b"tag=a+b" in page.data
+
+
+def test_find_points_to_the_card_holding_the_task(ctx):
+    project = projects_core.create(ProjectCreate(name="Cairn"))
+    phase = _task("Phase graph", project_id=project.id)
+    step = _task("Write the find box", parent_id=phase.id)
+    deeper = _task("Find box keyboard", parent_id=step.id)
+    done = _task("Find old notes")
+    tasks_core.set_status(done.id, "done")
+    _task("Late find", due_on=None, tags=["ops"])
+
+    found = graph_core.find("  FIND   box ")
+    assert found["query"] == "find box"
+    by_label = {m["label"]: m for m in found["matches"]}
+    assert set(by_label) == {"Write the find box", "Find box keyboard"}
+    assert by_label["Write the find box"]["card"] == str(phase.id)
+    assert by_label["Write the find box"]["inside"] == ["Phase graph"]
+    assert by_label["Find box keyboard"]["inside"] == ["Phase graph", "Write the find box"]
+    assert found["matches"][0]["label"] == "Write the find box"  # the shallower match first
+
+    inside = graph_core.find("keyboard", root_id=phase.id)["matches"][0]
+    assert (inside["card"], inside["inside"]) == (str(step.id), ["Write the find box"])
+    assert graph_core.find("keyboard", level="all")["matches"][0]["card"] == str(deeper.id)
+
+    assert graph_core.find("old notes")["matches"] == []  # done tasks only with closed=1
+    assert graph_core.find("old notes", include_closed=True)["matches"][0]["card"] == str(done.id)
+    filtered = graph_core.find("phase", tag="ops")["matches"][0]
+    assert filtered["card"] is None  # in scope but filtered out: the page opens the task
+    assert graph_core.find("find", limit=1)["more"] >= 2
+    assert graph_core.find("   ") == {"query": "", "matches": [], "more": 0}
+
+
+def test_find_api(app, signed_in):
+    signed_in.post("/api/tasks", json={"title": "Searchable % card"})
+    body = signed_in.get("/api/graph/find?q=%25").json
+    assert [m["label"] for m in body["matches"]] == ["Searchable % card"]
+    assert signed_in.get("/api/graph/find?q=x&root=nope").status_code == 422
+    page = signed_in.get("/graph")
+    assert b'id="graph-find"' in page.data

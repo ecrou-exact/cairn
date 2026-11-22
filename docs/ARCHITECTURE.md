@@ -128,8 +128,8 @@ Configurable lists (types, statuses, workflow transitions, priorities, score wei
 - `related_core.related_for(task)`: related tasks, resources and schedule fit with reasons (D-029); future MCP tool `find_related`.
 
 ## 4b. Graph (Phase 4)
-- `features/graph/graph_core.py`: `graph_data(project, include_closed)` → Pivotick raw nodes (pinned `x/y/fx/fy` from `plan_layout`) and edges (dependencies + subtasks), the critical path and the number of steps; `/api/graph`; page `/graph` (CSP adds `style-src-attr` there only).
-- `static/js/graph/graph.js`: Pivotick in `viewer` mode, cards from `node.getData()`, Cairn chrome, live diffing; styles in `static/css/graph/graph.css` (`--pvt-*` bridge included). D-035.
+- `features/graph/graph_core.py`: `_level()` decides the cards of a view (project, root, level, state, tag, closed) and which card stands for any task in scope; `graph_data(...)` → Pivotick raw nodes (pinned `x/y/fx/fy` from `plan_layout`) and edges (dependencies lifted to the cards + subtasks), the critical path, the number of steps and the breadcrumb; `find(text, ...)` → tasks whose title matches, each with its card and the cases in between. `/api/graph` and `/api/graph/find` share one query parser; page `/graph` (CSP adds `style-src-attr` there only).
+- `static/js/graph/graph.js`: Pivotick in `viewer` mode, cards from `node.getData()`, Cairn chrome (zoom, find, link mode, critical path, side panel, peek), live diffing; styles in `static/css/graph/graph.css` (`--pvt-*` bridge included). D-035.
 
 ## 5b. Lists, settings, display
 - **Lists:** a feature declares a `ListSpec` (sortable, searchable, filters, tiebreak) and calls `run_list(spec, query, request.args)`; anything undeclared in the URL is ignored. Macros in `templates/macros/list.html`, styles in `css/components/list.css`. The API returns the same page as JSON (`schema/common.page_dict`).

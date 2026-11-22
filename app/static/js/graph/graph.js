@@ -8,6 +8,8 @@
  *   click, or the side panel), with a breadcrumb back up.
  * - Hover shows a peek with the full title; click opens the side panel; the critical path
  *   can be lit; changes elsewhere arrive live (SSE) and are applied as differences.
+ * - Find (`/`): a task by its title, even a subtask hidden inside a case, brings its card
+ *   into view, selected, with its side panel open.
  */
 
 import { Node, Pivotick } from '../../vendor/pivotick/pivotick.es.js';
@@ -295,7 +297,7 @@ function mount(stage) {
         onNodeDbclick: (_event, node) => { if (!linking) open(node.getData()); },
         onNodeHoverIn: (event, node) => showPeek(event, node),
         onNodeHoverOut: hidePeek,
-        onCanvasClick: () => { hidePanel(); hidePeek(); },
+        onCanvasClick: () => { hidePanel(); hidePeek(); if (!linking) say(''); },
         onCanvasMousemove: movePeek,
       },
     };
@@ -344,6 +346,117 @@ function mount(stage) {
     } catch (error) {
       say(`${error.message} Touch another pair, or Esc.`, 'warn');
     }
+  }
+
+  // -- find ----------------------------------------------------------------------------
+
+  /** Find a task by its title, subtasks hidden inside a case included (server-side search). */
+  function setupFind(box) {
+    const input = box.querySelector('input');
+    const list = box.querySelector('[role="listbox"]');
+    let matches = [];
+    let active = -1;
+    let asked = 0;
+
+    const close = () => {
+      list.hidden = true;
+      active = -1;
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+    };
+
+    function mark(index) {
+      active = index;
+      list.querySelectorAll('[role="option"]').forEach((item, i) => item.setAttribute('aria-selected', String(i === index)));
+      if (index >= 0) input.setAttribute('aria-activedescendant', `graph-find-${index}`);
+      else input.removeAttribute('aria-activedescendant');
+    }
+
+    function draw(found) {
+      const items = found.matches.map((match, index) => {
+        const item = el('li', `cn-graph-find-item${match.card ? '' : ' is-off'}`);
+        item.id = `graph-find-${index}`;
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', 'false');
+        const where = match.card
+          ? (match.inside.length ? `inside ${match.inside.join(' › ')}` : 'on this graph')
+          : 'not on this graph: opens the task';
+        const line = el('span', 'cn-graph-find-meta');
+        line.append(el('span', `cn-status cn-status-${match.statusKind}`, match.statusLabel), document.createTextNode([match.project, where].filter(Boolean).join(' · ')));
+        item.append(el('span', 'cn-graph-find-title', match.label), line);
+        item.addEventListener('pointerdown', (event) => event.preventDefault()); // keep the focus in the field
+        item.addEventListener('click', () => choose(match));
+        return item;
+      });
+      if (!items.length) items.push(el('li', 'cn-graph-find-none', `No task here has “${found.query}” in its title.`));
+      if (found.more) items.push(el('li', 'cn-graph-find-none', `${found.more} more: add a word to narrow it down.`));
+      list.replaceChildren(...items);
+      list.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+      mark(found.matches.length ? 0 : -1);
+    }
+
+    function choose(match) {
+      close();
+      const node = match.card && graph?.getNode(match.card);
+      if (!node) {
+        window.location.assign(match.url);
+        return;
+      }
+      if (linking) setLinking(false);
+      const zoom = graph.renderer.getZoomTransform().k;
+      viewAt(Math.max(zoom, compact ? 0.7 : 0.8), node.x + 112, node.y + 48);
+      graph.deselectAll();
+      graph.selectElement(node);
+      showPanel(node.getData(), node.id);
+      say(match.inside.length ? `“${match.label}” is inside this case. Double-click it to open its subtasks.` : '', 'ok');
+    }
+
+    const search = debounce(async () => {
+      const text = input.value.trim();
+      const ticket = ++asked;
+      if (!text) {
+        matches = [];
+        close();
+        return;
+      }
+      const params = new URLSearchParams(query());
+      params.set('q', text);
+      try {
+        const found = await api(`/graph/find?${params}`);
+        if (ticket !== asked) return; // a newer search is on its way
+        matches = found.matches;
+        draw(found);
+      } catch (error) {
+        if (ticket !== asked) return;
+        matches = [];
+        list.replaceChildren(el('li', 'cn-graph-find-none', error.message));
+        list.hidden = false;
+      }
+    }, 180);
+
+    input.addEventListener('input', search);
+    input.addEventListener('focus', () => { if (matches.length) { list.hidden = false; input.setAttribute('aria-expanded', 'true'); } });
+    input.addEventListener('blur', close);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        if (!matches.length) return;
+        event.preventDefault();
+        if (list.hidden) { list.hidden = false; input.setAttribute('aria-expanded', 'true'); }
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        mark((active + step + matches.length) % matches.length);
+        document.getElementById(`graph-find-${active}`)?.scrollIntoView({ block: 'nearest' });
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        if (matches.length) choose(matches[Math.max(active, 0)]);
+      } else if (event.key === 'Escape') {
+        event.stopPropagation();
+        input.value = '';
+        matches = [];
+        close();
+        input.blur();
+      }
+    });
   }
 
   // -- view ----------------------------------------------------------------------------
@@ -469,6 +582,8 @@ function mount(stage) {
   });
   stage.querySelector('[data-graph-critical]')?.addEventListener('change', (event) => lightCritical(event.target.checked));
   stage.addEventListener('mouseleave', hidePeek);
+  const finder = stage.querySelector('[data-graph-find]');
+  if (finder) setupFind(finder);
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       hidePanel();

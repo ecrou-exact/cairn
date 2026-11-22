@@ -13,12 +13,13 @@ from __future__ import annotations
 
 import uuid
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 from sqlalchemy import select
 
-from app.core.db_class.planning import Dependency, Task
+from app.core.db_class.planning import Dependency, Project, Task
 from app.core.extensions import db
 from app.core.utils.template_filters import relative_day
 from app.features.tasks import workflow
@@ -297,32 +298,46 @@ def tags_in_use() -> list[str]:
     return sorted(found)
 
 
-def graph_data(
-    project_id: uuid.UUID | None = None,
-    *,
-    root_id: uuid.UUID | None = None,
-    include_closed: bool = False,
-    level: str = "top",
-    state: str = "",
-    tag: str = "",
-) -> dict[str, Any]:
-    """The plan at one level, as Pivotick data.
+@dataclass
+class _Level:
+    """The cards of one graph level and how every task in scope maps to one of them."""
 
-    - no root, `level="top"`: the top-level tasks (the cases of each project);
-    - no root, `level="all"`: every task, subtasks linked to their parent;
-    - a root with subtasks: its direct subtasks;
-    - a root without: the task and the tasks it is linked to (its neighbourhood).
+    root: Task | None
+    project: Any
+    mode: str
+    tasks: dict[uuid.UUID, Task]
+    deps: list[Dependency]
+    children: dict[uuid.UUID, list[Task]]
+    shown: dict[uuid.UUID, Task]
 
-    Dependencies between deeper tasks are lifted to the cards shown, so a link between two
-    subtasks of different cases appears between those cases.
-    """
+    def rep(self, task_id: uuid.UUID) -> uuid.UUID | None:
+        """The card standing for a task at this level: itself, or its nearest shown ancestor."""
+        seen = set()
+        node = self.tasks.get(task_id)
+        while node is not None and node.id not in seen:
+            if node.id in self.shown:
+                return node.id
+            if self.mode == "around":
+                return None
+            seen.add(node.id)
+            node = self.tasks.get(node.parent_id) if node.parent_id else None
+        return None
+
+
+def _level(
+    project_id: uuid.UUID | None,
+    root_id: uuid.UUID | None,
+    include_closed: bool,
+    level: str,
+    state: str,
+    tag: str,
+) -> _Level:
+    """Which tasks a graph level shows (see `graph_data`), after the filters."""
     root = db.session.get(Task, root_id) if root_id else None
     if root is not None and root.is_deleted:
         root = None
     project = root.project if root is not None else None
     if project is None and project_id is not None:
-        from app.core.db_class.planning import Project
-
         project = db.session.get(Project, project_id)
     tasks = _scope(None if root is not None else project_id)
     if root is not None and root.id not in tasks:
@@ -364,23 +379,34 @@ def graph_data(
     shown = {
         tid: tasks[tid] for tid in shown_ids if keep(tasks[tid]) or (root is not None and tid == root.id)
     }
+    return _Level(root, project, mode, tasks, deps, children, shown)
 
-    def rep(task_id: uuid.UUID) -> uuid.UUID | None:
-        """The card standing for a task at this level: itself, or its nearest shown ancestor."""
-        seen = set()
-        node = tasks.get(task_id)
-        while node is not None and node.id not in seen:
-            if node.id in shown:
-                return node.id
-            if mode in ("around",):
-                return None
-            seen.add(node.id)
-            node = tasks.get(node.parent_id) if node.parent_id else None
-        return None
+
+def graph_data(
+    project_id: uuid.UUID | None = None,
+    *,
+    root_id: uuid.UUID | None = None,
+    include_closed: bool = False,
+    level: str = "top",
+    state: str = "",
+    tag: str = "",
+) -> dict[str, Any]:
+    """The plan at one level, as Pivotick data.
+
+    - no root, `level="top"`: the top-level tasks (the cases of each project);
+    - no root, `level="all"`: every task, subtasks linked to their parent;
+    - a root with subtasks: its direct subtasks;
+    - a root without: the task and the tasks it is linked to (its neighbourhood).
+
+    Dependencies between deeper tasks are lifted to the cards shown, so a link between two
+    subtasks of different cases appears between those cases.
+    """
+    view = _level(project_id, root_id, include_closed, level, state, tag)
+    root, mode, children, shown = view.root, view.mode, view.children, view.shown
 
     lifted: dict[tuple[uuid.UUID, uuid.UUID, str], list[Dependency]] = defaultdict(list)
-    for dep in deps:
-        a, b = rep(dep.from_task_id), rep(dep.to_task_id)
+    for dep in view.deps:
+        a, b = view.rep(dep.from_task_id), view.rep(dep.to_task_id)
         if a is not None and b is not None and a != b:
             lifted[(a, b, dep.kind)].append(dep)
 
@@ -446,5 +472,56 @@ def graph_data(
         "edges": edges,
         "critical": path,
         "steps": int(steps),
-        "breadcrumb": _breadcrumb(project, root),
+        "breadcrumb": _breadcrumb(view.project, root),
     }
+
+
+FIND_LIMIT = 8
+
+
+def find(
+    text: str,
+    project_id: uuid.UUID | None = None,
+    *,
+    root_id: uuid.UUID | None = None,
+    include_closed: bool = False,
+    level: str = "top",
+    state: str = "",
+    tag: str = "",
+    limit: int = FIND_LIMIT,
+) -> dict[str, Any]:
+    """Tasks of this graph's scope whose title contains `text` (case-insensitive, literal),
+    each with the card that stands for it at this level: itself, the case it is inside
+    (with the titles in between), or none when the filters or the level leave it out."""
+    words = " ".join(text.split())[:100].casefold()
+    if not words:
+        return {"query": "", "matches": [], "more": 0}
+    view = _level(project_id, root_id, include_closed, level, state, tag)
+    statuses = workflow.status_map()
+    found = []
+    for task in view.tasks.values():
+        if words not in task.title.casefold() or (not task.is_open and not include_closed):
+            continue
+        card = view.rep(task.id)
+        inside, node = [], task
+        while card is not None and node.id != card:
+            node = view.tasks[node.parent_id]
+            inside.append(node.title)
+        status = statuses.get(task.status, {"label": task.status, "kind": "open"})
+        found.append(
+            {
+                "id": str(task.id),
+                "label": task.title,
+                "url": f"/tasks/{task.id}",
+                "project": task.project.name if task.project else "",
+                "statusLabel": status["label"],
+                "statusKind": status["kind"],
+                "card": str(card) if card else None,
+                "inside": list(reversed(inside)),
+                "_rank": (card is None, len(inside), not task.is_open, -task.score, task.title.casefold()),
+            }
+        )
+    found.sort(key=lambda match: match["_rank"])
+    for match in found:
+        del match["_rank"]
+    return {"query": words, "matches": found[:limit], "more": max(len(found) - limit, 0)}

@@ -76,7 +76,8 @@ Goal: owner approves architecture + design direction.
 - [x] Critical path computed and lit; side panel on click; live updates through SSE
 - [x] Levels: cases per project, a case opens its subtasks' graph with a breadcrumb, dependencies lifted between levels; hover peek; a graph on every task page (D-036)
 - [ ] Layout switch remembered per view; write-path hooks → API; context menus; side panel editing
-- [ ] Filters, search/focus, collapse/expand, clustering, legend, data table; encodings (status, priority, deadline, blocked, running agent, instance)
+- [x] Find in the graph (`/`): any task of the view by its title, subtasks inside a case included; the view glides to the card that holds it, selected, side panel open (D-040)
+- [ ] Collapse/expand, clustering, data table; encodings still to add (running agent, instance — with Phases 5 and 8)
 - [x] Edit from the graph's side panel: move to an allowed status, link to another card (blocks, blocked by, comes after, relates); the graph and the panel follow live
 - [x] Link mode (L or the link button): touch what comes first, then what it blocks; works by touch on phones; filters by state (ready, blocked, late, due soon) and tag, a case kept when a subtask matches
 - [ ] 300+ node tuning

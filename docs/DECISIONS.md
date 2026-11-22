@@ -229,3 +229,13 @@
 - Owner feedback: the project page's organisation did not work (everything stacked, tasks at the bottom).
 - A dark band lit by the project's colour (name, status, repository, branch, local path, stack; open / done / blocked / late / next due; progress), with Open the graph, Edit, Trash. Below, two columns: **work** (the project's plan as a compact graph of its cases, then its tasks with quick add, templates, filters and bulk edit) and **context** (next up here, about with links, resources, discussion). One column under 1100 px.
 - Band stats and slab headers moved to `core/base.css`, shared by Today and the project page.
+
+## D-040 · 2026-11-22 · accepted — Find in the graph
+- A level shows cases, so most tasks are hidden inside a card; Pivotick's own search only knows the nodes drawn. **Cairn searches on the server** (`graph_core.find`) over every task of the view's scope, with the same levels and filters as the graph (one `_level()` for both), and answers with the **card that holds each match**: the task itself, or the case it is inside, with the titles in between.
+- Matching is the palette's: the title contains the words, case-insensitive, literal; done tasks only when the view shows them. Order: on this graph before filtered out, shallower before deeper, open first, then score; 8 results and how many more.
+- Choosing a match glides to its card, selects it (a visible ring, also used by link mode's first pick) and opens its side panel; a match inside a case says so ("double-click it to open its subtasks"); a match left out by the filters opens the task page. `/` focuses the field (as it focuses list searches), arrows and Enter pick, Esc clears. Not on the compact task-page graph, which is small enough to read.
+
+## D-041 · 2026-11-22 · accepted — Windows with Smart App Control enforced
+- Smart App Control (enforcement mode) refuses unsigned native modules. On the owner's machine it blocks uv's managed CPython builds (`_sqlite3.pyd`) and SQLAlchemy's Cython modules; pydantic-core, cryptography, argon2, Pillow, psutil and PyYAML load.
+- **Fix on such a machine, nothing changed in the repo:** the signed python.org interpreter (`uv sync --python <python.org python.exe>`, or the `UV_PYTHON` user variable) and SQLAlchemy in pure Python, set in the user's uv config (`%APPDATA%\uv\uv.toml`: `no-binary-package = ["sqlalchemy"]`, `[extra-build-variables] sqlalchemy = { DISABLE_SQLALCHEMY_CEXT = "1" }`). The full suite passes this way on Python 3.15.
+- `.python-version` stays 3.12 (Ubuntu 24.04's default, D-001); Linux and other Windows machines keep the compiled SQLAlchemy.

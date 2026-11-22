@@ -11,6 +11,16 @@
     <button type="button" class="cn-icon-button" data-graph-action="fit" title="See everything"><i class="fa-solid fa-expand" aria-hidden="true"></i><span class="visually-hidden">Fit</span></button>
     <button type="button" class="cn-icon-button cn-graph-link-toggle" data-graph-action="link" aria-pressed="false" title="Link two tasks (L): touch the one that comes first, then the one it blocks"><i class="fa-solid fa-link" aria-hidden="true"></i><span class="visually-hidden">Link two tasks</span></button>
   </div>
+  {% if not compact %}
+  <div class="cn-graph-find" data-graph-find role="search">
+    <label class="visually-hidden" for="graph-find">Find a task in this graph</label>
+    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+    <input class="form-control form-control-sm" id="graph-find" type="search" placeholder="Find a task" autocomplete="off" maxlength="100"
+           role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="graph-find-results">
+    <kbd aria-hidden="true">/</kbd>
+    <ul class="cn-graph-find-results" id="graph-find-results" role="listbox" aria-label="Matching tasks" hidden></ul>
+  </div>
+  {% endif %}
   <p class="cn-graph-hint" data-graph-hint hidden role="status"></p>
   <label class="cn-switch cn-switch-critical cn-graph-critical-toggle"><input type="checkbox" data-graph-critical><span><i class="fa-solid fa-route" aria-hidden="true"></i> Critical path <small data-graph-critical-summary></small></span></label>
   <aside class="cn-gpanel" data-graph-panel hidden aria-live="polite"></aside>

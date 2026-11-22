@@ -7,7 +7,7 @@ const GO = { h: '/', t: '/tasks', p: '/projects', g: '/graph', r: '/resources', 
 const HELP = [
   ['Ctrl K', 'Search, go to a page, add a task'],
   ['n', 'New task (quick add)'],
-  ['/', 'Search in this list'],
+  ['/', 'Search in this list, or find a task in the graph'],
   ['g then h', 'Today'],
   ['g then t', 'Tasks'],
   ['g then p', 'Projects'],
@@ -84,7 +84,7 @@ document.addEventListener('keydown', (event) => {
     setTimeout(() => { pending = null; }, 1500);
   } else if (event.key === 'n' && focusFirst('.cn-quick-add input[name="text"]')) {
     event.preventDefault();
-  } else if (event.key === '/' && focusFirst('#list-q')) {
+  } else if (event.key === '/' && focusFirst('#list-q, #graph-find')) {
     event.preventDefault();
   } else if (event.key === '?') {
     event.preventDefault();
