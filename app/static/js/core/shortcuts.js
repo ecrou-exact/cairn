@@ -7,6 +7,7 @@ const GO = { h: '/', t: '/tasks', p: '/projects', r: '/resources', j: '/jobs', s
 const HELP = [
   ['Ctrl K', 'Search, go to a page, add a task'],
   ['n', 'New task (quick add)'],
+  ['Alt C', 'Open Claude (a task, a project, a PR, a fix, a new project)'],
   ['/', 'Search in this list, or find a task in the graph'],
   ['g then h', 'Today'],
   ['g then t', 'Tasks'],

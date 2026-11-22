@@ -105,6 +105,15 @@
 </form>
 {%- endmacro %}
 
+{# Claude on this task, from anywhere (D-051): only where it can open (a project folder). #}
+{% macro claude_button(task, text=False) -%}
+{% if task.is_open and task.project and task.project.local_path %}
+<button class="{{ 'btn btn-sm btn-outline-secondary' if text else 'cn-icon-button cn-claude-go' }}" type="button" data-claude-launch data-task="{{ task.id }}" data-task-title="{{ task.title }}" data-preset="task" title="Claude on this task">
+  <i class="fa-solid fa-terminal" aria-hidden="true"></i>{% if text %}<span>Claude</span>{% else %}<span class="visually-hidden">Claude on {{ task.title }}</span>{% endif %}
+</button>
+{% endif %}
+{%- endmacro %}
+
 {% macro task_rows(page, types, show_project=True, workflow_statuses=[]) -%}
 {% from "macros/list.html" import sort_header %}
 <div class="cn-table-wrap">
@@ -129,6 +138,7 @@
           <a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a>
           {{ blocked_badge(task) }}
           {% for tag in task.tags[:3] %}<span class="cn-tag">#{{ tag }}</span>{% endfor %}
+          {{ claude_button(task) }}
         </td>
         {% if show_project %}<td>{{ project_chip(task.project) }}</td>{% endif %}
         <td>{{ inline_status(task, workflow_statuses) }}</td>
@@ -168,7 +178,7 @@
   <li class="cn-card cn-task-card{% if not task.is_open %} cn-task-closed{% endif %}" data-task-id="{{ task.id }}">
     <div class="cn-card-head">
       <span>{{ type_icon(task, types) }} <a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a></span>
-      {{ score(task) }}
+      <span class="cn-card-head-end">{{ claude_button(task) }}{{ score(task) }}</span>
     </div>
     <div class="cn-card-tags">{{ task_status(task) }} {{ priority(task) }} {{ blocked_badge(task) }} {{ due(task) }}</div>
     {% if show_project and task.project %}<div>{{ project_chip(task.project) }}</div>{% endif %}

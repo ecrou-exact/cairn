@@ -35,7 +35,8 @@
     <li class="cn-card cn-project-card cn-color-{{ project.color }}">
       <div class="cn-card-head">
         <a class="cn-project-name" href="{{ url_for('projects.detail', slug=project.slug) }}"><span class="cn-project-tile" aria-hidden="true"><i class="fa-solid {{ project.icon }}"></i></span>{{ project.name }}</a>
-        {% if project.status != "active" %}<span class="cn-badge">{{ project.status }}</span>{% endif %}
+        <span class="cn-card-head-end">{% if project.status != "active" %}<span class="cn-badge">{{ project.status }}</span>{% endif %}
+        {% if project.local_path %}<button class="cn-icon-button cn-claude-go" type="button" data-claude-launch data-project="{{ project.id }}" title="Claude in {{ project.name }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span class="visually-hidden">Claude in {{ project.name }}</span></button>{% endif %}</span>
       </div>
       {% if project.github_repo %}<code class="cn-muted">{{ project.github_repo }}</code>{% endif %}
       {% set intro = project.description_md.split("

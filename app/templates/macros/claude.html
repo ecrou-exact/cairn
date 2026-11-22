@@ -38,7 +38,14 @@
       {% if outside %}<span>outside Cairn · pid {{ s.pid }}</span>{% elif s.status == "ended" and s.end_reason %}<span>{{ s.end_reason }}</span>{% endif %}
     </p>
   </div>
-  {% if not outside and s.running %}<a class="btn btn-sm btn-outline-secondary cn-claude-open" href="{{ s.url }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Open</span></a>{% endif %}
+  {% if not outside and s.running %}<a class="btn btn-sm btn-outline-secondary cn-claude-open" href="{{ s.url }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Open</span></a>
+  {% elif (outside and s.cli_session_id) or (not outside and s.usage.transcript) %}
+  <form method="post" action="{{ url_for('claude.resume') }}" class="cn-claude-open">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="cli_session_id" value="{{ s.cli_session_id }}"><input type="hidden" name="cwd" value="{{ s.cwd }}">
+    <button class="btn btn-sm btn-outline-secondary" type="submit" title="Reopen this conversation in Cairn (claude --resume)"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i><span>{{ "Open in Cairn" if outside else "Resume" }}</span></button>
+  </form>
+  {% endif %}
 </li>
 {%- endmacro %}
 

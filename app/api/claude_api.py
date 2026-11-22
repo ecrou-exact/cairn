@@ -8,7 +8,7 @@ import uuid
 from flask import jsonify, request
 
 from app.api import ApiError, api_blueprint, body
-from app.core.schema.claude import SessionStart, TerminalInput, TerminalResize
+from app.core.schema.claude import NewProjectStart, ResumeStart, SessionStart, TerminalInput, TerminalResize
 from app.features.claude import claude_core, terminal_core
 
 claude_api = api_blueprint("claude_api")
@@ -38,6 +38,27 @@ def list_sessions():
 @claude_api.post("/claude/sessions")
 def start_session():
     session = _guard(terminal_core.start, body(SessionStart))
+    return jsonify(session=claude_core.describe(session)), 201
+
+
+@claude_api.get("/claude/targets")
+def targets():
+    """What the launcher offers: presets and projects."""
+    return jsonify(claude_core.targets())
+
+
+@claude_api.post("/claude/projects")
+def new_project():
+    """Create a project and its folder, then Claude Code in it to set it up."""
+    session = _guard(terminal_core.start_new_project, body(NewProjectStart))
+    return jsonify(session=claude_core.describe(session)), 201
+
+
+@claude_api.post("/claude/resume")
+def resume():
+    """Reopen a Claude Code conversation in Cairn (one started outside, or one that ended)."""
+    data = body(ResumeStart)
+    session = _guard(terminal_core.resume, data.cli_session_id, data.cwd, data.cols, data.rows)
     return jsonify(session=claude_core.describe(session)), 201
 
 

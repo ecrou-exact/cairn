@@ -18,12 +18,21 @@ FAKE = "import sys; print('ARGS', sys.argv[1:]); line = input(); print('GOT', li
 
 
 @pytest.fixture
-def fake_claude(monkeypatch):
+def fake_claude(app, monkeypatch, tmp_path):
+    monkeypatch.setitem(app.config, "CAIRN_DATA_DIR", str(tmp_path / "data"))  # never the real data folder
     monkeypatch.setattr(terminal_core.connections_core, "claude_code_path", lambda: sys.executable)
     monkeypatch.setattr(
         terminal_core,
         "command",
-        lambda exe, sid, first: [exe, "-c", FAKE, "--session-id", str(sid), *([first] if first else [])],
+        lambda exe, sid, first, rules=None, resume=False: [
+            exe,
+            "-c",
+            FAKE,
+            "--resume" if resume else "--session-id",
+            str(sid),
+            str(rules),
+            *([first] if first else []),
+        ],
     )
 
 
@@ -145,3 +154,84 @@ def test_claude_pages_and_api(app, signed_in, tmp_path, fake_claude):
         == 422
     )
     assert signed_in.post(f"/api/claude/sessions/{uuid.uuid4()}/stop").status_code == 409
+
+
+def test_presets_build_the_first_message_and_title(ctx, tmp_path):
+    project = projects_core.create(ProjectCreate(name="Cairn", local_path=str(tmp_path)))
+    task = tasks_core.create(TaskCreate(title="Parser", project_id=project.id))
+    pr = SessionStart(project_id=project.id, preset="pr", detail="https://github.com/o/r/pull/42")
+    assert "https://github.com/o/r/pull/42" in terminal_core._first_message(pr, None)
+    assert "wait for my go" in terminal_core._first_message(pr, None)
+    assert terminal_core._title(pr, project, None) == "PR 42"
+    fix = SessionStart(task_id=task.id, preset="fix", detail="crash on empty file")
+    message = terminal_core._first_message(fix, task)
+    assert "crash on empty file" in message and "“Parser”" in message
+    assert terminal_core._first_message(SessionStart(project_id=project.id), None) is None
+    with pytest.raises(ValueError, match="pull request"):
+        SessionStart(project_id=project.id, preset="pr", detail="not a url")
+    with pytest.raises(ValueError, match="describe the bug"):
+        SessionStart(project_id=project.id, preset="fix")
+    with pytest.raises(ValueError, match="pick the task"):
+        SessionStart(project_id=project.id, preset="task")
+
+
+def test_rules_reach_every_session(app, ctx, tmp_path, fake_claude):
+    project = projects_core.create(
+        ProjectCreate(name="Rulezet", local_path=str(tmp_path), claude_instructions_md="Use pytest -q.")
+    )
+    session = terminal_core.start(SessionStart(project_id=project.id, preset="review"))
+    seen, _ = _wait_for(session.id, "ARGS")
+    rules = next(part for part in seen.split("'") if part.endswith(".md"))
+    from pathlib import Path
+
+    text = Path(rules).read_text(encoding="utf-8")
+    assert "No AI attribution" in text and "Use pytest -q." in text
+
+
+def test_new_project_and_resume(ctx, tmp_path, fake_claude, monkeypatch):
+    from app.core.schema.claude import NewProjectStart
+
+    folder = tmp_path / "fresh"
+    session = terminal_core.start_new_project(
+        NewProjectStart(name="Fresh", folder=str(folder), description="A CLI")
+    )
+    assert folder.is_dir() and session.title == "Set up Fresh"
+    assert projects_core.by_folder(str(folder)).name == "Fresh"
+    (tmp_path / "busy").mkdir()
+    (tmp_path / "busy" / "x.txt").write_text("x")
+    with pytest.raises(terminal_core.TerminalError, match="not empty"):
+        terminal_core.start_new_project(NewProjectStart(name="Busy", folder=str(tmp_path / "busy")))
+    with pytest.raises(terminal_core.TerminalError, match="full path"):
+        terminal_core.start_new_project(NewProjectStart(name="Rel", folder="relative/dir"))
+
+    monkeypatch.setattr(transcript_core, "projects_root", lambda: tmp_path / "transcripts")
+    conversation = uuid.uuid4()
+    with pytest.raises(terminal_core.TerminalError, match="no conversation"):
+        terminal_core.resume(conversation, str(folder))
+    stored = tmp_path / "transcripts" / transcript_core.folder_key(str(folder))
+    stored.mkdir(parents=True)
+    (stored / f"{conversation}.jsonl").write_text("{}", encoding="utf-8")
+    resumed = terminal_core.resume(conversation, str(folder))
+    seen, _ = _wait_for(resumed.id, "ARGS")
+    assert "--resume" in seen and str(conversation) in seen
+    assert resumed.project_id == projects_core.by_folder(str(folder)).id
+    assert terminal_core.resume(conversation, str(folder)).id == resumed.id  # already open: the same one
+
+
+def test_launcher_api(app, signed_in, tmp_path, fake_claude):
+    project = signed_in.post("/api/projects", json={"name": "Launch", "local_path": str(tmp_path)}).json[
+        "project"
+    ]
+    targets = signed_in.get("/api/claude/targets").json
+    assert {p["key"] for p in targets["presets"]} == {"free", "task", "pr", "fix", "review"}
+    assert any(p["id"] == project["id"] and p["folder"] for p in targets["projects"])
+    made = signed_in.post(
+        "/api/claude/projects", json={"name": "Brand new", "folder": str(tmp_path / "brand-new")}
+    )
+    assert made.status_code == 201 and made.json["session"]["project"]["name"] == "Brand new"
+    bad = signed_in.post(
+        "/api/claude/sessions", json={"project_id": project["id"], "preset": "pr", "detail": "x"}
+    )
+    assert bad.status_code == 422
+    page = signed_in.get("/tasks").data
+    assert b"<cn-claude-launch>" in page and b"data-claude-launch" in page

@@ -24,7 +24,8 @@ class ClaudeSession(BaseEntity):
     project_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("project.id"), index=True)
     task_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("task.id"), index=True)
     cwd: Mapped[str] = mapped_column(String(500), nullable=False)
-    cli_session_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, unique=True)
+    # Not unique: a conversation resumed in Cairn gets a new session row with the same id.
+    cli_session_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(200), default="", nullable=False)
     status: Mapped[str] = mapped_column(String(10), default="running", nullable=False, index=True)
     pid: Mapped[int | None] = mapped_column(Integer)

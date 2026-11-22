@@ -498,6 +498,7 @@ function mount(stage) {
     item('fa-arrow-up-right-from-square', 'Open the task', () => window.location.assign(d.url));
     if (d.drill && !d.isRoot) item('fa-layer-group', `Open its ${d.children} subtasks`, () => window.location.assign(d.drill));
     item('fa-link', 'Link from here…', () => { setLinking(true); pickForLink(node); });
+    item('fa-terminal', 'Claude on this task…', () => document.querySelector('cn-claude-launch')?.open({ task: node.id, taskTitle: d.label, preset: 'task' }));
     item('fa-circle-info', 'Details', () => showPanel(d, node.id));
     const moves = (d.next || []).map((status) => item('fa-circle', `Move to ${status.label}`, async () => {
       try {

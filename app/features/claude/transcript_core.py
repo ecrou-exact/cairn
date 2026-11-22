@@ -135,7 +135,7 @@ def outside_sessions(known_pids: set[int]) -> list[dict]:
             cwd = process.cwd()
         except (psutil.Error, OSError):
             continue
-        usage = Usage()
+        usage, conversation = Usage(), None
         folder = projects_root() / folder_key(cwd)
         started = info.get("create_time") or 0
         try:
@@ -143,11 +143,13 @@ def outside_sessions(known_pids: set[int]) -> list[dict]:
         except OSError:
             recent = []
         if recent:
-            usage = read_usage(max(recent, key=lambda p: p.stat().st_mtime))
+            newest = max(recent, key=lambda p: p.stat().st_mtime)
+            usage, conversation = read_usage(newest), newest.stem
         found.append(
             {
                 "pid": info["pid"],
                 "cwd": cwd,
+                "cli_session_id": conversation,
                 "started": started,
                 "running_for": max(0, int(time.time() - started)) if started else None,
                 "usage": usage.as_dict(),

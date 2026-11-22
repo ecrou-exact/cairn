@@ -27,13 +27,17 @@ from app.core.db_class.base import utcnow
 from app.core.db_class.claude import ClaudeSession
 from app.core.db_class.planning import Project, Task
 from app.core.extensions import db
-from app.core.schema.claude import SessionStart
+from app.core.schema.claude import NewProjectStart, SessionStart
+from app.core.schema.planning import ProjectCreate
 from app.core.utils.actor import acting_as
 from app.core.utils.events import publish
 from app.core.utils.history import batch
 from app.core.utils.logger import log_action
+from app.core.utils.settings import get_setting
+from app.features.claude import transcript_core
 from app.features.claude.pty_host import Pty
 from app.features.connections import connections_core
+from app.features.projects import projects_core
 from app.features.tasks import brief_core
 
 SCROLLBACK = 2_000_000  # characters of output kept per session for resuming
@@ -49,6 +53,7 @@ class TerminalError(ValueError):
 class Terminal:
     session_id: uuid.UUID
     pty: Pty
+    rules: Path | None = None
     chunks: deque = field(default_factory=deque)  # (seq, text)
     size: int = 0
     seq: int = 0
@@ -111,46 +116,217 @@ def _environment() -> dict[str, str]:
     return env
 
 
-def _first_message(task: Task) -> str:
+# What a session is opened for (D-051): label, icon, what the launcher asks for. One place,
+# used by the launcher, the palette and the buttons; the first message is built here.
+PRESET_INFO = {
+    "free": {
+        "label": "Work freely",
+        "icon": "fa-terminal",
+        "asks": "",
+        "hint": "Anything to start with (optional)",
+    },
+    "task": {
+        "label": "Work on a task",
+        "icon": "fa-list-check",
+        "asks": "task",
+        "hint": "Anything to add (optional)",
+    },
+    "pr": {
+        "label": "Answer a pull request",
+        "icon": "fa-code-pull-request",
+        "asks": "url",
+        "hint": "https://github.com/…/pull/42",
+    },
+    "fix": {"label": "Fix a bug", "icon": "fa-bug", "asks": "text", "hint": "What goes wrong, how to see it"},
+    "review": {
+        "label": "Review the changes",
+        "icon": "fa-magnifying-glass",
+        "asks": "",
+        "hint": "What to look at (optional)",
+    },
+}
+
+
+def _brief(task: Task) -> str:
     brief = brief_core.task_brief(task)
     if len(brief) > BRIEF_LIMIT:
         brief = (
             brief[:BRIEF_LIMIT] + "\n\n[The brief was cut here; the full one is on the task page in Cairn.]"
         )
-    return f"I want to work on this task, tracked in Cairn. Here is its brief:\n\n{brief}"
+    return brief
 
 
-def command(executable: str, cli_session_id: uuid.UUID, first_message: str | None) -> list[str]:
-    """The argv Claude Code is started with: its session id (so Cairn finds its transcript)
-    and, on a task, the brief as the first message."""
-    argv = [executable, "--session-id", str(cli_session_id)]
+def _first_message(data: SessionStart, task: Task | None) -> str | None:
+    """The message Claude Code starts with, from the preset and the owner's words."""
+    words = data.detail.strip()
+    about = f"\n\nThis is about the task “{task.title}” tracked in Cairn." if task is not None else ""
+    if data.preset == "task" and task is not None:
+        extra = f"\n\nAlso: {words}" if words else ""
+        return f"I want to work on this task, tracked in Cairn. Here is its brief:\n\n{_brief(task)}{extra}"
+    if data.preset == "pr":
+        return (
+            f"Take care of this pull request: {words}\n"
+            "Read it with its review comments (the gh CLI is the easiest way), answer each comment, "
+            "make the changes asked for, run the tests, then show me the diff and wait for my go "
+            f"before committing or pushing anything.{about}"
+        )
+    if data.preset == "fix":
+        return (
+            f"There is a bug to fix: {words}\n"
+            "Find the cause first, fix it, add a test that fails without the fix, run the tests, "
+            f"then show me the diff and wait for my go before committing.{about}"
+        )
+    if data.preset == "review":
+        focus = f" Look especially at: {words}." if words else ""
+        return (
+            "Review the current changes in this repository (git status, git diff, the last commits)."
+            f"{focus} Correctness first, then clarity. List what you find by importance; do not change "
+            f"code unless I ask.{about}"
+        )
+    return (words + about) if words else (about.strip() or None)
+
+
+def _title(data: SessionStart, project: Project, task: Task | None) -> str:
+    words = " ".join(data.detail.split())
+    if data.preset == "pr":
+        return f"PR {words.rstrip('/').rsplit('/', 1)[-1]}" if "/pull/" in words else "Pull request"
+    if data.preset == "fix":
+        return f"Fix: {words[:80]}"
+    if data.preset == "review":
+        return f"Review of {project.name}"
+    return task.title if task is not None else project.name
+
+
+def _rules_file(session_id: uuid.UUID, project: Project | None) -> Path:
+    """The owner's rules and the project's instructions, appended to Claude Code's system
+    prompt (a file: a command line is limited to 32k characters on Windows)."""
+    folder = Path(current_app.config["CAIRN_DATA_DIR"]) / "claude"
+    folder.mkdir(parents=True, exist_ok=True)
+    rules = get_setting("claude.rules")
+    text = "Rules from the owner, set in Cairn:\n" + "\n".join(f"- {rule}" for rule in rules)
+    if project is not None and project.claude_instructions_md.strip():
+        text += (
+            f"\n\nInstructions for the project “{project.name}”:\n{project.claude_instructions_md.strip()}"
+        )
+    path = folder / f"{session_id}.md"
+    path.write_text(text + "\n", encoding="utf-8")
+    return path
+
+
+def command(
+    executable: str,
+    cli_session_id: uuid.UUID,
+    first_message: str | None,
+    rules: Path | None = None,
+    resume: bool = False,
+) -> list[str]:
+    """The argv Claude Code is started with: its session id (so Cairn finds its transcript) —
+    or the conversation to resume —, the rules appended to its system prompt, and the first
+    message if there is one."""
+    argv = [executable, "--resume" if resume else "--session-id", str(cli_session_id)]
+    if rules is not None:
+        argv += ["--append-system-prompt-file", str(rules)]
     if first_message:
         argv.append(first_message)
     return argv
 
 
 def start(data: SessionStart) -> ClaudeSession:
-    """Open Claude Code in a terminal, in the project's folder (D-050)."""
+    """Open Claude Code in a terminal, in the project's folder, for what `data` asks (D-050)."""
     project, task, folder = _where(data)
+    message, title = _first_message(data, task), _title(data, project, task)
+    return _launch(project, task, folder, message, title, cols=data.cols, rows=data.rows, preset=data.preset)
+
+
+def start_new_project(data: NewProjectStart) -> ClaudeSession:
+    """Create the project and its folder (missing, or empty), then Claude Code in it (D-051)."""
+    folder = Path(data.folder).expanduser()
+    if not folder.is_absolute():
+        raise TerminalError("Give the folder's full path (for example C:\\Users\\me\\code\\new-app).")
+    if folder.exists() and (not folder.is_dir() or any(folder.iterdir())):
+        raise TerminalError(f"{folder} already exists and is not empty: pick a new folder.")
+    with batch():
+        project = projects_core.create(
+            ProjectCreate(name=data.name, local_path=str(folder), description_md=data.description)
+        )
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise TerminalError(f"Cannot create {folder}: {exc}") from exc
+        about = f"\n\nWhat it is for:\n{data.description.strip()}" if data.description.strip() else ""
+        message = (
+            f"This is a new, empty project: “{data.name}”.{about}\n\n"
+            "Ask me what you need to know, propose a structure and tools, and set it up once I agree."
+        )
+        return _launch(
+            project,
+            None,
+            folder,
+            message,
+            f"Set up {data.name}",
+            cols=data.cols,
+            rows=data.rows,
+            preset="setup",
+        )
+
+
+def resume(cli_session_id: uuid.UUID, cwd: str, cols: int = 120, rows: int = 32) -> ClaudeSession:
+    """Reopen a Claude Code conversation in Cairn (`claude --resume`), in its own folder: one
+    started outside Cairn, or one of Cairn's that ended. Its project is the one whose local
+    folder it is, if any."""
+    folder = Path(cwd)
+    if not folder.is_dir():
+        raise TerminalError(f"The folder {folder} does not exist on this machine.")
+    if not transcript_core.transcript_path(str(folder), str(cli_session_id)).is_file():
+        raise TerminalError("Claude Code has no conversation with this id in that folder.")
+    running = db.session.scalar(
+        select(ClaudeSession).where(
+            ClaudeSession.cli_session_id == cli_session_id, ClaudeSession.status == "running"
+        )
+    )
+    if running is not None and is_running(running.id):
+        return running  # already open in Cairn
+    project = projects_core.by_folder(str(folder))
+    usage = transcript_core.session_usage(str(folder), str(cli_session_id))
+    title = usage.title or (project.name if project else folder.name)
+    return _launch(
+        project, None, folder, None, title, cols=cols, rows=rows, preset="resume", resume=cli_session_id
+    )
+
+
+def _launch(
+    project: Project | None,
+    task: Task | None,
+    folder: Path,
+    message: str | None,
+    title: str,
+    *,
+    cols: int,
+    rows: int,
+    preset: str,
+    resume: uuid.UUID | None = None,
+) -> ClaudeSession:
     executable = connections_core.claude_code_path()
     if not executable:
         raise TerminalError(
             "Claude Code was not found on this machine. Install it, or set its path in Accounts."
         )
-    cli_session_id = uuid.uuid4()  # names the transcript Claude Code writes (context gauge)
-    argv = command(executable, cli_session_id, _first_message(task) if data.with_brief and task else None)
+    cli_session_id = resume or uuid.uuid4()  # names the transcript Claude Code writes (context gauge)
     with batch():
         session = ClaudeSession(
             project_id=project.id if project else None,
             task_id=task.id if task else None,
             cwd=str(folder),
             cli_session_id=cli_session_id,
-            title=task.title if task else project.name,
+            title=title[:200],
         )
         db.session.add(session)
         db.session.flush()
+        rules = _rules_file(session.id, project)
+        argv = command(executable, cli_session_id, message, rules, resume=bool(resume))
+
         try:
-            pty = Pty.spawn(argv, cwd=str(folder), env=_environment(), cols=data.cols, rows=data.rows)
+            pty = Pty.spawn(argv, cwd=str(folder), env=_environment(), cols=cols, rows=rows)
         except OSError as exc:
             raise TerminalError(f"Claude Code could not start: {exc}") from exc
         session.pid = pty.pid
@@ -158,10 +334,14 @@ def start(data: SessionStart) -> ClaudeSession:
             "claude_session.start",
             target_type="claude_session",
             target_id=session.id,
-            meta={"cwd": session.cwd, "task": str(task.id) if task else None, "brief": bool(data.with_brief)},
+            meta={
+                "cwd": session.cwd,
+                "task": str(task.id) if task else None,
+                "preset": preset,
+            },
         )
         publish("claude.changed", {"id": str(session.id), "status": "running"})
-    terminal = Terminal(session.id, pty)
+    terminal = Terminal(session.id, pty, rules)
     with _lock:
         _terminals[session.id] = terminal
     app = current_app._get_current_object()
@@ -182,6 +362,8 @@ def _pump(app: Any, terminal: Terminal) -> None:
             terminal.append(text)
     terminal.finish()
     code = terminal.pty.exit_code()
+    if terminal.rules is not None:
+        terminal.rules.unlink(missing_ok=True)  # the rules file only lives as long as its session
     with app.app_context(), acting_as("system"):
         _ended(terminal.session_id, code, "")
     with _lock:

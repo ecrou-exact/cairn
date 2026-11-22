@@ -5,11 +5,13 @@ Deleting a project moves its tasks to the trash with it (one batch, one undo).
 
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 import uuid
 from collections.abc import Mapping
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import func, select
@@ -66,6 +68,22 @@ def by_slug(slug: str) -> Project:
     if project is None:
         raise ProjectNotFound("This project does not exist.")
     return project
+
+
+def by_folder(folder: str) -> Project | None:
+    """The project whose local folder this is (same resolved path; case-insensitive on
+    Windows), or None."""
+
+    def norm(path: str) -> str:
+        return os.path.normcase(str(Path(path).expanduser().resolve()))
+
+    wanted = norm(folder)
+    for project in db.session.scalars(
+        select(Project).where(Project.deleted_at.is_(None), Project.local_path.is_not(None))
+    ):
+        if norm(project.local_path) == wanted:
+            return project
+    return None
 
 
 def _changed(project: Project) -> None:

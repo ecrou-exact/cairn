@@ -7,6 +7,8 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from sqlalchemy import select
+
 from app.core.db_class.claude import ClaudeSession
 from app.core.db_class.planning import Project, Task
 from app.core.extensions import db
@@ -23,6 +25,7 @@ def describe(session: ClaudeSession) -> dict[str, Any]:
         "title": usage.title or session.title,
         "label": session.title,
         "cwd": session.cwd,
+        "cli_session_id": str(session.cli_session_id),
         "status": session.status,
         "running": terminal_core.is_running(session.id),
         "started": session.created_at.isoformat(),
@@ -47,4 +50,28 @@ def overview(*, project_id: uuid.UUID | None = None, task_id: uuid.UUID | None =
         "sessions": mine,
         "outside": outside,
         "running": sum(1 for s in mine if s["running"]) + len(outside),
+    }
+
+
+def targets() -> dict[str, Any]:
+    """What the launcher offers: the presets, and the projects (with whether Claude can open
+    in their folder)."""
+    projects = db.session.scalars(
+        select(Project)
+        .where(Project.deleted_at.is_(None), Project.status != "archived")
+        .order_by(Project.name)
+    )
+    return {
+        "presets": [{"key": key, **info} for key, info in terminal_core.PRESET_INFO.items()],
+        "projects": [
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "color": p.color,
+                "icon": p.icon,
+                "folder": p.local_path or "",
+                "edit": f"/projects/{p.slug}/edit",
+            }
+            for p in projects
+        ],
     }

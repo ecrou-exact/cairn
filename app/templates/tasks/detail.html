@@ -80,6 +80,7 @@
     <details class="cn-menu">
       <summary class="btn btn-outline-light cn-menu-more" title="More"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i><span class="visually-hidden">More actions</span></summary>
       <div class="cn-menu-panel" role="menu" aria-label="More actions">
+        <a class="cn-menu-item" role="menuitem" href="{{ url_for('tasks.detail', task_id=task.id, tab='claude') }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Claude on this task</span></a>
         <a class="cn-menu-item" role="menuitem" href="{{ url_for('tasks.edit', task_id=task.id) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span>Edit</span></a>
         <a class="cn-menu-item" role="menuitem" href="{{ url_for('tasks.brief', task_id=task.id) }}"><i class="fa-solid fa-download" aria-hidden="true"></i><span>Brief for Claude (.md)</span></a>
         <hr class="cn-menu-sep">

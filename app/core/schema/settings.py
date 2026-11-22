@@ -171,6 +171,9 @@ SETTING_TYPES: dict[str, TypeAdapter] = {
             Field(min_length=1, max_length=40),
         ]
     ),
+    "claude.rules": TypeAdapter(
+        Annotated[list[Annotated[str, Field(min_length=1, max_length=600)]], Field(max_length=40)]
+    ),
     "ui.themes": TypeAdapter(
         Annotated[dict[THEME_NAMES, Annotated[str, Field(min_length=1, max_length=60)]], Field(min_length=1)]
     ),

@@ -1,5 +1,5 @@
 {% extends "layout/shell.html" %}
-{% from "macros/planning.html" import type_icon, priority, due, project_chip, quick_add %}
+{% from "macros/planning.html" import claude_button, type_icon, priority, due, project_chip, quick_add %}
 {% block title %}Today{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
@@ -56,6 +56,7 @@
         <button class="btn btn-primary" type="submit"><i class="fa-solid fa-play" aria-hidden="true"></i><span class="ms-2">Start</span></button>
       </form>
       <a class="btn btn-outline-secondary" href="{{ url_for('graph.index', root=focus.id) }}"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span class="ms-2">In the plan</span></a>
+      {{ claude_button(focus, text=True) }}
     </div>
     {% else %}
     <p class="cn-focus-eyebrow">Next up</p>

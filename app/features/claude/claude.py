@@ -118,3 +118,21 @@ def stop(session_id: uuid.UUID):
     except terminal_core.TerminalError as exc:
         flash(str(exc), "danger")
     return redirect(url_for("claude.session", session_id=session_id))
+
+
+@claude.post("/claude/resume")
+def resume():
+    """Open a conversation found on the machine in Cairn's terminal (form)."""
+    try:
+        session = terminal_core.resume(
+            uuid.UUID(request.form.get("cli_session_id", "")), request.form.get("cwd", "")
+        )
+    except (ValueError, terminal_core.TerminalError) as exc:
+        flash(
+            str(exc)
+            if isinstance(exc, terminal_core.TerminalError)
+            else "This conversation id is not valid.",
+            "danger",
+        )
+        return redirect(url_for("claude.index"))
+    return redirect(url_for("claude.session", session_id=session.id))
