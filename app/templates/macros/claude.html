@@ -17,6 +17,14 @@
 {% if usage.transcript and usage.window %}{{ "%.0fk" | format(usage.context_tokens / 1000) }} / {{ ("%gM" | format(usage.window / 1000000)) if usage.window >= 1000000 else ("%.0fk" | format(usage.window / 1000)) }}{% else %}no turn yet{% endif %}
 {%- endmacro %}
 
+{# The last steps of a conversation (transcript_core._events): what you asked, what Claude did. #}
+{% macro steps(events) -%}
+<details class="cn-claude-steps" data-claude-steps {% if not events %}hidden{% endif %}>
+  <summary>Last steps</summary>
+  <ol>{% for e in events | reverse %}<li class="is-{{ e.who }}"><i class="fa-solid {{ e.icon }}" aria-hidden="true"></i> <span>{{ e.label }}</span> <time datetime="{{ e.at or '' }}"></time></li>{% endfor %}</ol>
+</details>
+{%- endmacro %}
+
 {% macro session_card(s, outside=False) -%}
 {% set u = s.usage %}
 <li class="cn-claude-card {{ 'is-running' if (outside or s.running) else 'is-ended' }}" data-claude-card="{{ s.id if not outside else 'pid-' ~ s.pid }}"
@@ -35,8 +43,10 @@
       <span class="cn-claude-state" data-claude-state>{% if outside or s.running %}running{% else %}ended{% endif %}</span>
       {% if u.model %}<span>{{ u.model | replace("claude-", "") }}</span>{% endif %}
       <span data-claude-tokens>{{ tokens(u) }}</span>
-      {% if outside %}<span>outside Cairn · pid {{ s.pid }}</span>{% elif s.status == "ended" and s.end_reason %}<span>{{ s.end_reason }}</span>{% endif %}
+      {% if outside %}<span>in {{ s.host }} · pid {{ s.pid }}</span>{% elif s.status == "ended" and s.end_reason %}<span>{{ s.end_reason }}</span>{% endif %}
     </p>
+    <p class="cn-claude-now" data-claude-now {% if not u.now %}hidden{% endif %}><i class="fa-solid {{ u.now_icon or 'fa-gear' }}" aria-hidden="true"></i> <span>{{ u.now }}</span></p>
+    {{ steps(u.events) }}
   </div>
   {% if not outside and s.running %}<a class="btn btn-sm btn-outline-secondary cn-claude-open" href="{{ s.url }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Open</span></a>
   {% elif (outside and s.cli_session_id) or (not outside and s.usage.transcript) %}
@@ -61,4 +71,25 @@
   <button class="btn btn-primary" type="submit"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>{{ label }}</span></button>
   {% endif %}
 </form>
+{%- endmacro %}
+
+{# A running instance (D-053) on the Claude page: its ports and the last lines of its log. #}
+{% macro instance_card(s) -%}
+<li class="cn-claude-card cn-instance-card is-running" data-instance-card="{{ s.id }}">
+  <span class="cn-instance-dot" aria-hidden="true"></span>
+  <div class="cn-claude-card-body">
+    <p class="cn-claude-card-title"><a href="{{ s.url }}">{{ s.label }}</a></p>
+    <p class="cn-claude-card-where">
+      {% if s.project %}<a class="cn-project-chip cn-color-{{ s.project.color }}" href="{{ url_for('projects.detail', slug=s.project.slug, tab='instances') }}"><i class="fa-solid {{ s.project.icon }}" aria-hidden="true"></i> {{ s.project.name }}</a>{% endif %}
+      <code title="{{ s.cwd }}">{{ s.cwd }}</code>
+    </p>
+    <p class="cn-instance-ports" data-instance-ports>
+      {% for port in s.ports %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> localhost:{{ port }}</a>{% else %}<span class="cn-muted">not listening yet</span>{% endfor %}
+    </p>
+    <script type="application/json" id="instance-log-{{ s.id }}">{{ s.log | join("
+") | tojson }}</script>
+    <cn-vitrine kind="log" source="instance-log-{{ s.id }}" data-instance-log vt-time="none" vt-placeholder="No output yet" vt-max-height="10rem"></cn-vitrine>
+  </div>
+  <a class="btn btn-sm btn-outline-secondary cn-claude-open" href="{{ s.url }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Logs</span></a>
+</li>
 {%- endmacro %}

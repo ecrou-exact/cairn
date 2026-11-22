@@ -53,6 +53,7 @@ function readSource(id) {
 export class CnVitrine extends HTMLElement {
   #viewer = null;
   #pending = '';
+  #replaced = null; // text given through `content` before the viewer was ready
 
   async connectedCallback() {
     if (this.#viewer) return;
@@ -96,8 +97,9 @@ export class CnVitrine extends HTMLElement {
     } else {
       this.replaceChildren(viewer);
     }
-    viewer.content = content + this.#pending;
+    viewer.content = (this.#replaced ?? content) + this.#pending;
     this.#pending = '';
+    this.#replaced = null;
     this.#viewer = viewer;
     this.dispatchEvent(new CustomEvent('cn-ready', { bubbles: true }));
   }
@@ -106,6 +108,16 @@ export class CnVitrine extends HTMLElement {
   write(text) {
     if (this.#viewer && typeof this.#viewer.write === 'function') this.#viewer.write(text);
     else this.#pending += text;
+  }
+
+  /** Replace the whole text (a viewer not ready yet starts with it). */
+  set content(text) {
+    if (this.#viewer) {
+      this.#viewer.content = text;
+    } else {
+      this.#replaced = text;
+      this.#pending = '';
+    }
   }
 
   get viewer() {

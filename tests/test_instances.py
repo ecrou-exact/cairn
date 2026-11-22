@@ -10,7 +10,7 @@ import pytest
 from app.core.schema.instances import InstanceCreate
 from app.core.schema.planning import ProjectCreate
 from app.core.utils.history import batch, undo
-from app.features.claude import terminal_core
+from app.features.claude import claude_core, terminal_core
 from app.features.instances import instances_core
 from app.features.projects import projects_core
 
@@ -81,6 +81,9 @@ def test_instance_runs_listens_and_stops(app, ctx, tmp_path, monkeypatch):
     assert port in ports
     listed = instances_core.for_project(project.id)
     assert listed[0]["running"].id == session.id and port in listed[0]["ports"]
+    shown = claude_core.overview()["instances"]  # on the Claude page, with the end of its log
+    assert [s["id"] for s in shown] == [str(session.id)]
+    assert any(f"listening on {port}" in line for line in shown[0]["log"])
     with pytest.raises(instances_core.InstanceError, match="Stop it first"):
         instances_core.delete(instance.id)
 
@@ -130,3 +133,23 @@ def test_instances_api_and_tab(app, signed_in, tmp_path):
         ).status_code
         == 422
     )
+
+
+def test_running_instance_on_the_claude_page(app, signed_in, tmp_path, monkeypatch):
+    monkeypatch.setitem(app.config, "CAIRN_DATA_DIR", str(tmp_path / "data"))
+    (tmp_path / "wait.py").write_text(
+        "import time\nprint('up', flush=True)\ntime.sleep(60)\n", encoding="utf-8"
+    )
+    project = signed_in.post("/api/projects", json={"name": "Page site", "local_path": str(tmp_path)}).json[
+        "project"
+    ]
+    made = signed_in.post(
+        "/api/instances",
+        json={"project_id": project["id"], "name": "Waiter", "command": f'"{sys.executable}" wait.py'},
+    ).json["instance"]
+    assert signed_in.post(f"/api/instances/{made['id']}/start").status_code in (200, 201)
+    try:
+        page = signed_in.get("/claude").data
+        assert b"Instances running" in page and b"Waiter" in page and b"data-instance-log" in page
+    finally:
+        signed_in.post(f"/api/instances/{made['id']}/stop")

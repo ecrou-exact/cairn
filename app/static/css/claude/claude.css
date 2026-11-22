@@ -39,6 +39,24 @@
 .is-ended .cn-claude-state::before { background: var(--cn-text-faint); }
 @keyframes cn-pulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--cn-mark) 0%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .cn-claude-state::before { animation: none !important; } }
+/* What Claude does now, and its last steps */
+.cn-claude-card:has(.cn-claude-steps:not([hidden])) { align-items: flex-start; }
+.cn-claude-now { display: flex; align-items: center; gap: var(--cn-space-2); margin: var(--cn-space-1) 0 0; font-size: var(--cn-text-sm); color: var(--cn-text); min-width: 0; }
+.cn-claude-now span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-claude-now i, .cn-claude-steps i { width: 1rem; text-align: center; color: var(--cn-text-faint); flex: none; }
+.cn-claude-steps { font-size: var(--cn-text-xs); color: var(--cn-text-muted); }
+.cn-claude-steps summary { cursor: pointer; width: max-content; }
+.cn-claude-steps ol { list-style: none; margin: var(--cn-space-1) 0 0; padding: 0; display: grid; gap: 2px; }
+.cn-claude-steps li { display: flex; align-items: center; gap: var(--cn-space-2); min-width: 0; }
+.cn-claude-steps li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-claude-steps li.is-you { color: var(--cn-text); }
+.cn-claude-steps time { flex: none; font-family: var(--cn-font-mono); color: var(--cn-text-faint); }
+
+/* A running instance on the Claude page: its ports and the end of its log */
+.cn-instance-card { align-items: flex-start; }
+.cn-instance-card .cn-instance-dot { margin-top: 0.45rem; }
+.cn-instance-card .cn-instance-dot, .cn-instance-card cn-vitrine { display: block; margin-top: var(--cn-space-2); min-width: 0; }
+
 .cn-claude-stats { margin: 0; }
 .cn-claude-panel .cn-claude-cards { margin-top: var(--cn-space-4); }
 .cn-claude-start { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); margin: 0; }
@@ -80,7 +98,6 @@
 .cn-instances { list-style: none; margin: var(--cn-space-3) 0; padding: 0; display: grid; gap: var(--cn-space-2); }
 .cn-instance { display: flex; align-items: center; gap: var(--cn-space-3); padding: var(--cn-space-3) var(--cn-space-4); border-radius: var(--cn-radius-lg); background: var(--cn-surface-sunken); }
 .cn-instance-dot { width: 0.65rem; height: 0.65rem; border-radius: 50%; background: var(--cn-text-faint); flex: none; }
-.cn-instance.is-running .cn-instance-dot { background: var(--cn-success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--cn-success) 22%, transparent); }
 .cn-instance-body { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .cn-instance-name { margin: 0; font-weight: var(--cn-weight-strong); }
 .cn-instance-command, .cn-instance-ports { margin: 0; font-size: var(--cn-text-xs); display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: center; }

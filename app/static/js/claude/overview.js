@@ -1,7 +1,8 @@
 /**
- * Claude overview and session band (D-050): every few seconds, the context gauges, tokens
- * and activity follow the transcripts; a session that started or ended shows a notice
- * (the cards are server-rendered: the page reloads to show the new set).
+ * Claude overview and session band (D-050): every few seconds, the context gauges, tokens,
+ * activity and last steps follow the transcripts, and running instances their ports and log;
+ * a session that started or ended shows a notice (the cards are server-rendered: the page
+ * reloads to show the new set).
  */
 
 import { api } from '../core/api.js';
@@ -14,6 +15,81 @@ function tokens(usage) {
   if (!usage.transcript || !usage.window) return 'no turn yet';
   const window = usage.window >= 1e6 ? `${usage.window / 1e6}M` : `${Math.round(usage.window / 1000)}k`;
   return `${Math.round(usage.context_tokens / 1000)}k / ${window}`;
+}
+
+function icon(name) {
+  const node = document.createElement('i');
+  node.className = `fa-solid ${name || 'fa-gear'}`;
+  node.setAttribute('aria-hidden', 'true');
+  return node;
+}
+
+function clock(at) {
+  const time = document.createElement('time');
+  if (!at) return time;
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return time;
+  time.dateTime = at;
+  time.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return time;
+}
+
+function label(text) {
+  const span = document.createElement('span');
+  span.textContent = text;
+  return span;
+}
+
+/** What Claude does now, and the last steps (newest first). */
+function paintSteps(card, usage) {
+  const now = card.querySelector('[data-claude-now]');
+  if (now) {
+    now.hidden = !usage.now;
+    now.replaceChildren(icon(usage.now_icon), document.createTextNode(' '), label(usage.now || ''));
+  }
+  const steps = card.querySelector('[data-claude-steps]');
+  const list = steps?.querySelector('ol');
+  if (!list) return;
+  const events = usage.events || [];
+  steps.hidden = !events.length;
+  list.replaceChildren(
+    ...events
+      .slice()
+      .reverse()
+      .map((event) => {
+        const item = document.createElement('li');
+        item.className = `is-${event.who}`;
+        item.append(icon(event.icon), document.createTextNode(' '), label(event.label), document.createTextNode(' '), clock(event.at));
+        return item;
+      }),
+  );
+}
+
+function paintInstance(card, session) {
+  const ports = card.querySelector('[data-instance-ports]');
+  if (ports) {
+    const links = session.ports.map((port) => {
+      const link = document.createElement('a');
+      link.className = 'cn-port';
+      link.href = `http://localhost:${port}/`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.append(icon('fa-arrow-up-right-from-square'), document.createTextNode(` localhost:${port}`));
+      return link;
+    });
+    if (!links.length) {
+      const none = label('not listening yet');
+      none.className = 'cn-muted';
+      links.push(none);
+    }
+    ports.replaceChildren(...links);
+  }
+  const log = card.querySelector('[data-instance-log]');
+  const text = session.log.join('\n');
+  if (log && log.dataset.shown !== text) {
+    log.dataset.shown = text;
+    log.content = text;
+  }
 }
 
 function paint(card, usage, running) {
@@ -31,6 +107,7 @@ function paint(card, usage, running) {
       value.replaceChildren(document.createTextNode(String(Math.floor(pct))), small);
     }
   }
+  paintSteps(card, usage);
   const count = card.querySelector('[data-claude-tokens]');
   if (count) count.textContent = tokens(usage);
   const state = card.querySelector('[data-claude-state]');
@@ -44,7 +121,7 @@ function paint(card, usage, running) {
 
 async function refresh() {
   const cards = document.querySelectorAll('[data-claude-card]');
-  if (!cards.length) return;
+  if (!cards.length && !document.querySelector('[data-instance-card]')) return;
   let data;
   try {
     data = await api('/claude/sessions');
@@ -63,11 +140,22 @@ async function refresh() {
     const card = document.querySelector(`[data-claude-card="${id}"]`);
     if (card) paint(card, s.usage, true);
   }
+  const live = new Set();
+  for (const s of data.instances) {
+    live.add(s.id);
+    const card = document.querySelector(`[data-instance-card="${s.id}"]`);
+    if (card) paintInstance(card, s);
+  }
+  const shownInstances = [...document.querySelectorAll('[data-instance-card]')].map((c) => c.dataset.instanceCard);
   const counter = document.querySelector('[data-claude-count]');
   if (counter) counter.textContent = String(data.running);
   const notice = document.getElementById('claude-changed');
   const shown = [...cards].map((c) => c.dataset.claudeCard).filter((id) => !isEnded(id));
-  if (notice && (data.running !== shown.length || shown.some((id) => !seen.has(id)))) notice.hidden = false;
+  const changed =
+    data.running !== shown.length ||
+    shown.some((id) => !seen.has(id)) ||
+    shownInstances.some((id) => !live.has(id));
+  if (notice && changed) notice.hidden = false;
 }
 
 function isEnded(id) {
@@ -76,7 +164,9 @@ function isEnded(id) {
 
 refresh();
 setInterval(refresh, EVERY);
-subscribe('claude.changed', () => {
-  const notice = document.getElementById('claude-changed');
-  if (notice) notice.hidden = false;
-});
+for (const name of ['claude.changed', 'instance.changed']) {
+  subscribe(name, () => {
+    const notice = document.getElementById('claude-changed');
+    if (notice) notice.hidden = false;
+  });
+}

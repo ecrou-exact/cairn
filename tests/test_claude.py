@@ -124,6 +124,68 @@ def test_transcript_gives_the_context_in_use(tmp_path, monkeypatch, ctx):
     assert transcript_core.session_usage(cwd, "missing").transcript is False
 
 
+def test_transcript_gives_the_last_steps(tmp_path, monkeypatch, ctx):
+    monkeypatch.setattr(transcript_core, "projects_root", lambda: tmp_path)
+    cwd, sid = str(tmp_path / "repo"), str(uuid.uuid4())
+    folder = tmp_path / transcript_core.folder_key(cwd)
+    folder.mkdir()
+    at = "2026-11-22T13:00:00Z"
+    lines = [
+        {"type": "user", "timestamp": at, "message": {"content": "Fix   the parser"}},
+        {"type": "user", "timestamp": at, "message": {"content": "<command-name>/clear</command-name>"}},
+        {
+            "type": "assistant",
+            "timestamp": at,
+            "message": {
+                "content": [
+                    {"type": "text", "text": "Looking at it."},
+                    {
+                        "type": "tool_use",
+                        "name": "Read",
+                        "input": {"file_path": str(tmp_path / "repo" / "a.py")},
+                    },
+                    {"type": "tool_use", "name": "mcp__cairn__set_task_status", "input": {}},
+                ]
+            },
+        },
+        {"type": "user", "timestamp": at, "message": {"content": [{"type": "tool_result", "content": "ok"}]}},
+    ]
+    (folder / f"{sid}.jsonl").write_text("\n".join(json.dumps(line) for line in lines), encoding="utf-8")
+    usage = transcript_core.session_usage(cwd, sid)
+    assert [(e["who"], e["label"]) for e in usage.events] == [
+        ("you", "Fix the parser"),  # commands Claude Code records as user turns are left out
+        ("claude", "Looking at it."),
+        ("claude", "Reading a.py"),  # paths inside the folder are shown relative to it
+        ("claude", "Cairn: set task status"),
+    ]
+    assert (usage.now, usage.now_icon) == ("Cairn: set task status", "fa-layer-group")
+    assert transcript_core.describe_tool("Bash", {"command": "ls", "description": "List files"}, cwd) == (
+        "fa-terminal",
+        "List files",
+    )
+    assert transcript_core.describe_tool("Odd", "not a dict", cwd) == ("fa-gear", "Odd")
+
+
+def test_host_is_the_closest_editor_or_terminal(monkeypatch):
+    class Fake:
+        def __init__(self, chain):
+            self.chain = chain
+
+        def parent(self):
+            return Fake(self.chain[1:]) if len(self.chain) > 1 else None
+
+        def name(self):
+            return self.chain[0]
+
+    chain = ["claude.exe", "bash", "Code.exe", "explorer.exe"]
+    monkeypatch.setattr(transcript_core.psutil, "Process", lambda pid: Fake(chain))
+    assert transcript_core.host_of(1) == "VS Code"  # an editor wins over the shell inside it
+    chain[:] = ["claude", "zsh", "launchd"]
+    assert transcript_core.host_of(1) == "zsh"
+    chain[:] = ["claude"]
+    assert transcript_core.host_of(1) == "a terminal"
+
+
 def test_claude_pages_and_api(app, signed_in, tmp_path, fake_claude):
     project = signed_in.post("/api/projects", json={"name": "Vitrine", "local_path": str(tmp_path)}).json[
         "project"

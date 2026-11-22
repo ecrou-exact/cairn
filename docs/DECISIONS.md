@@ -325,3 +325,10 @@
 - **Stopping** uses the terminal's `close(force=True)`: pywinpty's `terminate()` alone leaves its sockets open.
 - Next for Phase 8: a header indicator of running instances, restart on crash, an instance registry across projects.
 
+## D-054 · 2026-11-22 · accepted — What each Claude is doing, where it runs; instances on the Claude page
+- Follows D-050 (see everywhere where Claude runs): a gauge says how full a session is, not what it does.
+- **Last steps** (`transcript_core._events`, from the end of the transcript already read for the context): what the owner typed (commands Claude Code records as user turns, starting with `<`, left out) and what Claude did — its text and each tool call put in words with an icon (`describe_tool`: editing / reading a file relative to the folder, the command's own description, searches, web, delegation, Cairn's MCP tools as "Cairn: …"). The last 8 are kept; the newest of Claude's is its **now** line. On every session card, live every 5 s; times in the browser's local time.
+- **Where an outside session runs** (`host_of`): the closest editor or terminal app among the `claude` process's parents (VS Code, Cursor, JetBrains, Windows Terminal, iTerm2, tmux… before a bare shell), "a terminal" when none is known.
+- **Instances on the Claude page:** the running ones in their own section with their listening ports and the last lines of their log (`terminal_core.preview`: escape sequences stripped, redrawn lines kept at their last state) shown through `<cn-vitrine kind="log">`, which gains a `content` setter for live updates. Not used for Claude itself: a full-screen program reads poorly that way, its steps come from the transcript.
+- Session files (rules, MCP config) of sessions closed because Cairn restarted are removed when they are closed (their reader died with the old process).
+

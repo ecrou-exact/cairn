@@ -1,9 +1,10 @@
 {% extends "layout/shell.html" %}
-{% from "macros/claude.html" import session_card %}
+{% from "macros/claude.html" import session_card, instance_card %}
 {% block title %}Claude{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">{% endblock %}
-{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/claude/overview.js') }}"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/claude/overview.js') }}"></script>{% endblock %}
 {% block content %}
 {% set running = overview.sessions | selectattr("running") | list %}
 {% set ended = overview.sessions | rejectattr("running") | list %}
@@ -35,6 +36,13 @@
 <section class="cn-claude-section" aria-labelledby="outside-title">
   <header class="cn-home-head"><h2 id="outside-title">Outside Cairn</h2><span class="cn-muted">Started in a terminal or an editor</span></header>
   <ul class="cn-claude-cards">{% for s in overview.outside %}{{ session_card(s, outside=True) }}{% endfor %}</ul>
+</section>
+{% endif %}
+
+{% if overview.instances %}
+<section class="cn-claude-section" aria-labelledby="instances-title">
+  <header class="cn-home-head"><h2 id="instances-title">Instances running</h2><span class="cn-muted">A project's commands started from its Instances tab</span></header>
+  <ul class="cn-claude-cards">{% for s in overview.instances %}{{ instance_card(s) }}{% endfor %}</ul>
 </section>
 {% endif %}
 

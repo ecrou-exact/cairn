@@ -49,6 +49,7 @@ def describe(session: ClaudeSession) -> dict[str, Any]:
         else None,
         "task": {"id": str(task.id), "title": task.title} if task else None,
         "usage": usage.as_dict(),
+        "log": terminal_core.preview(session.id) if running and session.kind == "instance" else [],
     }
 
 
