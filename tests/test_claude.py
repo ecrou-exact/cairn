@@ -235,3 +235,24 @@ def test_launcher_api(app, signed_in, tmp_path, fake_claude):
     assert bad.status_code == 422
     page = signed_in.get("/tasks").data
     assert b"<cn-claude-launch>" in page and b"data-claude-launch" in page
+
+
+def test_claude_starts_as_a_fresh_session(monkeypatch):
+    for key in (
+        "CLAUDECODE",
+        "CLAUDE_CODE_CHILD_SESSION",
+        "CLAUDE_CODE_SESSION_ID",
+        "CLAUDE_CODE_MESSAGING_TOKEN",
+        "CLAUDE_PID",
+    ):
+        monkeypatch.setenv(key, "parent")
+    monkeypatch.setenv("CLAUDE_CODE_USE_BEDROCK", "1")  # the owner's own setting stays
+    env = terminal_core._environment()
+    assert not {
+        k
+        for k in env
+        if k.upper().startswith(
+            ("CLAUDECODE", "CLAUDE_CODE_CHILD", "CLAUDE_CODE_SESSION", "CLAUDE_CODE_MESSAGING", "CLAUDE_PID")
+        )
+    }
+    assert env["CLAUDE_CODE_USE_BEDROCK"] == "1" and env["TERM"] == "xterm-256color"

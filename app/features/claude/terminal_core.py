@@ -44,7 +44,22 @@ from app.features.tasks import brief_core
 
 SCROLLBACK = 2_000_000  # characters of output kept per session for resuming
 BRIEF_LIMIT = 24_000  # a first message stays well under Windows' 32k command line
-HIDDEN_ENV = ("CLAUDECODE",)  # Cairn may itself run inside Claude Code: the child must not think so
+# Markers a running Claude Code gives the processes it starts (its session, "child session",
+# its messaging socket and token…). Cairn may itself have been started from a Claude Code
+# session: the Claude it opens must be a fresh, top-level session of its own (otherwise it
+# does not save its transcript), and the parent's token must not travel. Settings the owner
+# sets on purpose (CLAUDE_CODE_USE_BEDROCK, limits…) are kept.
+HIDDEN_ENV = frozenset(
+    {
+        "CLAUDECODE",
+        "CLAUDE_PID",
+        "CLAUDE_EFFORT",
+        "CLAUDE_CODE_ENTRYPOINT",
+        "CLAUDE_CODE_EXECPATH",
+        "CLAUDE_AGENT_SDK_VERSION",
+    }
+)
+HIDDEN_ENV_PREFIXES = ("CLAUDE_CODE_CHILD_", "CLAUDE_CODE_SESSION_", "CLAUDE_CODE_MESSAGING_")
 
 
 class TerminalError(ValueError):
@@ -113,7 +128,11 @@ def _where(data: SessionStart) -> tuple[Project | None, Task | None, Path]:
 
 
 def _environment() -> dict[str, str]:
-    env = {key: value for key, value in os.environ.items() if key not in HIDDEN_ENV}
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key.upper() not in HIDDEN_ENV and not key.upper().startswith(HIDDEN_ENV_PREFIXES)
+    }
     env.update({"TERM": "xterm-256color", "COLORTERM": "truecolor"})
     return env
 
