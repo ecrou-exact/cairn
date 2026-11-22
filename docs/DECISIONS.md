@@ -309,3 +309,9 @@
 - **Resume:** any Claude Code conversation on the machine — started outside Cairn, or one of Cairn's that ended — reopens in Cairn's terminal (`claude --resume <id>` in its folder, its project found by folder); one already open in Cairn is returned as is. A conversation can therefore have several session rows (the id is indexed, not unique).
 - Next: Claude linked to Cairn through an MCP server (D-052), project instances (Phase 8).
 
+## D-052 · 2026-11-22 · accepted — Claude linked to Cairn through an MCP server
+- Owner request: talk to Claude inside Cairn as in a terminal, but with the terminal linked to the app.
+- **Cairn's MCP server** (`features/claude/mcp_server.py`, `mcp` 2.x `MCPServer` — FastMCP's successor, source read): `python manage.py mcp` over **stdio**, started by Claude Code itself for every session Cairn opens (`--mcp-config <data>/claude/<session>.mcp.json`, deleted with the session; `CAIRN_MCP_SESSION` names the session). No port, no token on the wire, works with every server and OS; nothing but the protocol on stdout (logs on stderr).
+- **Tools** (the same cores as the pages and the API): `cairn_overview`, `list_tasks` (project by id / slug / name, state, search), `get_task` (the brief), `next_tasks` — allowed up front (`--allowedTools`); `create_task` (subtasks too, in the session's project by default), `set_task_status`, `link_tasks` (cycles refused with the loop named), `comment_on_task` (or a correction for later runs) — **Claude Code asks the owner** before each. Changes are made as `claude:<session>`: logged, in the history, undoable. Deliberate refusals are `ToolError` (Claude gets the reason); any other failure keeps its text on the server.
+- Argv order: the first message right after the executable, the variadic `--mcp-config` / `--allowedTools` last (they would swallow it); a message starting with "-" gets a leading space.
+

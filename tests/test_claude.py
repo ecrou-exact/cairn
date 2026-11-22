@@ -24,7 +24,7 @@ def fake_claude(app, monkeypatch, tmp_path):
     monkeypatch.setattr(
         terminal_core,
         "command",
-        lambda exe, sid, first, rules=None, resume=False: [
+        lambda exe, sid, first, rules=None, resume=False, mcp=None: [
             exe,
             "-c",
             FAKE,

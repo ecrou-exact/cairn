@@ -12,7 +12,9 @@ in a project's local folder. Every start and end is logged.
 
 from __future__ import annotations
 
+import json
 import os
+import sys
 import threading
 import uuid
 from collections import deque
@@ -34,7 +36,7 @@ from app.core.utils.events import publish
 from app.core.utils.history import batch
 from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
-from app.features.claude import transcript_core
+from app.features.claude import mcp_server, transcript_core
 from app.features.claude.pty_host import Pty
 from app.features.connections import connections_core
 from app.features.projects import projects_core
@@ -213,21 +215,50 @@ def _rules_file(session_id: uuid.UUID, project: Project | None) -> Path:
     return path
 
 
+def _mcp_config(session_id: uuid.UUID) -> Path:
+    """Cairn's MCP server for this session (D-052), started by Claude Code over stdio."""
+    folder = Path(current_app.config["CAIRN_DATA_DIR"]) / "claude"
+    folder.mkdir(parents=True, exist_ok=True)
+    manage = Path(current_app.root_path).parent / "manage.py"
+    config = {
+        "mcpServers": {
+            mcp_server.SERVER_NAME: {
+                "type": "stdio",
+                "command": sys.executable,
+                "args": [str(manage), "mcp"],
+                "env": {"CAIRN_MCP_SESSION": str(session_id)},
+            }
+        }
+    }
+    path = folder / f"{session_id}.mcp.json"
+    path.write_text(json.dumps(config, indent=2), encoding="utf-8")
+    return path
+
+
 def command(
     executable: str,
     cli_session_id: uuid.UUID,
     first_message: str | None,
     rules: Path | None = None,
     resume: bool = False,
+    mcp: Path | None = None,
 ) -> list[str]:
-    """The argv Claude Code is started with: its session id (so Cairn finds its transcript) —
-    or the conversation to resume —, the rules appended to its system prompt, and the first
-    message if there is one."""
-    argv = [executable, "--resume" if resume else "--session-id", str(cli_session_id)]
+    """The argv Claude Code is started with. The first message comes right after the
+    executable: `--mcp-config` and `--allowedTools` take several values and would swallow
+    anything after them, so they come last; a message starting with "-" gets a leading space
+    so it is never read as an option."""
+    argv = [executable]
+    if first_message:
+        argv.append(" " + first_message if first_message.startswith("-") else first_message)
+    argv += ["--resume" if resume else "--session-id", str(cli_session_id)]
     if rules is not None:
         argv += ["--append-system-prompt-file", str(rules)]
-    if first_message:
-        argv.append(first_message)
+    if mcp is not None:
+        argv += ["--mcp-config", str(mcp)]
+        argv += [
+            "--allowedTools",
+            ",".join(f"mcp__{mcp_server.SERVER_NAME}__{name}" for name in mcp_server.READ_TOOLS),
+        ]
     return argv
 
 
@@ -323,7 +354,9 @@ def _launch(
         db.session.add(session)
         db.session.flush()
         rules = _rules_file(session.id, project)
-        argv = command(executable, cli_session_id, message, rules, resume=bool(resume))
+        argv = command(
+            executable, cli_session_id, message, rules, resume=bool(resume), mcp=_mcp_config(session.id)
+        )
 
         try:
             pty = Pty.spawn(argv, cwd=str(folder), env=_environment(), cols=cols, rows=rows)
@@ -362,8 +395,9 @@ def _pump(app: Any, terminal: Terminal) -> None:
             terminal.append(text)
     terminal.finish()
     code = terminal.pty.exit_code()
-    if terminal.rules is not None:
-        terminal.rules.unlink(missing_ok=True)  # the rules file only lives as long as its session
+    if terminal.rules is not None:  # the rules and MCP files only live as long as their session
+        terminal.rules.unlink(missing_ok=True)
+        terminal.rules.with_name(f"{terminal.session_id}.mcp.json").unlink(missing_ok=True)
     with app.app_context(), acting_as("system"):
         _ended(terminal.session_id, code, "")
     with _lock:

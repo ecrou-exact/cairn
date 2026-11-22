@@ -63,6 +63,18 @@ def cmd_setup(_: argparse.Namespace) -> int:
     return code
 
 
+def cmd_mcp(_: argparse.Namespace) -> int:
+    """Cairn's MCP server over stdio, started by Claude Code for a session opened in Cairn
+    (D-052). Nothing but the protocol may be written to stdout: logs go to stderr."""
+    from dotenv import load_dotenv
+
+    load_dotenv(ENV_FILE)
+    from app.features.claude.mcp_server import serve
+
+    serve()
+    return 0
+
+
 def cmd_start(_: argparse.Namespace) -> int:
     host = os.environ.get("CAIRN_HOST", "127.0.0.1")
     port = os.environ.get("CAIRN_PORT", "7010")
@@ -170,6 +182,9 @@ def main() -> int:
     sub.add_parser("start", help="development server").set_defaults(func=cmd_start)
     sub.add_parser("serve", help="production server").set_defaults(func=cmd_serve)
     sub.add_parser("worker", help="background job worker").set_defaults(func=cmd_worker)
+    sub.add_parser("mcp", help="Cairn's MCP server over stdio (started by Claude Code)").set_defaults(
+        func=cmd_mcp
+    )
     roadmap = sub.add_parser("roadmap", help="import a plan (default: Cairn's own roadmap)")
     roadmap.add_argument("file", nargs="?", default=str(ROOT / "docs" / "roadmap.json"))
     roadmap.set_defaults(func=cmd_roadmap)

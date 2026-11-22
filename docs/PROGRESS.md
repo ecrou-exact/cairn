@@ -89,7 +89,8 @@ Goal: owner approves architecture + design direction.
 ## Phase 5 — Claude  *(current)*
 - [x] Claude Code in a terminal inside Cairn (the owner's own `claude`, own sign-in), in a project's folder or on a task with its brief; every session on the machine in view with its context %, model, title, activity; running count in the menu (D-050)
 - [x] Claude from anywhere: launcher (header, Alt+C, palette, buttons in context), intents (task, pull request, fix, review, new project), owner's rules in every session, resume any conversation in Cairn (D-051)
-- [ ] App MCP server (typed tools, `describe_schema`, changeset tool, authz per scope)
+- [x] Cairn's MCP server over stdio in every session opened from Cairn: read the plan, create tasks and subtasks, change statuses, link, comment — changes approved in Claude Code, logged and undoable as `claude:<session>` (D-052)
+- [ ] More MCP tools: projects, resources, schedule, changesets for bulk changes
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS
