@@ -75,16 +75,22 @@
 .cn-quick-similar { margin-top: var(--cn-space-1); color: var(--cn-warning); }
 
 /* Task page */
-.cn-crumbs { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: center; font-size: var(--cn-text-sm); margin-bottom: var(--cn-space-2); color: var(--cn-text-faint); }
-.cn-task-header { margin-bottom: var(--cn-space-4); }
-.cn-task-header h1 { margin-bottom: var(--cn-space-2); }
-.cn-task-meta { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: center; margin-bottom: var(--cn-space-3); }
+.cn-task-meta { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: center; margin-bottom: var(--cn-space-4); }
+/* The task band: the project band's look (D-047); crumbs, title, state, numbers, actions */
+.cn-task-band h1 { font-size: clamp(1.5rem, 2.4vw, 2.1rem); align-items: baseline; }
+.cn-task-band h1 .cn-type-icon, .cn-task-band h1 > i { color: var(--cn-project); font-size: 0.8em; }
+.cn-task-band .cn-project-hero-crumbs { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: center; color: var(--cn-chrome-muted); font-size: var(--cn-text-xs); }
+.cn-task-band .cn-project-hero-crumbs a { text-transform: none; letter-spacing: 0; font-size: var(--cn-text-sm); }
+.cn-task-band .cn-hero-stats { margin-bottom: 0; }
+.cn-task-band .cn-tag { background: color-mix(in srgb, var(--cn-chrome-text) 10%, transparent); color: var(--cn-chrome-text); }
+.cn-task-band .cn-task-actions { align-self: center; max-width: 26rem; }
+.cn-task-band .cn-live-notice { grid-column: 1 / -1; }
 .cn-task-actions { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); align-items: center; }
 .btn-success-soft {
   --bs-btn-bg: var(--cn-success-soft); --bs-btn-color: var(--cn-success); --bs-btn-border-color: var(--cn-success);
   --bs-btn-hover-bg: var(--cn-success); --bs-btn-hover-color: var(--cn-on-accent); --bs-btn-hover-border-color: var(--cn-success);
 }
-.cn-task-layout { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--cn-space-4); align-items: start; }
+.cn-task-layout { display: grid; grid-template-columns: minmax(0, 1fr) 19rem; gap: var(--cn-space-4); align-items: start; }
 .cn-task-main > .cn-panel + .cn-panel, .cn-task-side > .cn-panel + .cn-panel { margin-top: var(--cn-space-4); }
 @media (max-width: 1100px) { .cn-task-layout { grid-template-columns: 1fr; } }
 
@@ -340,3 +346,9 @@ body:not(:has(input[form="bulk-form"]:checked)) .cn-bulk { display: none; }
   .cn-project-hero { grid-template-columns: 1fr; padding: var(--cn-space-5); }
   .cn-project-hero-actions { justify-content: flex-start; }
 }
+
+/* Score in the side column: the top reasons, the rest folded (D-047) */
+.cn-score-top { list-style: none; margin: var(--cn-space-2) 0 0; padding: 0; display: grid; gap: var(--cn-space-1); font-size: var(--cn-text-sm); }
+.cn-score-top li { display: flex; justify-content: space-between; gap: var(--cn-space-2); padding: var(--cn-space-1) var(--cn-space-2); border-radius: var(--cn-radius); background: var(--cn-surface-sunken); }
+.cn-score-top strong { font-family: var(--cn-font-mono); color: var(--cn-accent); }
+.cn-history-fold > summary { font-size: var(--cn-text-md); color: var(--cn-text); }

@@ -31,6 +31,9 @@ from app.features.tasks.tasks_forms import values_from_form, values_from_task
 
 tasks = Blueprint("tasks", __name__)
 
+# The task page in tabs (D-047): what to do, its place in the plan, files, discussion, Claude.
+TASK_TABS = ("work", "plan", "files", "discussion", "claude")
+
 DEPENDENCY_DIRECTIONS = {
     # form choice -> (kind, this task is the source?)
     "blocked_by": ("blocks", False),
@@ -234,9 +237,11 @@ def detail(task_id: uuid.UUID):
     task = _task_or_404(task_id)
     current = timer_core.running()
     ancestors = tasks_core.ancestors(task)
+    tab = request.args.get("tab") if request.args.get("tab") in TASK_TABS else "work"
     page = render_template(
         "tasks/detail.html",
         task=task,
+        tab=tab,
         events_after=after,
         ancestors=ancestors,
         subtasks=tasks_core.subtasks(task.id),
@@ -332,7 +337,7 @@ def add_dependency(task_id: uuid.UUID):
         other_id = uuid.UUID(other)
     except ValueError:
         flash("Pick a task in the list.", "danger")
-        return redirect(url_for("tasks.detail", task_id=task_id, _anchor="dependencies"))
+        return redirect(url_for("tasks.detail", task_id=task_id, tab="plan", _anchor="dependencies"))
     if direction is None:
         abort(400)
     kind, outgoing = direction
@@ -348,7 +353,7 @@ def add_dependency(task_id: uuid.UUID):
         flash(str(exc), "danger")
     else:
         flash_undo("Dependency added.", batch_id)
-    return redirect(url_for("tasks.detail", task_id=task_id, _anchor="dependencies"))
+    return redirect(url_for("tasks.detail", task_id=task_id, tab="plan", _anchor="dependencies"))
 
 
 @tasks.post("/tasks/<uuid:task_id>/dependencies/<uuid:dependency_id>/remove")
@@ -359,7 +364,7 @@ def remove_dependency(task_id: uuid.UUID, dependency_id: uuid.UUID):
     except dependencies_core.DependencyError:
         abort(404)
     flash_undo("Dependency removed.", batch_id)
-    return redirect(url_for("tasks.detail", task_id=task_id, _anchor="dependencies"))
+    return redirect(url_for("tasks.detail", task_id=task_id, tab="plan", _anchor="dependencies"))
 
 
 @tasks.post("/tasks/<uuid:task_id>/conditions")
@@ -379,7 +384,7 @@ def add_condition(task_id: uuid.UUID):
         flash(next(iter(exc.errors.values())), "danger")
     else:
         flash_undo("This task now waits for it.", batch_id)
-    return redirect(url_for("tasks.detail", task_id=task_id, _anchor="dependencies"))
+    return redirect(url_for("tasks.detail", task_id=task_id, tab="plan", _anchor="dependencies"))
 
 
 @tasks.post("/tasks/<uuid:task_id>/conditions/<uuid:condition_id>/resolved")
@@ -391,7 +396,7 @@ def resolve_condition(task_id: uuid.UUID, condition_id: uuid.UUID):
     except conditions_core.ConditionError:
         abort(404)
     flash_undo("Done waiting for it." if resolved else "Waiting for it again.", batch_id)
-    return redirect(url_for("tasks.detail", task_id=task_id, _anchor="dependencies"))
+    return redirect(url_for("tasks.detail", task_id=task_id, tab="plan", _anchor="dependencies"))
 
 
 @tasks.post("/tasks/<uuid:task_id>/conditions/<uuid:condition_id>/remove")
@@ -402,7 +407,7 @@ def remove_condition(task_id: uuid.UUID, condition_id: uuid.UUID):
     except conditions_core.ConditionError:
         abort(404)
     flash_undo("Condition removed.", batch_id)
-    return redirect(url_for("tasks.detail", task_id=task_id, _anchor="dependencies"))
+    return redirect(url_for("tasks.detail", task_id=task_id, tab="plan", _anchor="dependencies"))
 
 
 # -- timer -----------------------------------------------------------------------------------

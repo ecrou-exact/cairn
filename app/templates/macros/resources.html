@@ -19,11 +19,11 @@
 {%- endmacro %}
 
 {% macro resources_panel(target_type, target, items, max_mb) -%}
-{% set here = request.full_path %}
+{% set here = request.full_path.rstrip("?") %}
 {% set attach = target_type ~ ":" ~ target.id %}
 <section class="cn-panel cn-resources-panel" id="resources" data-live-target="{{ attach }}" data-live-events="resource.changed" aria-labelledby="resources-title">
   <h2 id="resources-title">Resources{% if items %} <span class="cn-muted">{{ items | length }}</span>{% endif %}</h2>
-  <div class="cn-live-notice" data-live-notice hidden role="status"><span>These resources changed.</span> <a href="{{ request.path }}#resources">Reload</a></div>
+  <div class="cn-live-notice" data-live-notice hidden role="status"><span>These resources changed.</span> <a href="{{ here }}#resources">Reload</a></div>
   {% if items %}
   <ul class="cn-resource-list">
     {% for link, resource in items %}
@@ -44,24 +44,10 @@
     {% endfor %}
   </ul>
   {% else %}
-  <p class="cn-muted">Nothing attached. Paste a link, drop a file or a screenshot, or pick something from the library.</p>
+  <p class="cn-muted">Nothing attached yet.</p>
   {% endif %}
 
   <div class="cn-resource-add">
-    <form class="cn-inline-form" method="post" action="{{ url_for('resources.quick_link') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}"><input type="hidden" name="attach" value="{{ attach }}">
-      <label class="visually-hidden" for="quick-link-{{ target.id }}">Web address to attach</label>
-      <input class="form-control" id="quick-link-{{ target.id }}" name="url" type="url" inputmode="url" maxlength="2000" required placeholder="Paste a link: https://…">
-      <button class="btn btn-outline-secondary" type="submit">Attach link</button>
-    </form>
-
-    <form class="cn-inline-form" method="post" action="{{ url_for('resources.attach') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
-      <input type="hidden" name="target_type" value="{{ target_type }}"><input type="hidden" name="target_id" value="{{ target.id }}">
-      <cn-picker kind="resources" name="resource_id" label="Resource from the library"></cn-picker>
-      <button class="btn btn-outline-secondary" type="submit">Attach</button>
-    </form>
-
     <cn-upload size="compact" max-mb="{{ max_mb }}" paste="page" target="this {{ target_type }}" label="Files and images" hint="Or drop them anywhere on this page, or paste a screenshot.">
       <form method="post" action="{{ url_for('resources.upload') }}" enctype="multipart/form-data" class="cn-inline-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}"><input type="hidden" name="attach" value="{{ attach }}">
@@ -71,11 +57,28 @@
       </form>
     </cn-upload>
 
-    <p class="cn-resource-new">New:
-      {% for kind, label in [("note", "Note"), ("snippet", "Snippet or command"), ("tool", "Tool"), ("file", "File on disk")] %}
-      <a href="{{ url_for('resources.new', kind=kind, attach=attach, next=here) }}">{{ label }}</a>{{ " · " if not loop.last }}
-      {% endfor %}
-    </p>
+    <details class="cn-fold">
+      <summary><i class="fa-solid fa-plus" aria-hidden="true"></i> A link, from the library, or a new note</summary>
+      <div class="cn-fold-body">
+        <form class="cn-inline-form" method="post" action="{{ url_for('resources.quick_link') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}"><input type="hidden" name="attach" value="{{ attach }}">
+          <label class="visually-hidden" for="quick-link-{{ target.id }}">Web address to attach</label>
+          <input class="form-control" id="quick-link-{{ target.id }}" name="url" type="url" inputmode="url" maxlength="2000" required placeholder="Paste a link: https://…">
+          <button class="btn btn-outline-secondary" type="submit">Attach link</button>
+        </form>
+        <form class="cn-inline-form" method="post" action="{{ url_for('resources.attach') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+          <input type="hidden" name="target_type" value="{{ target_type }}"><input type="hidden" name="target_id" value="{{ target.id }}">
+          <cn-picker kind="resources" name="resource_id" label="Resource from the library"></cn-picker>
+          <button class="btn btn-outline-secondary" type="submit">Attach</button>
+        </form>
+        <p class="cn-resource-new">New:
+          {% for kind, label in [("note", "Note"), ("snippet", "Snippet or command"), ("tool", "Tool"), ("file", "File on disk")] %}
+          <a href="{{ url_for('resources.new', kind=kind, attach=attach, next=here) }}">{{ label }}</a>{{ " · " if not loop.last }}
+          {% endfor %}
+        </p>
+      </div>
+    </details>
   </div>
 </section>
 {%- endmacro %}

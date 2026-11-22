@@ -81,7 +81,7 @@ Goal: owner approves architecture + design direction.
 - [x] Find in the graph (`/`): any task of the view by its title, subtasks inside a case included; the view glides to the card that holds it, selected, side panel open (D-040)
 - [x] Collapse/expand and clustering are the levels (cases, a case's own graph, everything; D-036); data table (D-043). Encodings of a running agent and of an instance come with Phases 5 and 8
 - [x] Edit from the graph's side panel: move to an allowed status, link to another card (blocks, blocked by, comes after, relates); the graph and the panel follow live
-- [x] The graph lives in the projects: plan of projects ordered by project links on the Projects page, a project's plan in its Plan tab, no Graph menu entry (D-044); project page in tabs (D-045)
+- [x] The graph lives in the projects: plan of projects ordered by project links on the Projects page, a project's plan in its Plan tab, no Graph menu entry (D-044); project page in tabs (D-045); task page in tabs with a band and folded forms (D-047)
 - [x] Path above the graph (All projects / project / case) with Up and Backspace to go back one level (D-042)
 - [x] Link mode (L or the link button): touch what comes first, then what it blocks; works by touch on phones; filters by state (ready, blocked, late, due soon) and tag, a case kept when a subtask matches
 - [x] 300+ cards measured: ~0.4 s server, ~0.8 s first draw, < 4 ms per zoom (D-046)

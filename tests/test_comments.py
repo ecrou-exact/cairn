@@ -116,10 +116,11 @@ def test_comment_pages_and_actions(app, signed_in):
         "/comments",
         data={"target": f"task:{task_id}", "body_md": "Use **pytest**", "kind": "correction", "next": here},
     )
-    page = signed_in.get(here)
+    page = signed_in.get(f"{here}?tab=discussion")  # the task page in tabs (D-047)
     assert b"Correction kept" in page.data and b"Claude gets 1 correction" in page.data
-    assert b"Brief for Claude" in page.data
+    assert b"Brief for Claude" in signed_in.get(f"{here}?tab=claude").data
     assert b"<style" not in page.data and b"style=" not in page.data
+    assert b'aria-current="page"' in page.data and b"tab=discussion" in page.data
     with app.app_context():
         comment = db.session.scalar(select(Comment))
     assert signed_in.get(f"/comments/{comment.id}/edit").status_code == 200

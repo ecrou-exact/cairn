@@ -19,8 +19,8 @@ def _page_of(target_type: str, target) -> str:
     if target is None:
         return url_for("home.index")
     if target_type == "project":
-        return url_for("projects.detail", slug=target.slug, _anchor="comments")
-    return url_for("tasks.detail", task_id=target.id, _anchor="comments")
+        return url_for("projects.detail", slug=target.slug, tab="about", _anchor="comments")
+    return url_for("tasks.detail", task_id=target.id, tab="discussion", _anchor="comments")
 
 
 def _comment_or_404(comment_id: uuid.UUID):

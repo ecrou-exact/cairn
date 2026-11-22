@@ -1,5 +1,5 @@
 {% extends "layout/shell.html" %}
-{% from "macros/planning.html" import type_icon, priority, task_status, due, project_chip, quick_add, blocked_badge %}
+{% from "macros/planning.html" import type_icon, priority, task_status, due, quick_add, blocked_badge %}
 {% from "macros/resources.html" import resources_panel %}
 {% from "macros/comments.html" import comments_panel %}
 {% from "macros/graph.html" import graph_stage, graph_assets %}
@@ -21,25 +21,33 @@
 <script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>
 {% endblock %}
 {% block content %}
-<nav class="cn-crumbs" aria-label="Breadcrumb">
-  <a href="{{ url_for('tasks.index') }}">Tasks</a>
-  {% if task.project %}<span aria-hidden="true">/</span>{{ project_chip(task.project) }}{% endif %}
-  {% for parent in ancestors %}<span aria-hidden="true">/</span><a href="{{ url_for('tasks.detail', task_id=parent.id) }}">{{ parent.title }}</a>{% endfor %}
-</nav>
-
-<header class="cn-task-header" id="task" data-task-id="{{ task.id }}" data-updated="{{ task.updated_at.isoformat() }}">
-  <h1>{{ type_icon(task, types) }} {{ task.title }}</h1>
-  <div class="cn-task-meta">
-    {{ task_status(task) }} {{ priority(task) }} {{ blocked_badge(task) }} {{ due(task) }}
-    {% for tag in task.tags %}<span class="cn-tag">#{{ tag }}</span>{% endfor %}
-    <span class="cn-muted">· {{ task.assignee }}</span>
+{% set n_deps = dependencies.values() | map("length") | sum %}
+<section class="cn-project-hero cn-task-band cn-color-{{ task.project.color if task.project else 'slate' }}" id="task" data-task-id="{{ task.id }}" data-updated="{{ task.updated_at.isoformat() }}" aria-labelledby="task-title">
+  <div class="cn-project-hero-main">
+    <nav class="cn-project-hero-crumbs" aria-label="Breadcrumb">
+      <a href="{{ url_for('tasks.index') }}">Tasks</a>
+      {% if task.project %}<span aria-hidden="true">/</span><a href="{{ url_for('projects.detail', slug=task.project.slug) }}">{{ task.project.name }}</a>{% endif %}
+      {% for parent in ancestors %}<span aria-hidden="true">/</span><a href="{{ url_for('tasks.detail', task_id=parent.id) }}">{{ parent.title }}</a>{% endfor %}
+    </nav>
+    <h1 id="task-title">{{ type_icon(task, types) }} {{ task.title }}</h1>
+    <div class="cn-task-meta">
+      {{ task_status(task) }} {{ priority(task) }} {{ blocked_badge(task) }} {{ due(task) }}
+      {% for tag in task.tags %}<span class="cn-tag">#{{ tag }}</span>{% endfor %}
+    </div>
+    <dl class="cn-hero-stats">
+      {% if task.is_open %}<div><dt>Score</dt><dd>{{ "%.0f" | format(task.score) }}</dd></div>{% endif %}
+      {% if task.unblocks_count %}<div class="is-good"><dt>Unblocks</dt><dd>{{ task.unblocks_count }}</dd></div>{% endif %}
+      <div><dt>Estimate</dt><dd class="cn-hero-stats-small">{{ ("%g h" | format(task.estimate_hours)) if task.estimate_hours else "—" }}</dd></div>
+      <div class="{{ 'is-warn' if task.estimate_hours and task.tracked_seconds > task.estimate_hours * 3600 }}"><dt>Spent</dt><dd class="cn-hero-stats-small">{{ task.tracked_seconds | duration }}</dd></div>
+      {% if subtasks %}<div><dt>Subtasks</dt><dd class="cn-hero-stats-small">{{ subtasks | rejectattr("is_open") | list | length }} / {{ subtasks | length }}</dd></div>{% endif %}
+    </dl>
   </div>
-  <div class="cn-task-actions">
+  <div class="cn-project-hero-actions cn-task-actions">
     {% if task.is_open %}
       {% if timing %}
       <form method="post" action="{{ url_for('tasks.stop_timer') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">
-        <button class="btn btn-outline-secondary" type="submit"><i class="fa-solid fa-pause" aria-hidden="true"></i><span class="ms-2">Stop the timer</span></button>
+        <button class="btn btn-outline-light" type="submit"><i class="fa-solid fa-pause" aria-hidden="true"></i><span class="ms-2">Stop the timer</span></button>
       </form>
       {% else %}
       <form method="post" action="{{ url_for('tasks.start_timer', task_id=task.id) }}">
@@ -51,20 +59,20 @@
     {% for status in next_statuses %}
     <form method="post" action="{{ url_for('tasks.change_status', task_id=task.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="{{ status.key }}">
-      <button class="btn btn-sm {{ 'btn-success-soft' if status.kind == 'done' else 'btn-outline-secondary' }}" type="submit">{{ status.label }}</button>
+      <button class="btn btn-sm {{ 'btn-success-soft' if status.kind == 'done' else 'btn-outline-light' }}" type="submit">{{ status.label }}</button>
     </form>
     {% endfor %}
-    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('tasks.edit', task_id=task.id) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="ms-1">Edit</span></a>
+    <a class="btn btn-sm btn-outline-light" href="{{ url_for('tasks.edit', task_id=task.id) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="ms-1">Edit</span></a>
     <cn-confirm message="Move “{{ task.title }}” to the trash?" detail="{% if subtasks %}Its {{ subtasks | length }} subtask{{ 's' if subtasks | length > 1 }} go with it. {% endif %}You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
       <form method="post" action="{{ url_for('tasks.delete', task_id=task.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="next" value="{{ url_for('projects.detail', slug=task.project.slug) if task.project else url_for('tasks.index') }}">
-        <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
+        <button class="btn btn-sm btn-outline-light" type="submit"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
       </form>
     </cn-confirm>
   </div>
-  <div class="cn-live-notice" id="task-changed" hidden role="status"><span>This task was changed elsewhere.</span> <a href="{{ request.path }}">Reload</a></div>
-</header>
+  <div class="cn-live-notice" id="task-changed" hidden role="status"><span>This task was changed elsewhere.</span> <a href="{{ request.full_path.rstrip('?') }}">Reload</a></div>
+</section>
 
 {% if risk %}
 <section class="cn-panel cn-risk-panel" aria-labelledby="risk-title" role="note">
@@ -95,8 +103,22 @@
 </section>
 {% endif %}
 
+<nav class="cn-tabs" aria-label="{{ task.title }}">
+  {% for key, icon, label, count in [
+      ("work", "fa-pen-ruler", "Work", (subtasks | length) or None),
+      ("plan", "fa-diagram-project", "Plan", n_deps + (conditions | length) or None),
+      ("files", "fa-paperclip", "Files", (resources | length) or None),
+      ("discussion", "fa-comments", "Discussion", (comments | length) or None),
+      ("claude", "fa-robot", "Claude", None)] %}
+  <a class="cn-tab" href="{{ url_for('tasks.detail', task_id=task.id, tab=key) }}" {% if tab == key %}aria-current="page"{% endif %}>
+    <i class="fa-solid {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>{% if count %}<span class="cn-tab-count">{{ count }}</span>{% endif %}
+  </a>
+  {% endfor %}
+</nav>
+
 <div class="cn-task-layout">
   <div class="cn-task-main">
+    {% if tab == "work" %}
     <section class="cn-panel" aria-labelledby="desc-title">
       <h2 id="desc-title">Description</h2>
       {% if task.description_md %}
@@ -106,7 +128,6 @@
       <p class="cn-muted">No description. <a href="{{ url_for('tasks.edit', task_id=task.id) }}">Add one</a>.</p>
       {% endif %}
     </section>
-
     {% if task.checklist %}
     <section class="cn-panel" id="checklist" aria-labelledby="checklist-title">
       <h2 id="checklist-title">Checklist <span class="cn-muted">{{ task.checklist | selectattr("done") | list | length }} / {{ task.checklist | length }}</span></h2>
@@ -125,7 +146,6 @@
       </ul>
     </section>
     {% endif %}
-
     {% if task.acceptance_md %}
     <section class="cn-panel" aria-labelledby="acceptance-title">
       <h2 id="acceptance-title">Acceptance criteria</h2>
@@ -133,7 +153,6 @@
       <cn-vitrine kind="markdown" source="task-acceptance"></cn-vitrine>
     </section>
     {% endif %}
-
     <section class="cn-panel" aria-labelledby="subtasks-title">
       <h2 id="subtasks-title">Subtasks{% if subtasks %} <span class="cn-muted">{{ subtasks | rejectattr("is_open") | list | length }} / {{ subtasks | length }} done</span>{% endif %}</h2>
       {% if subtasks %}
@@ -148,9 +167,9 @@
       {% endif %}
       {{ quick_add("Add a subtask…", project=task.project, parent=task) }}
     </section>
-
+    {% elif tab == "plan" %}
     <section class="cn-panel" id="dependencies" aria-labelledby="deps-title">
-      <h2 id="deps-title">Dependencies</h2>
+      <h2 id="deps-title">Links</h2>
       {% set groups = [("blocked_by", "Blocked by"), ("blocks", "Blocks"), ("follows", "Comes after"), ("followed_by", "Comes before"), ("relates", "Related to"), ("duplicates", "Duplicates")] %}
       {% set any_dep = dependencies.values() | map("length") | sum %}
       {% if any_dep %}
@@ -174,9 +193,9 @@
         {% endfor %}
       </dl>
       {% else %}
-      <p class="cn-muted">No dependency. Link a task that must be done first, or one this task unblocks.</p>
+      <p class="cn-muted">Not linked to any task.</p>
       {% endif %}
-      <h3 class="cn-subtitle">Waiting for something outside</h3>
+      {% if conditions %}<h3 class="cn-subtitle">Waiting for something outside</h3>{% endif %}
       {% if conditions %}
       <ul class="cn-conditions">
         {% for condition in conditions %}
@@ -200,6 +219,27 @@
         {% endfor %}
       </ul>
       {% endif %}
+      <details class="cn-fold">
+        <summary><i class="fa-solid fa-plus" aria-hidden="true"></i> Link another task</summary>
+        <div class="cn-fold-body">
+      <form method="post" action="{{ url_for('tasks.add_dependency', task_id=task.id) }}" class="cn-dep-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="visually-hidden" for="dep-direction">This task</label>
+        <select class="form-select" id="dep-direction" name="direction">
+          <option value="blocked_by">is blocked by</option>
+          <option value="blocks">blocks</option>
+          <option value="follows">comes after</option>
+          <option value="relates">relates to</option>
+          <option value="duplicates">duplicates</option>
+        </select>
+        <cn-picker kind="tasks" name="other_id" exclude="{{ task.id }}" label="Task to link"></cn-picker>
+        <button class="btn btn-outline-secondary" type="submit">Link</button>
+      </form>
+        </div>
+      </details>
+      <details class="cn-fold">
+        <summary><i class="fa-solid fa-plus" aria-hidden="true"></i> Wait for something outside (a review, a release, a date)</summary>
+        <div class="cn-fold-body">
       <form method="post" action="{{ url_for('tasks.add_condition', task_id=task.id) }}" class="cn-dep-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label class="visually-hidden" for="condition-kind">Waiting for</label>
@@ -214,21 +254,9 @@
         <input class="form-control" id="condition-url" name="url" type="url" maxlength="2000" placeholder="Link (optional)">
         <button class="btn btn-outline-secondary" type="submit">Wait for it</button>
       </form>
+        </div>
+      </details>
 
-      <h3 class="cn-subtitle">Link another task</h3>
-      <form method="post" action="{{ url_for('tasks.add_dependency', task_id=task.id) }}" class="cn-dep-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label class="visually-hidden" for="dep-direction">This task</label>
-        <select class="form-select" id="dep-direction" name="direction">
-          <option value="blocked_by">is blocked by</option>
-          <option value="blocks">blocks</option>
-          <option value="follows">comes after</option>
-          <option value="relates">relates to</option>
-          <option value="duplicates">duplicates</option>
-        </select>
-        <cn-picker kind="tasks" name="other_id" exclude="{{ task.id }}" label="Task to link"></cn-picker>
-        <button class="btn btn-outline-secondary" type="submit">Link</button>
-      </form>
     </section>
 
     <section class="cn-panel cn-task-graph" aria-labelledby="graph-title">
@@ -238,9 +266,11 @@
       </header>
       {{ graph_stage("root=" ~ task.id, label="Graph of " ~ task.title, compact=True) }}
     </section>
-
+    {% elif tab == "files" %}
     {{ resources_panel("task", task, resources, max_mb) }}
-
+    {% elif tab == "discussion" %}
+    {{ comments_panel("task", task, comments, inherited) }}
+    {% else %}
     {% if task.claude_instructions_md %}
     <section class="cn-panel" aria-labelledby="claude-title">
       <h2 id="claude-title">Instructions for Claude</h2>
@@ -248,9 +278,6 @@
       <cn-vitrine kind="markdown" source="task-claude"></cn-vitrine>
     </section>
     {% endif %}
-
-    {{ comments_panel("task", task, comments, inherited) }}
-
     <section class="cn-panel" id="brief" aria-labelledby="brief-title">
       <h2 id="brief-title"><i class="fa-solid fa-robot" aria-hidden="true"></i> Brief for Claude</h2>
       <p class="cn-panel-lead">What a Claude run on this task receives: the task, its criteria, the instructions and corrections from the project and parent tasks, dependencies and resources. Fix it here before a run, not after.</p>
@@ -261,27 +288,35 @@
       </details>
       <p class="form-text"><a href="{{ url_for('tasks.brief', task_id=task.id) }}"><i class="fa-solid fa-download" aria-hidden="true"></i> Download as Markdown</a> — to paste into a Claude session by hand meanwhile.</p>
     </section>
+    {% endif %}
   </div>
 
   <aside class="cn-task-side">
-    <section class="cn-panel" aria-labelledby="score-title">
+    <section class="cn-panel cn-task-score" aria-labelledby="score-title">
       <h2 id="score-title">Score {% if task.is_open %}<span class="cn-score cn-score-big">{{ "%.0f" | format(task.score) }}</span>{% endif %}</h2>
       {% if task.is_open %}
-      {% if task.unblocks_count %}<p class="cn-unblocks"><i class="fa-solid fa-unlock" aria-hidden="true"></i> Finishing it unblocks <strong>{{ task.unblocks_count }}</strong> task{{ 's' if task.unblocks_count > 1 }}.</p>{% endif %}
-      <table class="cn-explain">
-        <caption class="visually-hidden">How the score is made</caption>
-        {% for item in task.score_explain %}
-        <tr class="{% if item.points == 0 %}cn-muted{% endif %}">
-          <th scope="row">{{ item.label }}</th><td>{{ item.detail }}</td><td class="cn-num">{% if item.points is not none %}+{{ item.points }}{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </table>
-      <p class="form-text"><a href="{{ url_for('settings.index', _anchor='tasks.score_weights') }}">Change the weights</a></p>
+      {% set reasons = task.score_explain | selectattr("points") | sort(attribute="points", reverse=True) | list %}
+      <ul class="cn-score-top">
+        {% for item in reasons[:3] %}<li><span>{{ item.label }}</span><strong>+{{ item.points }}</strong></li>{% endfor %}
+      </ul>
+      <details class="cn-fold">
+        <summary><i class="fa-solid fa-plus" aria-hidden="true"></i> How it is made</summary>
+        <div class="cn-fold-body">
+          <table class="cn-explain">
+            <caption class="visually-hidden">How the score is made</caption>
+            {% for item in task.score_explain %}
+            <tr class="{% if item.points == 0 %}cn-muted{% endif %}">
+              <th scope="row">{{ item.label }}</th><td>{{ item.detail }}</td><td class="cn-num">{% if item.points is not none %}+{{ item.points }}{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </table>
+          <p class="form-text"><a href="{{ url_for('settings.index', _anchor='tasks.score_weights') }}">Change the weights</a></p>
+        </div>
+      </details>
       {% else %}
       <p class="cn-muted">Closed {% if task.completed_at %}on {{ task.completed_at.strftime("%d %b %Y") }}{% endif %}.</p>
       {% endif %}
     </section>
-
     <section class="cn-panel" aria-labelledby="plan-title">
       <h2 id="plan-title">Planning</h2>
       <dl class="cn-facts">
@@ -295,8 +330,6 @@
         {% set value = task.custom[key] %}
         <div><dt>{{ spec.label }}</dt><dd>{% if spec.type == "url" %}<a href="{{ value }}" target="_blank" rel="noopener noreferrer">{{ value | host }}</a>{% elif spec.type == "date" %}{{ value }}{% elif spec.type == "number" %}{{ "%g" | format(value) }}{% else %}{{ value }}{% endif %}</dd></div>
         {% endfor %}
-        <div><dt>Estimate</dt><dd>{{ ("%g h" | format(task.estimate_hours)) if task.estimate_hours else "—" }}</dd></div>
-        <div><dt>Time spent</dt><dd>{{ task.tracked_seconds | duration }}{% if task.estimate_hours and task.tracked_seconds > task.estimate_hours * 3600 %} <span class="cn-badge cn-badge-warning">over</span>{% endif %}</dd></div>
       </dl>
       {% if time_entries %}
       <details class="cn-time-entries"><summary>Work sessions</summary>
@@ -304,7 +337,6 @@
       </details>
       {% endif %}
     </section>
-
     {% if related.tasks or related.resources or related.schedule %}
     <section class="cn-panel" aria-labelledby="related-title">
       <h2 id="related-title">Related</h2>
@@ -341,12 +373,12 @@
         {% endfor %}
       </ul>
       {% endif %}
-      <p class="form-text">Found by words, tags and dates; Claude will use the same search to fill tasks.</p>
-    </section>
+          </section>
     {% endif %}
 
     <section class="cn-panel" aria-labelledby="history-title">
-      <h2 id="history-title">History</h2>
+      <details class="cn-fold cn-history-fold">
+        <summary id="history-title"><i class="fa-solid fa-plus" aria-hidden="true"></i> History <span class="cn-muted">{{ history | length }}</span></summary>
       <ol class="cn-history">
         {% for entry in history %}
         <li>
@@ -356,6 +388,7 @@
         </li>
         {% endfor %}
       </ol>
+      </details>
     </section>
   </aside>
 </div>

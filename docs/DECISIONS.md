@@ -270,3 +270,10 @@
 - Server (`tests/test_graph_scale.py`, kept in the suite): 360 tasks, 300 links, a subtask every sixth task → the three views (everything, cases, plan of projects) in ~0.4 s together; no two cards on one spot; the test fails above 3 s.
 - Browser (Pivotick 3.0.0 with 360 pinned HTML cards and Cairn's options, measured in Chrome on the owner's machine): first render ~0.8 s; a zoom or pan ~0.7 ms of script and layout on average, 3.2 ms at worst. The default "Cases" level draws far fewer cards; "Everything" is the only view at full size. No virtualisation needed.
 
+## D-047 · 2026-11-22 · accepted — Task page in tabs; forms you rarely need are folded
+- Owner feedback: too many things on the task page (everything stacked, every form open).
+- **Task band** with the project band's look (tinted by the task's project): path, title, status, priority, blocked, due, tags; numbers (score, unblocks, estimate, time spent, subtasks done); actions (start / stop, allowed moves, edit, trash).
+- **Five tabs**, each its own URL (`?tab=`): **Work** (description, checklist, acceptance criteria, subtasks), **Plan** (links, conditions, the graph around it), **Files** (resources), **Discussion** (comments and corrections), **Claude** (instructions, brief). Forms return to their tab (`tab=` on redirects, `request.full_path` in the shared panels).
+- **Side column** kept slim: the score's three biggest reasons (the full breakdown folded), planning facts, related, history folded.
+- **Fold** (`.cn-fold`, a `<details>` with a "+ …" summary, no script): "Link another task", "Wait for something outside", "A link, from the library, or a new note" (the drop zone stays visible), "Write a comment" (open when there is none yet). Used on project pages too.
+
