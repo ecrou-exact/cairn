@@ -47,8 +47,35 @@ function chip(className, iconClass, text) {
 
 // -- the card ---------------------------------------------------------------------------
 
+/** A project on the plan of projects (D-044): its colour, progress, what is open, blocked,
+ *  late, and the task to do next there. */
+function projectCard(d) {
+  const box = el('article', `cn-gcard cn-gcard-project cn-color-${d.projectColor}`);
+  box.classList.toggle('is-closed', d.status !== 'active');
+  const top = el('div', 'cn-gcard-top');
+  const type = el('span', 'cn-gcard-type');
+  type.append(icon(`fa-solid ${d.projectIcon}`));
+  top.append(type, el('span', 'cn-gcard-project', d.status === 'active' ? 'Project' : d.status));
+  if (d.score) top.append(el('span', 'cn-gcard-score', d.score));
+  const meta = el('div', 'cn-gcard-meta');
+  meta.append(el('span', '', `${d.open} open`));
+  if (d.blockedCount) meta.append(chip('cn-gcard-flag', 'fa-solid fa-link-slash', String(d.blockedCount)));
+  if (d.late) meta.append(chip('cn-gcard-due is-late', 'fa-regular fa-calendar', `${d.late} late`));
+  else if (d.dueText) meta.append(chip(`cn-gcard-due ${d.dueState ? `is-${d.dueState}` : ''}`, 'fa-regular fa-calendar', d.dueText));
+  box.append(top, el('p', 'cn-gcard-title', d.label), meta);
+  const progress = el('div', 'cn-gcard-children');
+  const bar = el('span', 'cn-gcard-bar');
+  const fill = el('span');
+  fill.style.width = `${d.total ? Math.round((100 * d.done) / d.total) : 0}%`; // CSSOM, allowed by the CSP
+  bar.append(fill);
+  progress.append(icon('fa-solid fa-play'), el('span', 'cn-gcard-next', d.next || 'nothing ready'), bar);
+  box.append(progress);
+  return box;
+}
+
 function card(node) {
   const d = node.getData();
+  if (d.kind === 'project') return projectCard(d);
   const box = el('article', `cn-gcard cn-color-${d.projectColor} cn-gk-${d.statusKind}`);
   box.classList.toggle('is-blocked', d.blocked);
   box.classList.toggle('is-closed', !d.open);
@@ -90,6 +117,7 @@ function edgeStyles() {
   const straight = { curveStyle: 'straight' };
   return {
     blocks: { ...straight, strokeColor: strong, strokeWidth: 2 },
+    before: { ...straight, strokeColor: token('--cn-mark'), strokeWidth: 2.4 },
     follows: { ...straight, strokeColor: faint, strokeWidth: 1.6, dashed: true, animateDash: false },
     relates: { ...straight, strokeColor: faint, strokeWidth: 1.2, dashed: true, animateDash: false, markerEnd: '' },
     duplicates: { ...straight, strokeColor: token('--cn-warning'), strokeWidth: 1.4, dashed: true, animateDash: false },
@@ -117,8 +145,19 @@ function mount(stage) {
   const byId = () => new Map(current.nodes.map((n) => [n.id, n.data]));
 
   // Hover: a peek with the full title and where the task stands (Pivotick's tooltip is off).
+  const projectsView = () => current.mode === 'projects';
+
   function showPeek(event, node) {
     const d = node.getData();
+    if (d.kind === 'project') {
+      const head = el('div', 'cn-gpeek-head');
+      head.append(chip(`cn-project-chip cn-color-${d.projectColor}`, `fa-solid ${d.projectIcon}`, d.label));
+      const facts = el('p', 'cn-gpeek-facts', [`${d.open} open`, `${d.done} done`, d.blockedCount && `${d.blockedCount} blocked`, d.late && `${d.late} late`].filter(Boolean).join(' · '));
+      peek.replaceChildren(head, el('p', 'cn-gpeek-title', d.next ? `Next: ${d.next}` : 'Nothing ready to do'), facts, el('p', 'cn-gpeek-hint', 'Double-click to open its plan'));
+      peek.hidden = false;
+      movePeek(event);
+      return;
+    }
     const head = el('div', 'cn-gpeek-head');
     head.append(chip(`cn-project-chip cn-color-${d.projectColor}`, `fa-solid ${d.projectIcon}`, d.project || 'No project'), el('span', `cn-status cn-status-${d.statusKind}`, d.statusLabel));
     const facts = el('p', 'cn-gpeek-facts');
@@ -149,10 +188,123 @@ function mount(stage) {
     return row;
   }
 
+  /** A project in the side panel: what is there, the projects around it, order it. */
+  function showProjectPanel(d, id) {
+    const head = el('header', 'cn-gpanel-head');
+    const close = el('button', 'cn-icon-button cn-gpanel-close');
+    close.type = 'button';
+    close.title = 'Close';
+    close.append(icon('fa-solid fa-xmark'));
+    close.addEventListener('click', hidePanel);
+    head.append(chip(`cn-project-chip cn-color-${d.projectColor}`, `fa-solid ${d.projectIcon}`, d.status), close);
+    const facts = el('dl', 'cn-facts');
+    facts.append(fact('Open', d.open), fact('Done', d.done));
+    if (d.blockedCount) facts.append(fact('Blocked', d.blockedCount));
+    if (d.late) facts.append(fact('Late', d.late));
+    if (d.dueText) facts.append(fact('Next due', d.dueText));
+    if (d.next) facts.append(fact('Next', d.next));
+
+    const note = el('p', 'cn-gpanel-note', message);
+    note.setAttribute('role', 'status');
+    const nodes = byId();
+    const links = el('div', 'cn-gpanel-links');
+    for (const [label, list, key] of [
+      ['Passes after', current.edges.filter((e) => e.to === id), 'from'],
+      ['Passes before', current.edges.filter((e) => e.from === id), 'to'],
+    ]) {
+      if (!list.length) continue;
+      links.append(el('h3', '', label));
+      const ul = el('ul');
+      for (const edge of list) {
+        const other = nodes.get(edge[key]);
+        if (!other) continue;
+        const li = el('li');
+        const a = el('a', '', other.label);
+        a.href = other.drill;
+        li.append(a);
+        if (edge.data.linkId) {
+          const drop = el('button', 'cn-icon-button cn-gpanel-unlink');
+          drop.type = 'button';
+          drop.title = 'Remove this order (undoable)';
+          drop.append(icon('fa-solid fa-xmark'));
+          drop.addEventListener('click', async () => {
+            drop.disabled = true;
+            try {
+              await api(`/project-links/${edge.data.linkId}`, { method: 'DELETE' });
+              message = 'Order removed. You can undo it from the history.';
+              later();
+            } catch (error) {
+              note.textContent = error.message;
+              drop.disabled = false;
+            }
+          });
+          li.append(drop);
+        } else {
+          li.append(el('small', 'cn-muted', edge.data.note));
+        }
+        ul.append(li);
+      }
+      links.append(ul);
+    }
+
+    const box = el('div', 'cn-gpanel-edit');
+    const others = current.nodes.filter((n) => n.id !== id);
+    if (others.length) {
+      box.append(el('h3', '', 'Order'));
+      const form = el('form', 'cn-gpanel-link');
+      const how = el('select', 'form-select form-select-sm');
+      how.setAttribute('aria-label', 'How');
+      for (const [value, label] of [['before', 'passes before'], ['after', 'passes after']]) {
+        const option = el('option', '', label);
+        option.value = value;
+        how.append(option);
+      }
+      const other = el('select', 'form-select form-select-sm');
+      other.setAttribute('aria-label', 'Which project');
+      for (const n of others.sort((a, b) => a.data.label.localeCompare(b.data.label))) {
+        const option = el('option', '', n.data.label);
+        option.value = n.id;
+        other.append(option);
+      }
+      const add = el('button', 'btn btn-sm btn-outline-secondary', 'Order');
+      add.type = 'submit';
+      form.append(how, other, add);
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const [first, then] = how.value === 'before' ? [id, other.value] : [other.value, id];
+        add.disabled = true;
+        try {
+          await api('/project-links', { method: 'POST', body: { from_project_id: first, to_project_id: then } });
+          message = 'Ordered.';
+          later();
+        } catch (error) {
+          note.textContent = error.message;
+          add.disabled = false;
+        }
+      });
+      box.append(form);
+    }
+    box.append(note);
+
+    const actions = el('div', 'cn-gpanel-actions');
+    const plan = el('a', 'btn btn-primary');
+    plan.href = d.drill;
+    plan.append(icon('fa-solid fa-diagram-project'), document.createTextNode(' Its plan'));
+    const page = el('a', 'btn btn-outline-secondary', 'Tasks');
+    page.href = `${d.url}?tab=tasks`;
+    actions.append(plan, page);
+    panel.replaceChildren(head, el('h2', 'cn-gpanel-title', d.label), facts, links, box, actions);
+    panel.hidden = false;
+  }
+
   function showPanel(d, id) {
     hidePeek();
     if (selected !== id) message = '';
     selected = id;
+    if (d.kind === 'project') {
+      showProjectPanel(d, id);
+      return;
+    }
     const head = el('header', 'cn-gpanel-head');
     const close = el('button', 'cn-icon-button cn-gpanel-close');
     close.type = 'button';
@@ -332,6 +484,17 @@ function mount(stage) {
       return button;
     };
     const title = el('p', 'cn-gmenu-title', d.label);
+    if (d.kind === 'project') {
+      item('fa-diagram-project', 'Open its plan', () => window.location.assign(d.drill));
+      item('fa-list-check', 'Its tasks', () => window.location.assign(`${d.url}?tab=tasks`));
+      item('fa-link', 'Order from here…', () => { setLinking(true); pickForLink(node); });
+      item('fa-circle-info', 'Details', () => showPanel(d, node.id));
+      menu.replaceChildren(title, ...items);
+      menu.hidden = false;
+      placeMenu(event);
+      items[0].focus();
+      return;
+    }
     item('fa-arrow-up-right-from-square', 'Open the task', () => window.location.assign(d.url));
     if (d.drill && !d.isRoot) item('fa-layer-group', `Open its ${d.children} subtasks`, () => window.location.assign(d.drill));
     item('fa-link', 'Link from here…', () => { setLinking(true); pickForLink(node); });
@@ -349,11 +512,15 @@ function mount(stage) {
     if (moves.length) parts.push(el('hr', 'cn-gmenu-sep'), ...moves);
     menu.replaceChildren(...parts);
     menu.hidden = false;
+    placeMenu(event);
+    items[0].focus();
+  }
+
+  function placeMenu(event) {
     const box = stage.getBoundingClientRect();
     const x = Math.min(event.clientX - box.left, box.width - menu.offsetWidth - 8);
     const y = Math.min(event.clientY - box.top, box.height - menu.offsetHeight - 8);
     menu.style.transform = `translate(${Math.max(8, x)}px, ${Math.max(8, y)}px)`;
-    items[0].focus();
   }
 
   menu?.addEventListener('keydown', (event) => {
@@ -446,7 +613,7 @@ function mount(stage) {
     linkButton?.setAttribute('aria-pressed', String(on));
     if (on) {
       hidePanel();
-      say('Link mode: touch the task that must come first. Esc to stop.');
+      say(projectsView() ? 'Order mode: touch the project that passes first. Esc to stop.' : 'Link mode: touch the task that must come first. Esc to stop.');
     } else {
       graph?.deselectAll();
       say('');
@@ -457,19 +624,24 @@ function mount(stage) {
     if (!linkFrom) {
       linkFrom = node;
       graph.selectElement(node);
-      say(`“${node.getData().label}” comes first. Now touch the task it blocks.`);
+      say(projectsView() ? `“${node.getData().label}” passes first. Now touch the project that comes after it.` : `“${node.getData().label}” comes first. Now touch the task it blocks.`);
       return;
     }
     if (linkFrom.id === node.id) {
-      say('Pick another task: a task cannot block itself.', 'warn');
+      say(projectsView() ? 'Pick another project.' : 'Pick another task: a task cannot block itself.', 'warn');
       return;
     }
     const first = linkFrom;
     linkFrom = null;
     graph.deselectAll();
     try {
-      await api('/dependencies', { method: 'POST', body: { from_task_id: first.id, to_task_id: node.id, kind: 'blocks' } });
-      say(`Linked: “${first.getData().label}” blocks “${node.getData().label}”. Touch the next pair, or Esc.`, 'ok');
+      if (projectsView()) {
+        await api('/project-links', { method: 'POST', body: { from_project_id: first.id, to_project_id: node.id } });
+        say(`Ordered: “${first.getData().label}” passes before “${node.getData().label}”. Touch the next pair, or Esc.`, 'ok');
+      } else {
+        await api('/dependencies', { method: 'POST', body: { from_task_id: first.id, to_task_id: node.id, kind: 'blocks' } });
+        say(`Linked: “${first.getData().label}” blocks “${node.getData().label}”. Touch the next pair, or Esc.`, 'ok');
+      }
       later();
     } catch (error) {
       say(`${error.message} Touch another pair, or Esc.`, 'warn');
@@ -665,9 +837,11 @@ function mount(stage) {
   function summary() {
     const total = current.nodes.length;
     const count = stage.querySelector('[data-graph-count]');
-    count.textContent = `${total} ${current.mode === 'top' ? 'case' : 'task'}${total === 1 ? '' : 's'} · ${current.steps} step${current.steps === 1 ? '' : 's'}`;
+    const noun = { top: 'case', projects: 'project' }[current.mode] || 'task';
+    count.textContent = `${total} ${noun}${total === 1 ? '' : 's'} · ${current.steps} step${current.steps === 1 ? '' : 's'}`;
     const path = current.critical;
-    stage.querySelector('[data-graph-critical-summary]').textContent = path.nodes.length
+    const criticalSummary = stage.querySelector('[data-graph-critical-summary]');
+    if (criticalSummary) criticalSummary.textContent = path.nodes.length
       ? `${path.nodes.length} · ~${path.hours} h${path.unknown ? ` (${path.unknown} unestimated)` : ''}`
       : 'none';
     stage.querySelector('[data-graph-empty]').hidden = total > 0;

@@ -15,6 +15,8 @@ from app.core.schema.planning import (
     DependencyCreate,
     DependencyOut,
     ProjectCreate,
+    ProjectLinkCreate,
+    ProjectLinkOut,
     ProjectOut,
     ProjectUpdate,
     QuickAdd,
@@ -25,7 +27,7 @@ from app.core.schema.planning import (
 )
 from app.core.utils import history
 from app.core.utils.history import batch
-from app.features.projects import projects_core
+from app.features.projects import project_links_core, projects_core
 from app.features.resources import resources_core
 from app.features.search import search_core
 from app.features.tasks import (
@@ -58,7 +60,12 @@ def _guard(action, *args):
         raise ApiError(str(exc), 404) from exc
     except conditions_core.ConditionError as exc:
         raise ApiError(str(exc), 404) from exc
-    except (tasks_core.TaskError, projects_core.ProjectError, dependencies_core.DependencyError) as exc:
+    except (
+        tasks_core.TaskError,
+        projects_core.ProjectError,
+        dependencies_core.DependencyError,
+        project_links_core.ProjectLinkError,
+    ) as exc:
         raise ApiError(str(exc), 422) from exc
     return result, batch_id
 
@@ -223,6 +230,23 @@ def add_dependency():
     return jsonify(
         dependency=DependencyOut.model_validate(dependency).model_dump(mode="json"), batch=str(batch_id)
     ), 201
+
+
+@planning_api.post("/project-links")
+def add_project_link():
+    """`from_project_id` passes before `to_project_id` (D-044); refused if it closes a loop."""
+    link, batch_id = _guard(project_links_core.add, body(ProjectLinkCreate))
+    return jsonify(link=ProjectLinkOut.model_validate(link).model_dump(mode="json"), batch=str(batch_id)), 201
+
+
+@planning_api.delete("/project-links/<uuid:link_id>")
+def remove_project_link(link_id: uuid.UUID):
+    try:
+        with batch() as batch_id:
+            project_links_core.remove(link_id)
+    except project_links_core.ProjectLinkError as exc:
+        raise ApiError(str(exc), 404) from exc
+    return jsonify(batch=str(batch_id))
 
 
 @planning_api.delete("/dependencies/<uuid:dependency_id>")

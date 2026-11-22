@@ -118,6 +118,22 @@ class Dependency(BaseEntity):
     note: Mapped[str] = mapped_column(String(300), default="", nullable=False)
 
 
+class ProjectLink(BaseEntity):
+    """`from_project` passes before `to_project` (D-044): the order of the projects, drawn as
+    the plan of projects. It orders, it does not block their tasks."""
+
+    __tablename__ = "project_link"
+    __table_args__ = (UniqueConstraint("from_project_id", "to_project_id", name="uq_project_link"),)
+
+    from_project_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("project.id"), nullable=False, index=True
+    )
+    to_project_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("project.id"), nullable=False, index=True
+    )
+    note: Mapped[str] = mapped_column(String(300), default="", nullable=False)
+
+
 class ExternalCondition(BaseEntity):
     """Something outside Cairn a task waits for (§2.3): a review, an upstream release, a PR
     to be merged, a date. Open, it blocks the task; a `date` one lifts itself on that day.

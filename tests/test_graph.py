@@ -1,3 +1,5 @@
+import pytest
+
 from app.core.schema.planning import DependencyCreate, ProjectCreate, TaskCreate
 from app.features.graph import graph_core
 from app.features.projects import projects_core
@@ -28,7 +30,7 @@ def test_plan_reads_left_to_right(ctx):
     _block(build, ship)
     _block(docs, ship, kind="follows")
     data = graph_core.graph_data()
-    assert data["mode"] == "top" and data["breadcrumb"] == [{"label": "All projects", "url": "/graph"}]
+    assert data["mode"] == "top" and data["breadcrumb"] == [{"label": "All projects", "url": "/projects"}]
     col = _columns(data)
     assert col["Design"] == 0 and col["Build"] == 1 and col["Ship"] == 2
     assert col["Docs"] == 0 and col["Loose end"] == 0
@@ -73,13 +75,14 @@ def test_filters_and_cards(ctx):
 
 
 def test_graph_page_and_api(app, signed_in):
-    page = signed_in.get("/graph")
+    root = signed_in.post("/api/tasks", json={"title": "A case"}).json["task"]["id"]
+    page = signed_in.get(f"/graph?root={root}")
     assert page.status_code == 200 and b"data-graph-canvas" in page.data and b"style=" not in page.data
     csp = page.headers["Content-Security-Policy"]
     assert "style-src-attr 'unsafe-inline'" in csp and "script-src 'self'" in csp and "unsafe-eval" not in csp
     assert "style-src-attr" not in signed_in.get("/tasks").headers["Content-Security-Policy"]
     assert signed_in.get("/graph?project=nope").status_code == 404
-    empty = signed_in.get("/api/graph").json
+    empty = signed_in.get("/api/graph?state=late").json  # the one task is not late
     assert (empty["nodes"], empty["edges"], empty["steps"], empty["mode"]) == ([], [], 0, "top")
     assert signed_in.get("/api/graph?project=x").status_code == 422
 
@@ -141,7 +144,8 @@ def test_filters_keep_cases_leading_to_a_match(ctx):
 
 
 def test_graph_page_filters(app, signed_in):
-    page = signed_in.get("/graph?state=late&tag=a+b")
+    project = signed_in.post("/api/projects", json={"name": "Rulezet"}).json["project"]
+    page = signed_in.get(f"/projects/{project['slug']}?tab=plan&state=late&tag=a+b")
     assert page.status_code == 200 and b"state=late" in page.data and b"tag=a+b" in page.data
 
 
@@ -180,5 +184,80 @@ def test_find_api(app, signed_in):
     body = signed_in.get("/api/graph/find?q=%25").json
     assert [m["label"] for m in body["matches"]] == ["Searchable % card"]
     assert signed_in.get("/api/graph/find?q=x&root=nope").status_code == 422
-    page = signed_in.get("/graph")
-    assert b'id="graph-find"' in page.data
+    project = signed_in.post("/api/projects", json={"name": "Findable"}).json["project"]
+    assert b'id="graph-find"' in signed_in.get(f"/projects/{project['slug']}").data
+
+
+def test_graph_lives_in_the_projects(app, signed_in):
+    project = signed_in.post("/api/projects", json={"name": "Vitrine"}).json["project"]
+    assert signed_in.get("/graph").headers["Location"].endswith("/projects")
+    to_project = signed_in.get(f"/graph?project={project['id']}").headers["Location"]
+    assert to_project.endswith(f"/projects/{project['slug']}?tab=plan")
+    shell = signed_in.get("/projects").data
+    assert b'href="/graph"' not in shell and b"data-graph-canvas" in shell and b"view=projects" in shell
+    plan = signed_in.get(f"/projects/{project['slug']}")
+    assert b'aria-current="page"' in plan.data and b"cn-graph-toolbar" in plan.data
+    assert "style-src-attr" in plan.headers["Content-Security-Policy"]
+    listing = signed_in.get(f"/projects/{project['slug']}?q=x").data
+    assert b'id="tasks"' in listing  # a list search lands on the tasks tab
+    assert b"cn-project-about-grid" in signed_in.get(f"/projects/{project['slug']}?tab=about").data
+
+
+def test_project_links_order_the_plan_of_projects(ctx):
+    from app.core.schema.planning import ProjectLinkCreate
+    from app.core.utils import history
+    from app.features.projects import project_links_core
+
+    rulezet = projects_core.create(ProjectCreate(name="Rulezet"))
+    cairn = projects_core.create(ProjectCreate(name="Cairn"))
+    vitrine = projects_core.create(ProjectCreate(name="Vitrine"))
+    flow = projects_core.create(ProjectCreate(name="Flowintel"))
+    project_links_core.add(ProjectLinkCreate(from_project_id=rulezet.id, to_project_id=cairn.id))
+    project_links_core.add(ProjectLinkCreate(from_project_id=cairn.id, to_project_id=vitrine.id))
+    # a task link across projects orders them too, shown with how many links it stands for
+    _block(_task("Flow task", project_id=flow.id), _task("Vitrine task", project_id=vitrine.id))
+
+    plan = graph_core.project_plan()
+    assert plan["mode"] == "projects"
+    col = {n["data"]["label"]: int(n["x"] // STEP) for n in plan["nodes"]}
+    assert col["Rulezet"] == 0 and col["Cairn"] == 1 and col["Vitrine"] == 2 and col["Flowintel"] == 0
+    kinds = sorted((e["data"]["kind"], e["data"]["count"]) for e in plan["edges"])
+    assert kinds == [("before", 1), ("before", 1), ("follows", 1)]
+    card = next(n["data"] for n in plan["nodes"] if n["data"]["label"] == "Vitrine")
+    assert (card["kind"], card["open"], card["url"]) == ("project", 1, f"/projects/{vitrine.slug}")
+
+    with pytest.raises(
+        project_links_core.ProjectLinkError, match="cycle: “Vitrine” → “Rulezet” → “Cairn” → “Vitrine”"
+    ):
+        project_links_core.add(ProjectLinkCreate(from_project_id=vitrine.id, to_project_id=rulezet.id))
+    with pytest.raises(project_links_core.ProjectLinkError, match="already"):
+        project_links_core.add(ProjectLinkCreate(from_project_id=rulezet.id, to_project_id=cairn.id))
+    with pytest.raises(project_links_core.ProjectLinkError, match="itself"):
+        project_links_core.add(ProjectLinkCreate(from_project_id=cairn.id, to_project_id=cairn.id))
+
+    around = project_links_core.for_project(cairn.id)
+    assert [p.name for _, p in around["before"]] == ["Rulezet"] and [p.name for _, p in around["after"]] == [
+        "Vitrine"
+    ]
+
+    link = around["before"][0][0]
+    with history.batch() as batch_id:
+        project_links_core.remove(link.id)
+    assert project_links_core.for_project(cairn.id)["before"] == []
+    history.undo(batch_id)
+    assert [p.name for _, p in project_links_core.for_project(cairn.id)["before"]] == ["Rulezet"]
+
+
+def test_project_links_api(app, signed_in):
+    a = signed_in.post("/api/projects", json={"name": "First"}).json["project"]["id"]
+    b = signed_in.post("/api/projects", json={"name": "Second"}).json["project"]["id"]
+    made = signed_in.post("/api/project-links", json={"from_project_id": a, "to_project_id": b})
+    assert made.status_code == 201
+    back = signed_in.post("/api/project-links", json={"from_project_id": b, "to_project_id": a})
+    assert back.status_code == 422 and "cycle" in back.json["error"]
+    plan = signed_in.get("/api/graph?view=projects").json
+    assert [e["data"]["kind"] for e in plan["edges"]] == ["before"]
+    link = made.json["link"]["id"]
+    assert signed_in.delete(f"/api/project-links/{link}").status_code == 200
+    assert signed_in.delete(f"/api/project-links/{link}").status_code == 404
+    assert signed_in.post("/api/project-links", json={"from_project_id": a}).status_code == 422

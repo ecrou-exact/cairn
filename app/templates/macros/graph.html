@@ -1,18 +1,18 @@
 {# The graph stage (D-035): Pivotick canvas with Cairn's chrome. `query` is what /api/graph
    gets (project, root, closed, level); `compact` for the embedded version on task pages. #}
 
-{% macro graph_stage(query, label="Task graph", compact=False) -%}
-<section class="cn-graph cn-graph-loading{{ ' cn-graph-compact' if compact }}" data-graph data-query="{{ query }}" aria-label="{{ label }}">
+{% macro graph_stage(query, label="Task graph", compact=False, projects=False) -%}
+<section class="cn-graph cn-graph-loading{{ ' cn-graph-compact' if compact }}{{ ' cn-graph-projects' if projects }}" data-graph data-query="{{ query }}" aria-label="{{ label }}">
   <div class="cn-graph-canvas" data-graph-canvas></div>
   <div class="cn-graph-zoom" role="group" aria-label="Zoom">
     <button type="button" class="cn-icon-button" data-graph-action="in" title="Zoom in"><i class="fa-solid fa-plus" aria-hidden="true"></i><span class="visually-hidden">Zoom in</span></button>
     <button type="button" class="cn-icon-button" data-graph-action="out" title="Zoom out"><i class="fa-solid fa-minus" aria-hidden="true"></i><span class="visually-hidden">Zoom out</span></button>
     <button type="button" class="cn-icon-button" data-graph-action="now" title="Back to what to do now"><i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i><span class="visually-hidden">What to do now</span></button>
     <button type="button" class="cn-icon-button" data-graph-action="fit" title="See everything"><i class="fa-solid fa-expand" aria-hidden="true"></i><span class="visually-hidden">Fit</span></button>
-    <button type="button" class="cn-icon-button cn-graph-table-toggle" data-graph-action="table" aria-pressed="false" title="As a table, in plan order (T)"><i class="fa-solid fa-table-list" aria-hidden="true"></i><span class="visually-hidden">As a table</span></button>
-    <button type="button" class="cn-icon-button cn-graph-link-toggle" data-graph-action="link" aria-pressed="false" title="Link two tasks (L): touch the one that comes first, then the one it blocks"><i class="fa-solid fa-link" aria-hidden="true"></i><span class="visually-hidden">Link two tasks</span></button>
+    {% if not projects %}<button type="button" class="cn-icon-button cn-graph-table-toggle" data-graph-action="table" aria-pressed="false" title="As a table, in plan order (T)"><i class="fa-solid fa-table-list" aria-hidden="true"></i><span class="visually-hidden">As a table</span></button>{% endif %}
+    <button type="button" class="cn-icon-button cn-graph-link-toggle" data-graph-action="link" aria-pressed="false" title="{{ 'Order two projects (L): touch the one that passes first, then the next one' if projects else 'Link two tasks (L): touch the one that comes first, then the one it blocks' }}"><i class="fa-solid fa-link" aria-hidden="true"></i><span class="visually-hidden">{{ 'Order two projects' if projects else 'Link two tasks' }}</span></button>
   </div>
-  {% if not compact %}
+  {% if not compact and not projects %}
   <div class="cn-graph-find" data-graph-find role="search">
     <label class="visually-hidden" for="graph-find">Find a task in this graph</label>
     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
@@ -23,7 +23,7 @@
   </div>
   {% endif %}
   <p class="cn-graph-hint" data-graph-hint hidden role="status"></p>
-  <label class="cn-switch cn-switch-critical cn-graph-critical-toggle"><input type="checkbox" data-graph-critical><span><i class="fa-solid fa-route" aria-hidden="true"></i> Critical path <small data-graph-critical-summary></small></span></label>
+  {% if not projects %}<label class="cn-switch cn-switch-critical cn-graph-critical-toggle"><input type="checkbox" data-graph-critical><span><i class="fa-solid fa-route" aria-hidden="true"></i> Critical path <small data-graph-critical-summary></small></span></label>{% endif %}
   <aside class="cn-gpanel" data-graph-panel hidden aria-live="polite"></aside>
   <div class="cn-gpeek" data-graph-peek hidden aria-hidden="true"></div>
   <div class="cn-gmenu" data-graph-menu hidden role="menu" aria-label="Task actions"></div>
@@ -31,7 +31,10 @@
   <div class="cn-graph-legend" aria-label="Legend">
     <span class="cn-graph-count" data-graph-count></span>
     <span class="cn-graph-direction"><i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>first → later</span>
-    {% if not compact %}
+    {% if projects %}
+    <span><i class="cn-lg cn-lg-before" aria-hidden="true"></i>passes before</span>
+    <span><i class="cn-lg cn-lg-follows" aria-hidden="true"></i>task links</span>
+    {% elif not compact %}
     <span><i class="cn-lg cn-lg-blocks" aria-hidden="true"></i>blocks</span>
     <span><i class="cn-lg cn-lg-follows" aria-hidden="true"></i>comes after</span>
     <span><i class="cn-lg cn-lg-relates" aria-hidden="true"></i>related</span>
@@ -50,4 +53,46 @@
 {% macro graph_assets() -%}
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/pivotick/pivotick.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/graph/graph.css') }}">
+{%- endmacro %}
+
+
+{# What a task graph shows (D-042, D-044): the level (cases or everything) and the filters,
+   folded behind a button. `hidden`: fields kept as they are (root, tab). Submits on change. #}
+{% macro graph_toolbar(level, states, state, tags, tag, closed, hidden={}, levels=True) -%}
+<form class="cn-graph-toolbar" method="get" aria-label="What the graph shows">
+  <div class="cn-graph-group">
+    {% for name, value in hidden.items() %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+    {% if levels %}
+    <div class="cn-segmented" role="radiogroup" aria-label="Detail">
+      <label class="btn btn-sm" title="Only the cases; open one to see its subtasks"><input class="visually-hidden" type="radio" name="level" value="top" {% if level == 'top' %}checked{% endif %}><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span>Cases</span></label>
+      <label class="btn btn-sm" title="Every task at once"><input class="visually-hidden" type="radio" name="level" value="all" {% if level == 'all' %}checked{% endif %}><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span>Everything</span></label>
+    </div>
+    {% endif %}
+    {% set active = (1 if state else 0) + (1 if tag else 0) + (1 if closed else 0) %}
+    <details class="cn-list-more">
+      <summary class="btn btn-outline-secondary btn-sm{{ ' is-active' if active }}" title="Filters">
+        <i class="fa-solid fa-sliders" aria-hidden="true"></i><span class="cn-list-more-label">Filters</span>
+        {% if active %}<span class="cn-list-more-count" aria-label="{{ active }} on">{{ active }}</span>{% endif %}
+      </summary>
+      <div class="cn-list-more-panel">
+        <label class="cn-list-filter"><span>Show</span>
+          <select class="form-select form-select-sm" name="state">
+            <option value="">Every open task</option>
+            {% for key, label in states.items() %}<option value="{{ key }}" {% if state == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </label>
+        {% if tags %}
+        <label class="cn-list-filter"><span>Tag</span>
+          <select class="form-select form-select-sm" name="tag">
+            <option value="">Any</option>
+            {% for name in tags %}<option value="{{ name }}" {% if tag == name %}selected{% endif %}>#{{ name }}</option>{% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        <label class="cn-switch"><input type="checkbox" name="closed" value="1" {% if closed %}checked{% endif %}><span>Done tasks</span></label>
+        <button class="btn btn-primary btn-sm" type="submit">Show</button>
+      </div>
+    </details>
+  </div>
+</form>
 {%- endmacro %}

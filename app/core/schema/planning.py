@@ -251,6 +251,23 @@ class DependencyCreate(Strict):
     note: Annotated[str, Field(max_length=300)] = ""
 
 
+class ProjectLinkCreate(Strict):
+    """`from_project_id` passes before `to_project_id`."""
+
+    from_project_id: uuid.UUID
+    to_project_id: uuid.UUID
+    note: Annotated[str, Field(max_length=300)] = ""
+
+
+class ProjectLinkOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    from_project_id: uuid.UUID
+    to_project_id: uuid.UUID
+    note: str
+
+
 class DependencyOut(BaseModel):
     model_config = {"from_attributes": True}
 

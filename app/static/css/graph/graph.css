@@ -402,3 +402,14 @@
 .cn-graph-table td.is-soon { color: var(--cn-warning); }
 .cn-graph-table tr.is-critical td:first-child { box-shadow: inset 3px 0 0 var(--cn-mark); }
 .cn-graph-table .cn-gcard-flag, .cn-graph-table .cn-gcard-unlocks { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: var(--cn-radius-pill); font-size: var(--cn-text-xs); }
+
+/* The plan of projects (D-044) */
+.cn-lg-before { border-top: 2.4px solid var(--cn-mark); }
+.cn-gcard-project .cn-gcard-title { font-size: 15px; }
+.cn-gcard-next { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-gcard-project .cn-gcard-bar { flex: 0 0 3.5rem; }
+.cn-gpanel-unlink { width: 1.6rem; height: 1.6rem; color: var(--cn-text-faint); }
+.cn-gpanel-unlink:hover { color: var(--cn-danger); background: var(--cn-danger-soft); }
+.cn-graph.cn-graph-projects { height: clamp(22rem, 48vh, 34rem); min-height: 0; }
+.cn-projects-plan { margin-bottom: var(--cn-space-5); }
+.cn-project-plan .cn-graph { height: clamp(26rem, 72vh, 52rem); }

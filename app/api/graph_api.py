@@ -38,7 +38,10 @@ def _view() -> dict[str, Any]:
 
 @graph_api.get("/graph")
 def get_graph():
-    """The graph's cards and links for the view in the query string (see `_view`)."""
+    """The graph's cards and links for the view in the query string (see `_view`);
+    `view=projects`: the plan of projects (`archived=1` to include archived ones)."""
+    if request.args.get("view") == "projects":
+        return jsonify(graph_core.project_plan(include_archived=request.args.get("archived") == "1"))
     return jsonify(graph_core.graph_data(**_view()))
 
 

@@ -13,13 +13,14 @@ from __future__ import annotations
 
 import uuid
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 from sqlalchemy import select
 
-from app.core.db_class.planning import Dependency, Project, Task
+from app.core.db_class.planning import Dependency, Project, ProjectLink, Task
 from app.core.extensions import db
 from app.core.utils.template_filters import relative_day
 from app.features.tasks import workflow
@@ -38,18 +39,24 @@ def _barycentre(tid, column, position, neighbours, rank) -> float:
     return sum(linked) / len(linked) if linked else position[tid]
 
 
+def _task_key(task: Task):
+    return (task.project.name.lower() if task.project else "~", -task.score, task.title.lower())
+
+
 def plan_layout(
-    tasks: dict[uuid.UUID, Task],
+    tasks: dict[uuid.UUID, Any],
     ordering: list[tuple[uuid.UUID, uuid.UUID]],
     parents: dict[uuid.UUID, uuid.UUID] | None = None,
+    sort_key: Callable[[Any], Any] = _task_key,
 ) -> dict[uuid.UUID, tuple[float, float]]:
     """Where each card goes: a column per step of the plan, read from left to right.
 
     `ordering` lists (first, then) pairs among `tasks`; `parents` maps a shown subtask to its
     shown parent. A task stands right of everything that must come first: what blocks it or
     comes before it, what blocks its parent tasks (a subtask cannot start before its parent
-    can), and its own subtasks (a parent is done when they are). Rows group a column by
-    project, then a few sweeps place each card near the cards it is linked to.
+    can), and its own subtasks (a parent is done when they are). Rows follow `sort_key` (tasks:
+    by project, then score), then a few sweeps place each card near the cards it is linked to.
+    Also lays out the plan of projects (`project_plan`).
     """
     parents = parents or {}
     before: dict[uuid.UUID, set[uuid.UUID]] = defaultdict(set)
@@ -82,8 +89,7 @@ def plan_layout(
         columns[r].append(tid)
 
     def base_key(tid: uuid.UUID):
-        task = tasks[tid]
-        return (task.project.name.lower() if task.project else "~", -task.score, task.title.lower())
+        return sort_key(tasks[tid])
 
     for col in columns.values():
         col.sort(key=base_key)
@@ -230,9 +236,9 @@ def _scope(project_id: uuid.UUID | None) -> dict[uuid.UUID, Task]:
 
 
 def _breadcrumb(project, root: Task | None) -> list[dict[str, str]]:
-    trail = [{"label": "All projects", "url": "/graph"}]
+    trail = [{"label": "All projects", "url": "/projects"}]
     if project is not None:
-        trail.append({"label": project.name, "url": f"/graph?project={project.id}"})
+        trail.append({"label": project.name, "url": f"/projects/{project.slug}?tab=plan"})
     if root is not None:
         chain, node, seen = [], root, set()
         while node is not None and node.id not in seen:
@@ -525,3 +531,118 @@ def find(
     for match in found:
         del match["_rank"]
     return {"query": words, "matches": found[:limit], "more": max(len(found) - limit, 0)}
+
+
+# -- the plan of projects (D-044) ------------------------------------------------------------
+
+
+def project_plan(include_archived: bool = False) -> dict[str, Any]:
+    """The projects as cards, read left to right: a project stands right of the projects that
+    pass before it (project links) and of the projects whose tasks block or come before its
+    own tasks (shown as one edge with how many task links it stands for)."""
+    query = select(Project).where(Project.deleted_at.is_(None))
+    if not include_archived:
+        query = query.where(Project.status != "archived")
+    projects = {p.id: p for p in db.session.scalars(query)}
+    links = (
+        list(
+            db.session.scalars(
+                select(ProjectLink).where(
+                    ProjectLink.from_project_id.in_(list(projects)),
+                    ProjectLink.to_project_id.in_(list(projects)),
+                )
+            )
+        )
+        if projects
+        else []
+    )
+    tasks = {t.id: t for t in db.session.scalars(select(Task).where(Task.deleted_at.is_(None)))}
+    crossing: dict[tuple[uuid.UUID, uuid.UUID], int] = defaultdict(int)
+    for dep in db.session.scalars(select(Dependency).where(Dependency.kind.in_(ORDERING))):
+        a, b = tasks.get(dep.from_task_id), tasks.get(dep.to_task_id)
+        if a and b and a.project_id in projects and b.project_id in projects and a.project_id != b.project_id:
+            crossing[(a.project_id, b.project_id)] += 1
+
+    ordering = [(link.from_project_id, link.to_project_id) for link in links] + list(crossing)
+    places = plan_layout(projects, ordering, sort_key=lambda p: (p.status != "active", p.name.lower()))
+
+    today = date.today()
+    by_project: dict[uuid.UUID, list[Task]] = defaultdict(list)
+    for task in tasks.values():
+        if task.project_id in projects:
+            by_project[task.project_id].append(task)
+    nodes = []
+    for project in projects.values():
+        own = by_project[project.id]
+        open_tasks = [t for t in own if t.is_open]
+        ready = [t for t in open_tasks if t.blocked_by_count == 0]
+        dues = sorted(t.due_on for t in open_tasks if t.due_on)
+        x, y = places[project.id]
+        nodes.append(
+            {
+                "id": str(project.id),
+                "x": x,
+                "y": y,
+                "fx": x,
+                "fy": y,
+                "data": {
+                    "kind": "project",
+                    "label": project.name,
+                    "url": f"/projects/{project.slug}",
+                    "drill": f"/projects/{project.slug}?tab=plan",
+                    "status": project.status,
+                    "projectColor": project.color,
+                    "projectIcon": project.icon,
+                    "open": len(open_tasks),
+                    "done": len(own) - len(open_tasks),
+                    "total": len(own),
+                    "blockedCount": sum(1 for t in open_tasks if t.blocked_by_count),
+                    "late": sum(1 for t in open_tasks if t.due_on and t.due_on < today),
+                    "dueText": relative_day(dues[0], today) if dues else "",
+                    "dueState": "late"
+                    if dues and dues[0] < today
+                    else ("soon" if dues and (dues[0] - today).days <= 3 else ""),
+                    "score": round(max((t.score for t in ready), default=0)),
+                    "next": max(ready, key=lambda t: t.score).title if ready else "",
+                },
+            }
+        )
+    edges = [
+        {
+            "id": f"plink-{link.id}",
+            "from": str(link.from_project_id),
+            "to": str(link.to_project_id),
+            "data": {
+                "kind": "before",
+                "linkId": str(link.id),
+                "note": link.note,
+                "count": 1,
+                "critical": False,
+            },
+        }
+        for link in links
+    ]
+    edges += [
+        {
+            "id": f"ptasks-{a}-{b}",
+            "from": str(a),
+            "to": str(b),
+            "data": {
+                "kind": "follows",
+                "linkId": "",
+                "note": f"{count} task link{'s' if count > 1 else ''} between them",
+                "count": count,
+                "critical": False,
+            },
+        }
+        for (a, b), count in crossing.items()
+    ]
+    steps = max((x for x, _ in places.values()), default=0) // (CARD_W + COL_GAP) + 1 if places else 0
+    return {
+        "mode": "projects",
+        "nodes": nodes,
+        "edges": edges,
+        "critical": {"nodes": [], "hours": 0.0, "unknown": 0},
+        "steps": int(steps),
+        "breadcrumb": [{"label": "All projects", "url": "/projects"}],
+    }

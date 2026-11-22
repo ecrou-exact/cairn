@@ -1,19 +1,30 @@
 {% extends "layout/shell.html" %}
 {% from "macros/list.html" import toolbar, sort_header, pagination, empty_state %}
+{% from "macros/graph.html" import graph_stage, graph_assets %}
 {% block title %}Projects{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+{{ graph_assets() }}
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>
 {% endblock %}
 {% block content %}
 <header class="cn-page-header cn-page-header-actions">
   <div>
     <div class="cn-eyebrow">Planning</div>
     <h1>Projects</h1>
-    <p>Repositories and side projects, with what is open, blocked and late in each.</p>
+    <p>In which order to do them: what passes first on the left. Press L to order two projects.</p>
   </div>
   <a class="btn btn-primary" href="{{ url_for('projects.new') }}"><i class="fa-solid fa-plus" aria-hidden="true"></i><span class="ms-2">New project</span></a>
 </header>
+
+{% if not page.has_filters and page.page == 1 %}
+<section class="cn-projects-plan" aria-label="The plan of projects">
+  {{ graph_stage("view=projects", label="The plan of projects", projects=True) }}
+</section>
+{% endif %}
 
 {{ toolbar(page, "Search projects") }}
 

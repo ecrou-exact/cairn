@@ -256,3 +256,13 @@
 - **Table view** (`t`): the same cards in plan order (step, task, project, status, priority, due, score, links), redrawn live; not sortable on purpose, the order is the plan's.
 - **Ground:** Cairn's contour lines in two large faint layers instead of Pivotick-style dots (owner request).
 
+## D-044 · 2026-11-22 · accepted — The graph lives in the projects; projects are ordered by links
+- Owner request: the "Graph" menu entry served no purpose; see a graph only in the projects, and a graph that decides in which order to do the projects and the tasks. Owner's choices: links between projects; the plan of projects on the Projects page.
+- **`ProjectLink`** (`from_project` passes before `to_project`, note): acyclic (the loop is named, same path search as task dependencies, now shared in `core/utils/graphs.path_between`), logged, undoable, `/api/project-links`. It **orders, it does not block** the projects' tasks.
+- **Plan of projects** (`graph_core.project_plan`, `/api/graph?view=projects`): projects as cards (progress, open, blocked, late, next due, next task, best ready score), laid out by the same `plan_layout` (its row order is now a `sort_key`); a project stands right of the projects that pass before it **and** of the projects whose tasks block or come before its own (one edge with how many task links). Order mode (`L`), side panel (passes before / after, remove an order, add one), right-click menu. Archived projects left out.
+- **No Graph page:** the sidebar entry and `g g` go; `/graph` without a case redirects to the Projects page (or the project's Plan tab); `/graph?root=` stays as a case's own graph, under Projects in the menu. Breadcrumbs start at "All projects" → `/projects`.
+
+## D-045 · 2026-11-22 · accepted — Project page in three tabs
+- Owner feedback: too many things on the project and task pages.
+- The project band (with the **next task** to do there, in place of "Open the graph") over three tabs, each its own URL (`?tab=`, works without script): **Plan** (the project's full graph with its level and folded filters, and the projects it passes before / after), **Tasks** (quick add, templates, list), **About** (description and links, resources, discussion). A list search, filter, sort or page lands on Tasks.
+

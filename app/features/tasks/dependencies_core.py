@@ -8,7 +8,7 @@ content: removing one deletes the row; the activity log keeps it so undo re-crea
 from __future__ import annotations
 
 import uuid
-from collections import defaultdict, deque
+from collections import defaultdict
 from datetime import date
 from typing import Any
 
@@ -18,6 +18,7 @@ from app.core.db_class.planning import Dependency, ExternalCondition, Project, T
 from app.core.extensions import db
 from app.core.schema.planning import DependencyCreate
 from app.core.utils.events import publish
+from app.core.utils.graphs import path_between
 from app.core.utils.history import batch, register_undo
 from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
@@ -47,25 +48,6 @@ def _ordering_edges() -> dict[uuid.UUID, set[uuid.UUID]]:
     return edges
 
 
-def _path(
-    edges: dict[uuid.UUID, set[uuid.UUID]], start: uuid.UUID, goal: uuid.UUID
-) -> list[uuid.UUID] | None:
-    previous: dict[uuid.UUID, uuid.UUID | None] = {start: None}
-    queue = deque([start])
-    while queue:
-        node = queue.popleft()
-        if node == goal:
-            path = [node]
-            while previous[path[-1]] is not None:
-                path.append(previous[path[-1]])
-            return path[::-1]
-        for nxt in edges.get(node, ()):
-            if nxt not in previous:
-                previous[nxt] = node
-                queue.append(nxt)
-    return None
-
-
 def add(data: DependencyCreate) -> Dependency:
     source, target = _live_task(data.from_task_id), _live_task(data.to_task_id)
     if source.id == target.id:
@@ -80,7 +62,7 @@ def add(data: DependencyCreate) -> Dependency:
     if duplicate is not None:
         raise DependencyError("This dependency already exists.")
     if data.kind in ORDERING_KINDS:
-        cycle = _path(_ordering_edges(), target.id, source.id)
+        cycle = path_between(_ordering_edges(), target.id, source.id)
         if cycle is not None:
             titles = {t.id: t.title for t in db.session.scalars(select(Task).where(Task.id.in_(cycle)))}
             loop = " → ".join(f"“{titles[i]}”" for i in [source.id, *cycle])

@@ -11,14 +11,16 @@ from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, flash_undo, validate
 from app.features.comments import comments_core
-from app.features.graph.graph import with_graph_csp
-from app.features.projects import projects_core
+from app.features.graph.graph import graph_view, with_graph_csp
+from app.features.projects import project_links_core, projects_core
 from app.features.projects.projects_forms import values_from_form, values_from_project
 from app.features.resources import resources_core
 from app.features.tasks import tasks_core
 from app.features.tasks.tasks import list_context
 
 projects = Blueprint("projects", __name__)
+
+TABS = ("plan", "tasks", "about")
 
 
 def _project_or_404(slug: str):
@@ -44,10 +46,17 @@ def _form(values, errors=None, project=None, status=200):
 
 @projects.get("/projects")
 def index():
+    after = latest_event_id()
     page = projects_core.list_projects(request.args)
-    return render_template(
-        "projects/index.html", page=page, stats=projects_core.stats([p.id for p in page.items])
+    response = make_response(
+        render_template(
+            "projects/index.html",
+            page=page,
+            stats=projects_core.stats([p.id for p in page.items]),
+            events_after=after,
+        )
     )
+    return with_graph_csp(response)  # the plan of projects is a graph (D-044)
 
 
 @projects.get("/projects/new")
@@ -73,11 +82,22 @@ def detail(slug: str):
     after = latest_event_id()
     project = _project_or_404(slug)
     page = tasks_core.list_tasks(request.args, project_id=project.id)
+    # Three tabs (D-045): the plan (its graph), the tasks (the list), about (description,
+    # resources, discussion). A list search, filter, sort or page lands on the tasks.
+    tab = request.args.get("tab")
+    if tab not in TABS:
+        listing = page.has_filters or any(
+            k in request.args for k in ("page", "sort", "dir", "view", "per_page")
+        )
+        tab = "tasks" if listing else "plan"
     response = make_response(
         render_template(
             "projects/detail.html",
             project=project,
             page=page,
+            tab=tab,
+            links=project_links_core.for_project(project.id),
+            **graph_view(request.args, project=project),
             stats=projects_core.stats([project.id])[project.id],
             next_up=tasks_core.next_actions(limit=3, project_id=project.id),
             events_after=after,
