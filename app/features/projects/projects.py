@@ -10,6 +10,7 @@ from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, flash_undo, validate
+from app.features.claude import claude_core
 from app.features.comments import comments_core
 from app.features.graph.graph import graph_view, with_graph_csp
 from app.features.projects import project_links_core, projects_core
@@ -20,7 +21,7 @@ from app.features.tasks.tasks import list_context
 
 projects = Blueprint("projects", __name__)
 
-TABS = ("plan", "tasks", "about")
+TABS = ("plan", "tasks", "claude", "about")
 
 
 def _project_or_404(slug: str):
@@ -97,6 +98,7 @@ def detail(slug: str):
             page=page,
             tab=tab,
             links=project_links_core.for_project(project.id),
+            claude=claude_core.overview(project_id=project.id) if tab == "claude" else None,
             **graph_view(request.args, project=project),
             stats=projects_core.stats([project.id])[project.id],
             next_up=tasks_core.next_actions(limit=3, project_id=project.id),

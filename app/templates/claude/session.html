@@ -1,0 +1,46 @@
+{% extends "layout/shell.html" %}
+{% from "macros/claude.html" import gauge, tokens %}
+{% block title %}{{ session.title }} · Claude{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/xterm/xterm.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/components/cn-terminal.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/claude/overview.js') }}"></script>
+{% endblock %}
+{% block content %}
+<section class="cn-claude-band" data-claude-card="{{ session.id }}" aria-labelledby="session-title">
+  {{ gauge(session.usage, "lg") }}
+  <div class="cn-claude-band-main">
+    <nav class="cn-claude-band-crumbs" aria-label="Breadcrumb">
+      <a href="{{ url_for('claude.index') }}">Claude</a>
+      {% if session.project %}<span aria-hidden="true">/</span><a href="{{ url_for('projects.detail', slug=session.project.slug, tab='claude') }}">{{ session.project.name }}</a>{% endif %}
+      {% if session.task %}<span aria-hidden="true">/</span><a href="{{ url_for('tasks.detail', task_id=session.task.id, tab='claude') }}">{{ session.task.title }}</a>{% endif %}
+    </nav>
+    <h1 id="session-title">{{ session.title }}</h1>
+    <p class="cn-claude-card-facts">
+      <span class="cn-claude-state" data-claude-state>{{ "running" if session.running else "ended" }}</span>
+      {% if session.usage.model %}<span>{{ session.usage.model | replace("claude-", "") }}</span>{% endif %}
+      <span data-claude-tokens>{{ tokens(session.usage) }}</span>
+      <code>{{ session.cwd }}</code>
+    </p>
+  </div>
+  {% if session.running %}
+  <cn-confirm message="Close this Claude session?" detail="Like closing its terminal: Claude stops here. Its conversation stays in Claude Code (claude --resume)." confirm-label="Close it" danger>
+    <form method="post" action="{{ url_for('claude.stop', session_id=session.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-light" type="submit"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span>Close</span></button>
+    </form>
+  </cn-confirm>
+  {% endif %}
+</section>
+
+{% if session.running %}
+<cn-terminal class="cn-claude-terminal" session="{{ session.id }}" nonce="{{ nonce }}" aria-label="Claude Code terminal"></cn-terminal>
+{% else %}
+<div class="cn-empty"><i class="fa-solid fa-terminal" aria-hidden="true"></i><h2>This session has ended</h2>
+  <p>{{ session.end_reason or "Claude Code was closed." }} Its conversation stays in Claude Code: <code>claude --resume</code> in <code>{{ session.cwd }}</code>.</p></div>
+{% endif %}
+{% endblock %}

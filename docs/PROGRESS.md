@@ -87,8 +87,9 @@ Goal: owner approves architecture + design direction.
 - [x] 300+ cards measured: ~0.4 s server, ~0.8 s first draw, < 4 ms per zoom (D-046)
 
 ## Phase 5 — Claude  *(current)*
+- [x] Claude Code in a terminal inside Cairn (the owner's own `claude`, own sign-in), in a project's folder or on a task with its brief; every session on the machine in view with its context %, model, title, activity; running count in the menu (D-050)
 - [ ] App MCP server (typed tools, `describe_schema`, changeset tool, authz per scope)
-- [ ] Agent runner on Claude Agent SDK (`ClaudeSDKClient` per run, own asyncio loop in the worker), driving the local Claude Code by default (its own sign-in), API key as fallback (D-037) — Claude Code detection done in Accounts
+- [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS
 - [ ] Git worktree per run, context files, hard rules via system prompt append

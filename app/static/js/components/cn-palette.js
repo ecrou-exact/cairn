@@ -33,6 +33,7 @@ class CnPalette extends HTMLElement {
     if (this.#dialog) return;
     this.#build();
     document.addEventListener('keydown', (event) => {
+      if (event.target.closest?.('.xterm')) return; // keys typed in a terminal belong to it
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         this.open();

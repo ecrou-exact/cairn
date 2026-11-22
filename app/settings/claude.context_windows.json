@@ -1,0 +1,6 @@
+{
+  "label": "Claude context windows",
+  "category": "Claude",
+  "description": "Context window size in tokens per model, for the context gauge of Claude sessions. \"default\" covers models not listed. A session that goes past its size is counted against the next size up (1M).",
+  "value": {"default": 200000}
+}

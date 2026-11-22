@@ -4,6 +4,7 @@
 {% from "macros/resources.html" import resources_panel %}
 {% from "macros/comments.html" import comments_panel %}
 {% from "macros/graph.html" import graph_stage, graph_assets, graph_toolbar %}
+{% from "macros/claude.html" import session_card, start_form %}
 {% block title %}{{ project.name }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
@@ -11,6 +12,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/upload.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments/comments.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
 {{ graph_assets() }}
 {% endblock %}
 {% block scripts %}
@@ -70,6 +72,7 @@
   {% for key, icon, label, count in [
       ("plan", "fa-diagram-project", "Plan", None),
       ("tasks", "fa-list-check", "Tasks", stats.open),
+      ("claude", "fa-terminal", "Claude", None),
       ("about", "fa-circle-info", "About", (resources | length) + (comments | length))] %}
   <a class="cn-tab" href="{{ url_for('projects.detail', slug=project.slug, tab=key) }}" {% if tab == key %}aria-current="page"{% endif %}>
     <i class="fa-solid {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>{% if count %}<span class="cn-tab-count">{{ count }}</span>{% endif %}
@@ -106,6 +109,15 @@
   {% else %}
     {{ empty_state(page, "No tasks in this project", "Add the first one above.") }}
   {% endif %}
+</section>
+
+{% elif tab == "claude" %}
+<section class="cn-panel cn-claude-panel" aria-labelledby="claude-title">
+  <header class="cn-home-head"><h2 id="claude-title">Claude in {{ project.name }}</h2>
+    {% if project.local_path %}<code>{{ project.local_path }}</code>{% endif %}</header>
+  {% if project.local_path %}{{ start_form(project=project, label="Open Claude in this project") }}
+  {% else %}<p class="cn-muted">Claude Code opens in the project's folder: <a href="{{ url_for('projects.edit', slug=project.slug) }}">set its local folder</a> first.</p>{% endif %}
+  {% if claude.sessions %}<ul class="cn-claude-cards">{% for s in claude.sessions %}{{ session_card(s) }}{% endfor %}</ul>{% endif %}
 </section>
 
 {% else %}

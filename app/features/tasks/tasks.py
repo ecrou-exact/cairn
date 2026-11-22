@@ -11,6 +11,7 @@ from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, back_to, flash_undo, split_list, validate
+from app.features.claude import claude_core
 from app.features.comments import comments_core
 from app.features.graph.graph import with_graph_csp
 from app.features.projects import projects_core
@@ -266,6 +267,7 @@ def detail(task_id: uuid.UUID):
         brief=brief_core.task_brief(task),
         related=related_core.related_for(task),
         conditions=conditions_core.for_task(task.id),
+        claude=claude_core.overview(task_id=task.id) if tab == "claude" else None,
         custom_fields=workflow.custom_fields(),
         condition_kinds=conditions_core.KIND_LABELS,
         condition_icons=conditions_core.KIND_ICONS,

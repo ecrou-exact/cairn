@@ -2,6 +2,7 @@
 
 from app.core.db_class import (  # noqa: F401
     activity,
+    claude,
     comment,
     connection,
     job,

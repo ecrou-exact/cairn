@@ -27,6 +27,8 @@ dependencies = [
     "pillow>=11",
     "anthropic>=1.0",
     "claude-agent-sdk>=0.2.187",
+    "pywinpty>=2.0 ; sys_platform == 'win32'",
+    "ptyprocess>=0.7 ; sys_platform != 'win32'",
 ]
 
 [project.optional-dependencies]

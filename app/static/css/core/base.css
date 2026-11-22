@@ -518,3 +518,17 @@ body {
 .cn-dot-waiting { background: var(--cn-warning); }
 .cn-dot-done { background: var(--cn-success); }
 .cn-dot-cancelled { background: var(--cn-text-faint); opacity: 0.6; }
+
+/* Running Claude sessions on the menu's Claude entry (D-050) */
+.cn-nav-count {
+  margin-left: auto;
+  min-width: 1.3rem;
+  padding: 0 0.35rem;
+  border-radius: 6px 6px 8px 8px;
+  background: var(--cn-mark);
+  color: var(--cn-on-accent);
+  font-size: var(--cn-text-xs);
+  font-weight: var(--cn-weight-strong);
+  text-align: center;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cn-mark) 22%, transparent);
+}

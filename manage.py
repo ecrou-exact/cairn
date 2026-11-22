@@ -91,7 +91,7 @@ def cmd_serve(_: argparse.Namespace) -> int:
         "--bind",
         f"{host}:{port}",
         "--workers",
-        "2",
+        "1",  # one process: Claude terminals live in it (D-050); threads serve the pages
         "--worker-class",
         "gthread",
         "--threads",

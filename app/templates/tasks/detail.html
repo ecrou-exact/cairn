@@ -3,6 +3,7 @@
 {% from "macros/resources.html" import resources_panel %}
 {% from "macros/comments.html" import comments_panel %}
 {% from "macros/graph.html" import graph_stage, graph_assets %}
+{% from "macros/claude.html" import session_card, start_form %}
 {% block title %}{{ task.title }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
@@ -10,6 +11,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
 {{ graph_assets() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments/comments.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
 {% endblock %}
 {% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
@@ -291,6 +293,13 @@
     {% elif tab == "discussion" %}
     {{ comments_panel("task", task, comments, inherited) }}
     {% else %}
+    <section class="cn-panel cn-claude-panel" aria-labelledby="claude-run-title">
+      <h2 id="claude-run-title"><i class="fa-solid fa-terminal" aria-hidden="true"></i> Claude on this task</h2>
+      {% if task.project and task.project.local_path %}{{ start_form(task=task) }}
+      {% elif task.project %}<p class="cn-muted">Claude Code opens in the project's folder: <a href="{{ url_for('projects.edit', slug=task.project.slug) }}">set the local folder of {{ task.project.name }}</a> first.</p>
+      {% else %}<p class="cn-muted">Claude Code opens in a project's folder: put this task in a project first.</p>{% endif %}
+      {% if claude.sessions %}<ul class="cn-claude-cards">{% for s in claude.sessions %}{{ session_card(s) }}{% endfor %}</ul>{% endif %}
+    </section>
     {% if task.claude_instructions_md %}
     <section class="cn-panel" aria-labelledby="claude-title">
       <h2 id="claude-title">Instructions for Claude</h2>

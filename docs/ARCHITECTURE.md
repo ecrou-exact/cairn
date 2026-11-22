@@ -140,3 +140,8 @@ Configurable lists (types, statuses, workflow transitions, priorities, score wei
 
 ## 6. Cross-platform rules
 See D-001. Paths via `pathlib`/`platformdirs`; processes via `psutil`; no `fork`-only code; subprocess argument lists only; `.gitattributes` forces LF; CI on Ubuntu, macOS and Windows.
+
+## 4c. Claude in a terminal (Phase 5, D-050)
+- `features/claude/pty_host.py`: one program in a pseudo-terminal (pywinpty / ptyprocess). `terminal_core.py`: sessions (start in a project's folder, input, resize, stop, output kept for resuming, end recorded), `ClaudeSession` rows. `transcript_core.py`: context use, model, title from Claude Code's transcripts; sessions outside Cairn via `psutil`. `claude_core.py`: the overview.
+- Pages `/claude` (overview), `/claude/sessions/<id>` (terminal, nonce CSP), SSE `/claude/sessions/<id>/stream`; API `/api/claude/sessions` (list, start), `…/input`, `…/resize`, `…/stop`. Front: `components/cn-terminal.js` (xterm.js), `claude/overview.js`, `core/claude-count.js` (menu count).
+

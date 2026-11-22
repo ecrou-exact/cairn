@@ -1,0 +1,50 @@
+"""The Claude overview (D-050): every Claude Code session on this machine, where it runs,
+how full its context is. Cairn's own sessions (with their terminal) and the ones started
+outside Cairn (seen by their process)."""
+
+from __future__ import annotations
+
+import uuid
+from typing import Any
+
+from app.core.db_class.claude import ClaudeSession
+from app.core.db_class.planning import Project, Task
+from app.core.extensions import db
+from app.features.claude import terminal_core, transcript_core
+
+
+def describe(session: ClaudeSession) -> dict[str, Any]:
+    project = db.session.get(Project, session.project_id) if session.project_id else None
+    task = db.session.get(Task, session.task_id) if session.task_id else None
+    usage = transcript_core.session_usage(session.cwd, str(session.cli_session_id))
+    return {
+        "id": str(session.id),
+        "url": f"/claude/sessions/{session.id}",
+        "title": usage.title or session.title,
+        "label": session.title,
+        "cwd": session.cwd,
+        "status": session.status,
+        "running": terminal_core.is_running(session.id),
+        "started": session.created_at.isoformat(),
+        "ended": session.ended_at.isoformat() if session.ended_at else None,
+        "exit_code": session.exit_code,
+        "end_reason": session.end_reason,
+        "project": {"name": project.name, "slug": project.slug, "color": project.color, "icon": project.icon}
+        if project
+        else None,
+        "task": {"id": str(task.id), "title": task.title} if task else None,
+        "usage": usage.as_dict(),
+    }
+
+
+def overview(*, project_id: uuid.UUID | None = None, task_id: uuid.UUID | None = None) -> dict[str, Any]:
+    """Cairn's sessions (of a project or a task, or all) and, for the full view, the ones
+    running outside Cairn."""
+    rows = terminal_core.sessions(project_id=project_id, task_id=task_id)
+    mine = [describe(row) for row in rows]
+    outside = [] if project_id or task_id else transcript_core.outside_sessions(terminal_core.running_pids())
+    return {
+        "sessions": mine,
+        "outside": outside,
+        "running": sum(1 for s in mine if s["running"]) + len(outside),
+    }

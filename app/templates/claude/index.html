@@ -1,0 +1,47 @@
+{% extends "layout/shell.html" %}
+{% from "macros/claude.html" import session_card %}
+{% block title %}Claude{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/claude/overview.js') }}"></script>{% endblock %}
+{% block content %}
+{% set running = overview.sessions | selectattr("running") | list %}
+{% set ended = overview.sessions | rejectattr("running") | list %}
+<header class="cn-page-header cn-page-header-actions">
+  <div>
+    <div class="cn-eyebrow">Claude</div>
+    <h1>Claude sessions</h1>
+    <p>Every Claude Code on this machine: where it runs, how full its context is.</p>
+  </div>
+  <dl class="cn-hero-stats cn-claude-stats">
+    <div class="{{ 'is-good' if overview.running }}"><dt>Running</dt><dd data-claude-count>{{ overview.running }}</dd></div>
+    <div><dt>In Cairn</dt><dd>{{ running | length }}</dd></div>
+    <div><dt>Outside</dt><dd>{{ overview.outside | length }}</dd></div>
+  </dl>
+</header>
+
+<div class="cn-live-notice" id="claude-changed" hidden role="status"><span>Sessions started or ended.</span> <a href="{{ url_for('claude.index') }}">Reload</a></div>
+
+<section class="cn-claude-section" aria-labelledby="mine-title">
+  <header class="cn-home-head"><h2 id="mine-title">In Cairn</h2><span class="cn-muted">Open Claude from a project or a task (its Claude tab)</span></header>
+  {% if running %}
+  <ul class="cn-claude-cards">{% for s in running %}{{ session_card(s) }}{% endfor %}</ul>
+  {% else %}
+  <div class="cn-empty"><i class="fa-solid fa-terminal" aria-hidden="true"></i><h2>No Claude running in Cairn</h2><p>A project's or a task's Claude tab opens your Claude Code in its folder.</p></div>
+  {% endif %}
+</section>
+
+{% if overview.outside %}
+<section class="cn-claude-section" aria-labelledby="outside-title">
+  <header class="cn-home-head"><h2 id="outside-title">Outside Cairn</h2><span class="cn-muted">Started in a terminal or an editor</span></header>
+  <ul class="cn-claude-cards">{% for s in overview.outside %}{{ session_card(s, outside=True) }}{% endfor %}</ul>
+</section>
+{% endif %}
+
+{% if ended %}
+<details class="cn-fold cn-claude-ended">
+  <summary><i class="fa-solid fa-plus" aria-hidden="true"></i> Ended <span class="cn-muted">{{ ended | length }}</span></summary>
+  <div class="cn-fold-body"><ul class="cn-claude-cards">{% for s in ended %}{{ session_card(s) }}{% endfor %}</ul></div>
+</details>
+{% endif %}
+{% endblock %}

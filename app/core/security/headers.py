@@ -27,6 +27,15 @@ CSP = "; ".join(
 # Style *attributes* are allowed there, never `<style>` elements: no selectors, so no CSS
 # that reads the page; scripts stay locked down.
 CSP_GRAPH = CSP.replace("style-src 'self'", "style-src 'self'; style-src-attr 'unsafe-inline'")
+
+
+def csp_terminal(nonce: str) -> str:
+    """Pages with a terminal (D-050): xterm.js writes three `<style>` elements of its own
+    (sizes, theme, selection). Only `<style>` carrying this response's nonce is allowed, and
+    Cairn's terminal module is what sets it; style attributes and scripts stay as strict."""
+    return CSP_GRAPH.replace("style-src 'self';", f"style-src 'self'; style-src-elem 'self' 'nonce-{nonce}';")
+
+
 TRUSTED_TYPES_REPORT_ONLY = "require-trusted-types-for 'script'; trusted-types vitrine cairn"
 
 HEADERS = {

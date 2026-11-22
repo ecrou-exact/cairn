@@ -1,0 +1,57 @@
+{# Claude sessions (D-050): a card with its context gauge, shared by the overview, the
+   projects and the tasks. `s` is claude_core.describe() or an outside session. #}
+
+{% macro gauge(usage, size="md") -%}
+{% set pct = [usage.percent or 0, 100] | min %}
+<span class="cn-gauge cn-gauge-{{ size }} {{ 'is-high' if pct >= 80 else ('is-mid' if pct >= 50 else '') }}" data-gauge
+      role="img" aria-label="{{ '%g' | format(pct) }}% of the context window used">
+  <svg viewBox="0 0 36 36" aria-hidden="true">
+    <circle class="cn-gauge-track" cx="18" cy="18" r="15.9155"></circle>
+    <circle class="cn-gauge-fill" cx="18" cy="18" r="15.9155" stroke-dasharray="{{ '%.1f' | format(pct) }} 100" data-gauge-fill></circle>
+  </svg>
+  <span class="cn-gauge-value" data-gauge-value>{{ '%d' | format(pct) }}<small>%</small></span>
+</span>
+{%- endmacro %}
+
+{% macro tokens(usage) -%}
+{% if usage.transcript and usage.window %}{{ "%.0fk" | format(usage.context_tokens / 1000) }} / {{ ("%gM" | format(usage.window / 1000000)) if usage.window >= 1000000 else ("%.0fk" | format(usage.window / 1000)) }}{% else %}no turn yet{% endif %}
+{%- endmacro %}
+
+{% macro session_card(s, outside=False) -%}
+{% set u = s.usage %}
+<li class="cn-claude-card {{ 'is-running' if (outside or s.running) else 'is-ended' }}" data-claude-card="{{ s.id if not outside else 'pid-' ~ s.pid }}"
+    data-last-activity="{{ u.last_activity or '' }}">
+  {{ gauge(u) }}
+  <div class="cn-claude-card-body">
+    <p class="cn-claude-card-title">
+      {% if not outside %}<a href="{{ s.url }}">{{ s.title or s.label }}</a>{% else %}{{ u.title or "Claude Code" }}{% endif %}
+    </p>
+    <p class="cn-claude-card-where">
+      {% if not outside and s.project %}<span class="cn-project-chip cn-color-{{ s.project.color }}"><i class="fa-solid {{ s.project.icon }}" aria-hidden="true"></i> {{ s.project.name }}</span>{% endif %}
+      {% if not outside and s.task %}<a href="{{ url_for('tasks.detail', task_id=s.task.id) }}"><i class="fa-solid fa-list-check" aria-hidden="true"></i> {{ s.task.title }}</a>{% endif %}
+      <code title="{{ s.cwd }}">{{ s.cwd }}</code>
+    </p>
+    <p class="cn-claude-card-facts">
+      <span class="cn-claude-state" data-claude-state>{% if outside or s.running %}running{% else %}ended{% endif %}</span>
+      {% if u.model %}<span>{{ u.model | replace("claude-", "") }}</span>{% endif %}
+      <span data-claude-tokens>{{ tokens(u) }}</span>
+      {% if outside %}<span>outside Cairn · pid {{ s.pid }}</span>{% elif s.status == "ended" and s.end_reason %}<span>{{ s.end_reason }}</span>{% endif %}
+    </p>
+  </div>
+  {% if not outside and s.running %}<a class="btn btn-sm btn-outline-secondary cn-claude-open" href="{{ s.url }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Open</span></a>{% endif %}
+</li>
+{%- endmacro %}
+
+{# Open Claude Code here: a project (its folder) or a task (with its brief as first message). #}
+{% macro start_form(project=None, task=None, label="Open Claude here") -%}
+<form class="cn-claude-start" method="post" action="{{ url_for('claude.start') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
+  {% if task %}<input type="hidden" name="task_id" value="{{ task.id }}">{% else %}<input type="hidden" name="project_id" value="{{ project.id }}">{% endif %}
+  {% if task %}
+  <button class="btn btn-primary" type="submit" name="with_brief" value="1"><i class="fa-solid fa-play" aria-hidden="true"></i><span>Start Claude on this task</span></button>
+  <button class="btn btn-outline-secondary" type="submit" name="with_brief" value="0"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Open Claude in its folder</span></button>
+  {% else %}
+  <button class="btn btn-primary" type="submit"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>{{ label }}</span></button>
+  {% endif %}
+</form>
+{%- endmacro %}

@@ -8,6 +8,7 @@
     ("tasks.index", "fa-list-check", "Tasks"),
     ("projects.index", "fa-folder-tree", "Projects"),
     ("resources.index", "fa-paperclip", "Resources"),
+    ("claude.index", "fa-terminal", "Claude"),
   ]),
   ("System", [
     ("connections.index", "fa-plug", "Accounts"),
@@ -86,4 +87,5 @@
 <script type="module" src="{{ url_for('static', filename='js/core/shortcuts.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/core/nav.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/core/menus.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/core/claude-count.js') }}"></script>
 {% endblock %}

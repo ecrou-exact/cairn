@@ -162,6 +162,15 @@ SETTING_TYPES: dict[str, TypeAdapter] = {
     "lists.per_page": TypeAdapter(
         Annotated[list[Annotated[int, Field(strict=True, ge=5, le=500)]], Field(min_length=1, max_length=6)]
     ),
+    "claude.context_windows": TypeAdapter(
+        Annotated[
+            dict[
+                Annotated[str, Field(min_length=1, max_length=80)],
+                Annotated[int, Field(strict=True, ge=8000, le=4_000_000)],
+            ],
+            Field(min_length=1, max_length=40),
+        ]
+    ),
     "ui.themes": TypeAdapter(
         Annotated[dict[THEME_NAMES, Annotated[str, Field(min_length=1, max_length=60)]], Field(min_length=1)]
     ),

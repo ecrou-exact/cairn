@@ -1,0 +1,77 @@
+/* Claude sessions (D-050): context gauges, session cards, a session's band and terminal. */
+
+/* The context gauge: a ring filled by the share of the context window in use */
+.cn-gauge { position: relative; display: inline-grid; place-items: center; flex: none; width: 3.25rem; height: 3.25rem; color: var(--cn-success); }
+.cn-gauge-lg { width: 4.5rem; height: 4.5rem; }
+.cn-gauge.is-mid { color: var(--cn-warning); }
+.cn-gauge.is-high { color: var(--cn-danger); }
+.cn-gauge svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.cn-gauge circle { fill: none; stroke-width: 3.2; }
+.cn-gauge-track { stroke: color-mix(in srgb, currentcolor 16%, transparent); }
+.cn-gauge-fill { stroke: currentcolor; stroke-linecap: round; transition: stroke-dasharray 600ms var(--cn-easing); }
+.cn-gauge-value { position: relative; font-family: var(--cn-font-mono); font-weight: var(--cn-weight-strong); font-size: var(--cn-text-sm); color: var(--cn-text); }
+.cn-gauge-lg .cn-gauge-value { font-size: var(--cn-text-lg); }
+.cn-gauge-value small { font-size: 0.65em; color: var(--cn-text-muted); }
+
+/* Session cards */
+.cn-claude-section + .cn-claude-section { margin-top: var(--cn-space-6); }
+.cn-claude-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); gap: var(--cn-space-3); }
+.cn-claude-card {
+  display: flex;
+  align-items: center;
+  gap: var(--cn-space-4);
+  padding: var(--cn-space-4);
+  background: var(--cn-surface);
+  border-radius: var(--cn-radius-slab);
+  box-shadow: var(--cn-slab-shadow);
+  transition: box-shadow var(--cn-duration) var(--cn-easing), transform var(--cn-duration) var(--cn-easing);
+}
+.cn-claude-card.is-running:hover { box-shadow: var(--cn-slab-hover); transform: translateY(-2px); }
+.cn-claude-card.is-ended { opacity: 0.7; }
+.cn-claude-card-body { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.cn-claude-card-title { margin: 0; font-weight: var(--cn-weight-strong); letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-claude-card-where, .cn-claude-card-facts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cn-space-1) var(--cn-space-3); margin: 0; font-size: var(--cn-text-xs); color: var(--cn-text-muted); min-width: 0; }
+.cn-claude-card-where code { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cn-text-faint); }
+.cn-claude-state { display: inline-flex; align-items: center; gap: 5px; font-weight: var(--cn-weight-medium); color: var(--cn-text); }
+.cn-claude-state::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--cn-text-faint); }
+.is-running .cn-claude-state::before, .cn-claude-band .cn-claude-state::before { background: var(--cn-success); }
+.cn-claude-state[data-activity="working"]::before { background: var(--cn-mark); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cn-mark) 30%, transparent); animation: cn-pulse 1.4s ease-in-out infinite; }
+.is-ended .cn-claude-state::before { background: var(--cn-text-faint); }
+@keyframes cn-pulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--cn-mark) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .cn-claude-state::before { animation: none !important; } }
+.cn-claude-stats { margin: 0; }
+.cn-claude-panel .cn-claude-cards { margin-top: var(--cn-space-4); }
+.cn-claude-start { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); margin: 0; }
+.cn-claude-ended { margin-top: var(--cn-space-5); }
+
+/* A session: its band, then the terminal filling the screen */
+.cn-claude-band {
+  display: flex;
+  align-items: center;
+  gap: var(--cn-space-5);
+  padding: var(--cn-space-4) var(--cn-space-5);
+  margin-bottom: var(--cn-space-3);
+  background: var(--cn-chrome-bg);
+  color: var(--cn-chrome-text);
+  border-radius: var(--cn-radius-slab);
+  box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--cn-chrome-bg) 60%, transparent);
+}
+.cn-claude-band .cn-gauge-value { color: var(--cn-chrome-text); }
+.cn-claude-band-main { flex: 1; min-width: 0; }
+.cn-claude-band h1 { margin: 2px 0 4px; font-size: var(--cn-text-xl); color: var(--cn-chrome-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-claude-band-crumbs { display: flex; gap: var(--cn-space-2); font-size: var(--cn-text-xs); color: var(--cn-chrome-muted); }
+.cn-claude-band-crumbs a, .cn-main .cn-claude-band-crumbs a { color: var(--cn-chrome-muted); }
+.cn-claude-band .cn-claude-card-facts, .cn-claude-band .cn-claude-state { color: var(--cn-chrome-muted); }
+.cn-claude-band code { color: var(--cn-chrome-muted); background: transparent; }
+
+.cn-claude-terminal {
+  display: block;
+  height: calc(100vh - var(--cn-header-height) - 12rem);
+  min-height: 22rem;
+  padding: var(--cn-space-3);
+  background: var(--cn-chrome-bg);
+  border-radius: var(--cn-radius-slab);
+  box-shadow: var(--cn-slab-shadow), inset 0 0 0 1px var(--cn-chrome-border);
+}
+.cn-terminal-screen { width: 100%; height: 100%; }
+.cn-claude-terminal.is-ended { opacity: 0.85; }

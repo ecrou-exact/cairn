@@ -62,5 +62,21 @@
       "LICENSE"
     ],
     "notes": "ES build only (self-contained, no bare imports). Loaded on the graph page; see docs/DECISIONS.md D-035."
+  },
+  "xterm": {
+    "version": "6.0.0 (+ @xterm/addon-fit 0.11.0)",
+    "source": "npm @xterm/xterm@6.0.0, @xterm/addon-fit@0.11.0",
+    "sha256_tgz": {
+      "xterm": "908e66e04af6c8dc6b00dd3b54de088e2e81e5ed866284fd6c2fb3c2d1c7a3f6",
+      "addon-fit": "26003b4517a132b64e4ff228fd88a5fda3fff5e606c76093f6dcff772e9ecec0"
+    },
+    "license": "MIT",
+    "files": [
+      "xterm.mjs (lib/)",
+      "xterm.css (css/)",
+      "addon-fit.mjs (lib/)",
+      "LICENSE"
+    ],
+    "notes": "ES modules, no imports. xterm writes three <style> elements: allowed by a per-response CSP nonce on terminal pages only (D-050)."
   }
 }
