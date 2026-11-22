@@ -277,3 +277,8 @@
 - **Side column** kept slim: the score's three biggest reasons (the full breakdown folded), planning facts, related, history folded.
 - **Fold** (`.cn-fold`, a `<details>` with a "+ …" summary, no script): "Link another task", "Wait for something outside", "A link, from the library, or a new note" (the drop zone stays visible), "Write a comment" (open when there is none yet). Used on project pages too.
 
+## D-048 · 2026-11-22 · accepted — Actions in drop-downs on a band
+- Owner feedback: the row of status buttons, Edit and trash in the task band looked bad; wanted a drop-down or icon-and-text.
+- The task band keeps one main button (**Start working** / Stop the timer), then a **status drop-down** (the current status with its colour dot; the moves the workflow allows, each with its dot) and a **"⋯" menu** (Edit, the brief for Claude as Markdown, Move to trash in red, still confirmed).
+- `details.cn-menu` (opens without script) + `core/menus.js`: closes on a click outside or Escape (focus back on its button), one menu open at a time; the folded list filters use it too. A band with a menu no longer clips its content (its contours keep the rounded corners).
+

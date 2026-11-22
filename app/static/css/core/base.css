@@ -465,3 +465,56 @@ body {
 .cn-fold[open] > summary i { transform: rotate(45deg); }
 .cn-fold-body { display: grid; gap: var(--cn-space-3); padding: var(--cn-space-3) 0 0; animation: cn-fold-in var(--cn-duration) var(--cn-easing); }
 @keyframes cn-fold-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+
+/* Drop-down menu (D-048): a button that opens a small slab of actions, icon and text */
+.cn-menu { position: relative; }
+.cn-menu > summary { list-style: none; cursor: pointer; }
+.cn-menu > summary::-webkit-details-marker { display: none; }
+.cn-menu-caret { font-size: 0.7em; opacity: 0.7; transition: transform var(--cn-duration) var(--cn-easing); }
+.cn-menu[open] .cn-menu-caret { transform: rotate(180deg); }
+.cn-menu-more { padding-inline: 0.75rem; }
+.cn-menu-panel {
+  position: absolute;
+  top: calc(100% + var(--cn-space-2));
+  right: 0;
+  z-index: 40;
+  min-width: 13rem;
+  display: grid;
+  gap: 1px;
+  padding: var(--cn-space-1);
+  background: var(--cn-surface-raised);
+  color: var(--cn-text);
+  border-radius: var(--cn-radius-lg);
+  box-shadow: var(--cn-slab-hover);
+  animation: cn-fold-in var(--cn-duration) var(--cn-easing);
+}
+.cn-menu-panel form { margin: 0; }
+.cn-menu-title { margin: 0; padding: var(--cn-space-2) var(--cn-space-3) var(--cn-space-1); font-size: var(--cn-text-xs); text-transform: uppercase; letter-spacing: var(--cn-tracking-caps); color: var(--cn-text-faint); }
+.cn-menu-empty { margin: 0; padding: var(--cn-space-2) var(--cn-space-3); font-size: var(--cn-text-sm); color: var(--cn-text-muted); }
+.cn-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--cn-space-3);
+  width: 100%;
+  padding: var(--cn-space-2) var(--cn-space-3);
+  border: 0;
+  border-radius: var(--cn-radius);
+  background: transparent;
+  color: var(--cn-text);
+  font-size: var(--cn-text-sm);
+  text-align: left;
+  text-decoration: none;
+}
+.cn-main a.cn-menu-item:hover, .cn-menu-item:hover, .cn-menu-item:focus-visible { background: var(--cn-accent-soft); color: var(--cn-text); text-decoration: none; outline: none; }
+.cn-menu-item i { width: 1rem; text-align: center; color: var(--cn-text-faint); }
+.cn-menu-item:hover i { color: var(--cn-accent); }
+.cn-menu-item.is-danger, .cn-menu-item.is-danger i { color: var(--cn-danger); }
+.cn-menu-item.is-danger:hover { background: var(--cn-danger-soft); }
+.cn-menu-sep { margin: var(--cn-space-1) var(--cn-space-2); border: 0; border-top: 1px dashed var(--cn-border); opacity: 1; }
+
+/* A status as a coloured dot */
+.cn-dot { display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--cn-text-faint); flex: none; }
+.cn-dot-active { background: var(--cn-info); }
+.cn-dot-waiting { background: var(--cn-warning); }
+.cn-dot-done { background: var(--cn-success); }
+.cn-dot-cancelled { background: var(--cn-text-faint); opacity: 0.6; }

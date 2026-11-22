@@ -249,6 +249,7 @@ def detail(task_id: uuid.UUID):
         chain=dependencies_core.blocking_chain(task.id) if task.is_blocked else [],
         risk=risk_core.risk_of(task.id) if task.is_open and task.due_on else None,
         next_statuses=[workflow.status_map()[key] for key in workflow.allowed_next(task.status)],
+        current_status=workflow.status_map().get(task.status, {"label": task.status, "kind": "open"}),
         types=workflow.types(),
         history=tasks_core.task_history(task.id),
         time_entries=timer_core.entries(task.id),

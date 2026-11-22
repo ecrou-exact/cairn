@@ -47,29 +47,49 @@
       {% if timing %}
       <form method="post" action="{{ url_for('tasks.stop_timer') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">
-        <button class="btn btn-outline-light" type="submit"><i class="fa-solid fa-pause" aria-hidden="true"></i><span class="ms-2">Stop the timer</span></button>
+        <button class="btn btn-outline-light" type="submit"><i class="fa-solid fa-pause" aria-hidden="true"></i><span>Stop the timer</span></button>
       </form>
       {% else %}
       <form method="post" action="{{ url_for('tasks.start_timer', task_id=task.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-play" aria-hidden="true"></i><span class="ms-2">Start working</span></button>
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-play" aria-hidden="true"></i><span>Start working</span></button>
       </form>
       {% endif %}
     {% endif %}
-    {% for status in next_statuses %}
-    <form method="post" action="{{ url_for('tasks.change_status', task_id=task.id) }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="{{ status.key }}">
-      <button class="btn btn-sm {{ 'btn-success-soft' if status.kind == 'done' else 'btn-outline-light' }}" type="submit">{{ status.label }}</button>
-    </form>
-    {% endfor %}
-    <a class="btn btn-sm btn-outline-light" href="{{ url_for('tasks.edit', task_id=task.id) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="ms-1">Edit</span></a>
-    <cn-confirm message="Move “{{ task.title }}” to the trash?" detail="{% if subtasks %}Its {{ subtasks | length }} subtask{{ 's' if subtasks | length > 1 }} go with it. {% endif %}You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
-      <form method="post" action="{{ url_for('tasks.delete', task_id=task.id) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="next" value="{{ url_for('projects.detail', slug=task.project.slug) if task.project else url_for('tasks.index') }}">
-        <button class="btn btn-sm btn-outline-light" type="submit"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
-      </form>
-    </cn-confirm>
+
+    {# The status as a drop-down: where the task is, and the moves the workflow allows (D-048) #}
+    <details class="cn-menu">
+      <summary class="btn btn-outline-light" title="Change the status">
+        <span class="cn-dot cn-dot-{{ current_status.kind }}" aria-hidden="true"></span><span>{{ current_status.label }}</span><i class="fa-solid fa-chevron-down cn-menu-caret" aria-hidden="true"></i>
+      </summary>
+      <div class="cn-menu-panel" role="menu" aria-label="Move to">
+        <p class="cn-menu-title">Move to</p>
+        {% for status in next_statuses %}
+        <form method="post" action="{{ url_for('tasks.change_status', task_id=task.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="{{ status.key }}">
+          <button class="cn-menu-item" type="submit" role="menuitem"><span class="cn-dot cn-dot-{{ status.kind }}" aria-hidden="true"></span><span>{{ status.label }}</span></button>
+        </form>
+        {% else %}
+        <p class="cn-menu-empty">No move from here.</p>
+        {% endfor %}
+      </div>
+    </details>
+
+    <details class="cn-menu">
+      <summary class="btn btn-outline-light cn-menu-more" title="More"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i><span class="visually-hidden">More actions</span></summary>
+      <div class="cn-menu-panel" role="menu" aria-label="More actions">
+        <a class="cn-menu-item" role="menuitem" href="{{ url_for('tasks.edit', task_id=task.id) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span>Edit</span></a>
+        <a class="cn-menu-item" role="menuitem" href="{{ url_for('tasks.brief', task_id=task.id) }}"><i class="fa-solid fa-download" aria-hidden="true"></i><span>Brief for Claude (.md)</span></a>
+        <hr class="cn-menu-sep">
+        <cn-confirm message="Move “{{ task.title }}” to the trash?" detail="{% if subtasks %}Its {{ subtasks | length }} subtask{{ 's' if subtasks | length > 1 }} go with it. {% endif %}You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
+          <form method="post" action="{{ url_for('tasks.delete', task_id=task.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ url_for('projects.detail', slug=task.project.slug) if task.project else url_for('tasks.index') }}">
+            <button class="cn-menu-item is-danger" type="submit" role="menuitem"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span>Move to trash</span></button>
+          </form>
+        </cn-confirm>
+      </div>
+    </details>
   </div>
   <div class="cn-live-notice" id="task-changed" hidden role="status"><span>This task was changed elsewhere.</span> <a href="{{ request.full_path.rstrip('?') }}">Reload</a></div>
 </section>

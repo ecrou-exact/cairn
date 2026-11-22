@@ -352,3 +352,6 @@ body:not(:has(input[form="bulk-form"]:checked)) .cn-bulk { display: none; }
 .cn-score-top li { display: flex; justify-content: space-between; gap: var(--cn-space-2); padding: var(--cn-space-1) var(--cn-space-2); border-radius: var(--cn-radius); background: var(--cn-surface-sunken); }
 .cn-score-top strong { font-family: var(--cn-font-mono); color: var(--cn-accent); }
 .cn-history-fold > summary { font-size: var(--cn-text-md); color: var(--cn-text); }
+/* Menus open out of the band: it no longer clips, its contours keep its rounded corners */
+.cn-task-band, .cn-project-hero:has(.cn-menu) { overflow: visible; z-index: 5; }
+.cn-task-band::before, .cn-project-hero:has(.cn-menu)::before { border-radius: inherit; }
