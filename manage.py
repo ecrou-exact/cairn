@@ -4,6 +4,8 @@ python manage.py setup         first run: .env with a secret key, master key, da
 python manage.py start         development server (auto-reload) on 127.0.0.1:7010
 python manage.py serve         production server (gunicorn on Linux/macOS, waitress on Windows)
 python manage.py worker        background job worker (run it next to start or serve)
+python manage.py open          open Cairn in the browser once it answers
+python manage.py autostart on|off|status  start Cairn with your session (Linux)
 python manage.py roadmap [file] import a plan (default: Cairn's own roadmap, docs/roadmap.json)
 python manage.py upgrade       apply database migrations
 python manage.py migrate "msg" create a migration after a model change
@@ -114,6 +116,36 @@ def cmd_serve(_: argparse.Namespace) -> int:
     )
 
 
+def cmd_open(_: argparse.Namespace) -> int:
+    import time
+    import urllib.error
+    import urllib.request
+    import webbrowser
+
+    from dotenv import load_dotenv
+
+    load_dotenv(ENV_FILE)
+    url = f"http://{os.environ.get('CAIRN_HOST', '127.0.0.1')}:{os.environ.get('CAIRN_PORT', '7010')}/"
+    for _attempt in range(60):
+        try:
+            with urllib.request.urlopen(url + "login", timeout=2):  # noqa: S310  # nosec B310
+                break
+        except urllib.error.HTTPError:
+            break  # it answers
+        except OSError:
+            time.sleep(1)
+    else:
+        print("Cairn does not answer.")
+        return 1
+    return 0 if webbrowser.open(url) else 1
+
+
+def cmd_autostart(args: argparse.Namespace) -> int:
+    from app.core import autostart
+
+    return autostart.run(args.action, ROOT)
+
+
 def cmd_worker(_: argparse.Namespace) -> int:
     from dotenv import load_dotenv
 
@@ -181,6 +213,10 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("setup", help="first run").set_defaults(func=cmd_setup)
     sub.add_parser("start", help="development server").set_defaults(func=cmd_start)
+    sub.add_parser("open", help="open Cairn in the browser").set_defaults(func=cmd_open)
+    auto = sub.add_parser("autostart", help="start Cairn with your session (Linux)")
+    auto.add_argument("action", choices=("on", "off", "status"))
+    auto.set_defaults(func=cmd_autostart)
     sub.add_parser("serve", help="production server").set_defaults(func=cmd_serve)
     sub.add_parser("worker", help="background job worker").set_defaults(func=cmd_worker)
     sub.add_parser("mcp", help="Cairn's MCP server over stdio (started by Claude Code)").set_defaults(

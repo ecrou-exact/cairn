@@ -15,7 +15,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
 {{ graph_assets() }}
 {% endblock %}
-{% block scripts %}
+{% block scripts %}{% if tab == "instances" %}<script type="module" src="{{ url_for('static', filename='js/projects/instances.js') }}"></script>{% endif %}
+
 <script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-quick-add.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/planning/live-list.js') }}"></script>
@@ -74,7 +75,7 @@
       ("plan", "fa-diagram-project", "Plan", None),
       ("tasks", "fa-list-check", "Tasks", stats.open),
       ("claude", "fa-terminal", "Claude", None),
-      ("instances", "fa-server", "Instances", None),
+      ("instances", "fa-server", "Instances", instances_running),
       ("about", "fa-circle-info", "About", (resources | length) + (comments | length))] %}
   <a class="cn-tab" href="{{ url_for('projects.detail', slug=project.slug, tab=key) }}" {% if tab == key %}aria-current="page"{% endif %}>
     <i class="fa-solid {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>{% if count %}<span class="cn-tab-count">{{ count }}</span>{% endif %}
@@ -165,7 +166,32 @@
   {% else %}
   <p class="cn-muted">No instance yet. Add the commands that run this project: its dev server, a worker, the tests in watch mode.</p>
   {% endif %}
-  <details class="cn-fold" {% if not instances %}open{% endif %}>
+  {% if outside %}
+  <h3 class="cn-instances-outside">Running outside Cairn <span class="cn-muted">in this folder or another copy of the repository</span></h3>
+  <ul class="cn-instances">
+    {% for item in outside %}
+    <li class="cn-instance is-running">
+      <span class="cn-instance-dot" aria-hidden="true"></span>
+      <div class="cn-instance-body">
+        <p class="cn-instance-name">{{ item["copy"] }}{% if item.branch %} <span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ item.branch }}</span>{% endif %} <span class="cn-muted">{{ item.where }}{% if item.since %} · since <time data-instance-since="{{ item.since }}"></time>{% endif %}</span></p>
+        <p class="cn-instance-command"><code>{{ item.label }}</code> <span class="cn-muted">{{ item.folder }}</span></p>
+        <p class="cn-instance-ports">{% for port in item.ports %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> localhost:{{ port }}</a>{% endfor %}</p>
+      </div>
+      <div class="cn-instance-actions">
+        {% for log in item.logs %}
+        <form method="post" action="{{ url_for('instances.open_log') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+          <input type="hidden" name="project_id" value="{{ project.id }}"><input type="hidden" name="key" value="{{ log.key }}">
+          <button class="btn btn-sm btn-outline-secondary" type="submit" title="{{ log.path or 'docker logs' }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>{{ log.label }}</span></button>
+        </form>
+        {% else %}<span class="cn-muted" title="It writes to its own terminal only, which Cairn cannot read. Started from Cairn, its log is here.">no log file</span>{% endfor %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <div class="cn-live-notice" id="instances-changed" data-project="{{ project.id }}" hidden role="status"><span>Instances started or stopped.</span> <a href="{{ here }}">Reload</a></div>
+  <details class="cn-fold" {% if not instances and not outside %}open{% endif %}>
     <summary><i class="fa-solid fa-plus" aria-hidden="true"></i> Add a command</summary>
     <form class="cn-fold-body cn-instance-form" method="post" action="{{ url_for('instances.create') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">

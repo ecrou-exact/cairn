@@ -16,7 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db_class.base import BaseEntity, UTCDateTime
 
 SESSION_STATUSES = ("running", "ended")
-SESSION_KINDS = ("claude", "instance")
+SESSION_KINDS = ("claude", "instance", "log")
 
 
 class ProjectInstance(BaseEntity):
@@ -33,8 +33,8 @@ class ProjectInstance(BaseEntity):
 
 
 class ClaudeSession(BaseEntity):
-    """A terminal Cairn runs (D-050, D-053): Claude Code (`kind` claude) or a project's
-    instance (`kind` instance)."""
+    """A terminal Cairn runs (D-050, D-053): Claude Code (`kind` claude) a project's
+    instance (`kind` instance), or a log being followed (`kind` log, D-061)."""
 
     __tablename__ = "claude_session"
 

@@ -126,3 +126,6 @@
 .cn-main a.cn-port:hover { background: var(--cn-success); color: var(--cn-on-accent); text-decoration: none; }
 .cn-instance-mark { display: grid; place-items: center; width: 4.5rem; height: 4.5rem; flex: none; border-radius: 16px 16px 20px 20px; background: color-mix(in srgb, var(--cn-success) 18%, transparent); color: var(--cn-success); font-size: 1.6rem; }
 @media (max-width: 800px) { .cn-instance { flex-wrap: wrap; } .cn-instance-form { grid-template-columns: 1fr; } }
+.cn-instances-outside { margin: var(--cn-space-5) 0 0; font-size: var(--cn-text-md); }
+.cn-instance-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 24rem; }
+.cn-instance.is-running .cn-instance-dot { background: var(--cn-success); }

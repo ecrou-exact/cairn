@@ -6,11 +6,12 @@ import uuid
 
 from flask import Blueprint, flash, redirect, request, url_for
 
-from app.core.schema.instances import InstanceCreate
+from app.core.schema.instances import InstanceCreate, LogOpen
 from app.core.utils.history import batch
 from app.core.utils.web import FormErrors, flash_undo, local_path, validate
 from app.features.claude import terminal_core
-from app.features.instances import instances_core
+from app.features.instances import found_core, instances_core
+from app.features.projects import projects_core
 
 instances = Blueprint("instances", __name__)
 
@@ -49,6 +50,22 @@ def act(instance_id: uuid.UUID, action: str):
             return redirect(_back())
         session = (instances_core.restart if action == "restart" else instances_core.start)(instance_id)
     except (instances_core.InstanceError, terminal_core.TerminalError) as exc:
+        flash(str(exc), "danger")
+        return redirect(_back())
+    return redirect(url_for("claude.session", session_id=session.id))
+
+
+@instances.post("/instances/log")
+def open_log():
+    """Follow the log of an instance running outside Cairn, in a terminal (D-061)."""
+    values = {key: request.form.get(key, "") for key in ("project_id", "key")}
+    try:
+        data = validate(LogOpen, values)
+        session = found_core.open_log(projects_core.get_project(data.project_id), data.key)
+    except FormErrors as exc:
+        flash(" ".join(exc.errors.values()), "danger")
+        return redirect(_back())
+    except (instances_core.InstanceError, projects_core.ProjectError, terminal_core.TerminalError) as exc:
         flash(str(exc), "danger")
         return redirect(_back())
     return redirect(url_for("claude.session", session_id=session.id))

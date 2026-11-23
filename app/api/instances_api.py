@@ -7,9 +7,10 @@ import uuid
 from flask import jsonify, request
 
 from app.api import ApiError, api_blueprint, body
-from app.core.schema.instances import InstanceCreate, InstanceStart
+from app.core.schema.instances import InstanceCreate, InstanceStart, LogOpen
 from app.features.claude import claude_core, terminal_core
-from app.features.instances import instances_core
+from app.features.instances import found_core, instances_core
+from app.features.projects import projects_core
 
 instances_api = api_blueprint("instances_api")
 
@@ -17,7 +18,7 @@ instances_api = api_blueprint("instances_api")
 def _guard(action, *args):
     try:
         return action(*args)
-    except (instances_core.InstanceError, terminal_core.TerminalError) as exc:
+    except (instances_core.InstanceError, projects_core.ProjectError, terminal_core.TerminalError) as exc:
         raise ApiError(str(exc), 409) from exc
 
 
@@ -37,12 +38,26 @@ def _row(item: dict) -> dict:
 
 @instances_api.get("/instances")
 def list_instances():
-    """`project`: the project's instances, each running or not, with its listening ports."""
+    """`project`: the project's instances, each running or not, with its listening ports; and
+    what runs for it outside Cairn (`outside`): other copies of its repository, containers."""
     try:
         project_id = uuid.UUID(request.args.get("project", ""))
     except ValueError as exc:
         raise ApiError("'project' must be an id.", 422) from exc
-    return jsonify(instances=[_row(item) for item in instances_core.for_project(project_id)])
+    project = _guard(projects_core.get_project, project_id)
+    return jsonify(
+        instances=[_row(item) for item in instances_core.for_project(project_id)],
+        outside=found_core.for_project(project),
+    )
+
+
+@instances_api.post("/instances/log")
+def open_log():
+    """Follow the log of an instance running outside Cairn, in a terminal."""
+    data = body(LogOpen)
+    project = _guard(projects_core.get_project, data.project_id)
+    session = _guard(found_core.open_log, project, data.key)
+    return jsonify(session=claude_core.describe(session)), 201
 
 
 @instances_api.post("/instances")

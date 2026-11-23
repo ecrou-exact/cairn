@@ -777,6 +777,6 @@ def sessions(
     return rows
 
 
-def running_pids() -> set[int]:
+def running_pids(kind: str | None = None) -> set[int]:
     with _lock:
-        return {terminal.pty.pid for terminal in _terminals.values()}
+        return {t.pty.pid for t in _terminals.values() if kind is None or t.kind == kind}

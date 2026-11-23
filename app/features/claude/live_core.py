@@ -230,7 +230,7 @@ def _agents(transcript: Path, cwd: str, since: float, born: float) -> list[dict[
     return found
 
 
-def _program(process: psutil.Process) -> str:
+def program(process: psutil.Process) -> str:
     """A process in a few words: its program and plain arguments. Options and NAME=value are
     left out: they may carry secrets."""
     argv = process.cmdline() or [process.name()]
@@ -265,7 +265,7 @@ def _processes(pid: int) -> list[dict[str, Any]]:
                 return
             if name in FILTERS or time.time() - process.create_time() < SETTLED:
                 return
-            label = _program(process)
+            label = program(process)
             if label.split(" ")[0] in FILTERS:  # run by another binary, under its name
                 return
             argv = " ".join(process.cmdline()).lower()

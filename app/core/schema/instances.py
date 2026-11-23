@@ -20,6 +20,13 @@ class InstanceCreate(Strict):
     port: Annotated[int, Field(ge=1, le=65535)] | None = None
 
 
+class LogOpen(Strict):
+    """Follow a log of an instance found outside Cairn: its key, as listed."""
+
+    project_id: uuid.UUID
+    key: Annotated[str, Field(min_length=1, max_length=1000)]
+
+
 class InstanceStart(Strict):
     cols: Annotated[int, Field(ge=20, le=500)] = 120
     rows: Annotated[int, Field(ge=5, le=200)] = 32

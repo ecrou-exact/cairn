@@ -202,6 +202,13 @@ def for_project(project_id: uuid.UUID) -> list[dict[str, Any]]:
     return found
 
 
+def running_count(project_id: uuid.UUID) -> int:
+    return sum(
+        terminal_core.is_running(row.id)
+        for row in terminal_core.sessions(kind="instance", project_id=project_id)
+    )
+
+
 # -- running -------------------------------------------------------------------------------
 
 
