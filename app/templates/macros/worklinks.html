@@ -8,6 +8,7 @@
       {% if w.found == false %} <span class="cn-badge cn-badge-warning">not found here</span>{% endif %}
       {% if w["from"] %} <span class="cn-muted">from {{ w["from"] }}</span>{% endif %}</p>
     {% if w.note %}<p class="cn-muted">{{ w.note }}</p>{% endif %}
+    {% if w.kind == "instance" and w.found %}<p class="cn-instance-ports"><span class="cn-muted">{{ w.folder }}</span> {% for port in w.ports %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> localhost:{{ port }}</a>{% endfor %}</p>{% endif %}
     {% for c in w.commits or [] %}<p class="cn-work-commit">{{ c }}</p>{% endfor %}
   </div>
   {% if removable %}<form method="post" action="{{ url_for('worklinks.remove', link_id=w.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="cn-icon-button" type="submit" title="Remove the link (undoable)"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="visually-hidden">Remove</span></button></form>{% endif %}
@@ -28,8 +29,8 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}#work">
       <input type="hidden" name="target_type" value="{{ target_type }}"><input type="hidden" name="target_id" value="{{ target_id }}">
       <div><label class="form-label" for="work-kind">What</label><select class="form-select" id="work-kind" name="kind">
-        <option value="branch">Branch</option><option value="commit">Commit</option><option value="pull">Pull request</option><option value="claude">Claude conversation</option><option value="folder">Folder</option></select></div>
-      <div><label class="form-label" for="work-ref">Which</label><input class="form-control" id="work-ref" name="ref" required maxlength="500" placeholder="feature/x · 3f2a9c1 · #1451 · a link"></div>
+        <option value="branch">Branch</option><option value="commit">Commit</option><option value="pull">Pull request</option><option value="claude">Claude conversation</option><option value="folder">Folder</option><option value="instance">Instance</option></select></div>
+      <div><label class="form-label" for="work-ref">Which</label><input class="form-control" id="work-ref" name="ref" required maxlength="500" placeholder="feature/x · 3f2a9c1 · #1451 · an instance's name"></div>
       <div class="cn-work-wide"><label class="form-label" for="work-note">Why (optional)</label><input class="form-control" id="work-note" name="note" maxlength="500"></div>
       <div><button class="btn btn-outline-secondary" type="submit">Link</button></div>
     </form></details>

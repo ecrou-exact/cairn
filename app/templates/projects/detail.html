@@ -176,7 +176,7 @@
       <span class="cn-instance-dot" aria-hidden="true"></span>
       <div class="cn-instance-body">
         <p class="cn-instance-name">{{ inst.name }}{% if live %} <span class="cn-badge cn-badge-success">running</span> <span class="cn-muted">since <time data-instance-since="{{ live.created_at.timestamp() }}"></time></span>{% elif item.last and item.last.exit_code not in (none, 0) %} <span class="cn-badge cn-badge-warning">exited {{ item.last.exit_code }}</span>{% endif %}</p>
-        <p class="cn-instance-command"><code>{{ inst.command }}</code>{% if inst.subfolder %} <span class="cn-muted">in {{ inst.subfolder }}</span>{% endif %}</p>
+        <p class="cn-instance-command"><code>{{ inst.command }}</code>{% if item.folder %} <span class="cn-muted">in {{ item.folder }}</span>{% endif %}</p>
         {% if live %}
         <p class="cn-instance-ports">
           {% for port in item.ports %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> localhost:{{ port }}</a>{% else %}<span class="cn-muted">{% if live.port %}PORT={{ live.port }} · {% endif %}not listening yet</span>{% endfor %}

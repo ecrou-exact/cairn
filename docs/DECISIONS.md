@@ -476,5 +476,6 @@
 
 ## D-083 · 2026-11-23 · accepted — Work linked to a project, a task, a subtask
 - Owner request: link a branch, a commit, a pull request, a Claude conversation or a folder to a project, a task or a subtask, so that a Claude starts with the real context. On the task's Work tab and the project's About tab, by the API, and by Claude (`link_work`, asked; `linked_work`; `/cairn -link`).
+- An instance of the project can be linked too (by its name): its state, folder, command and ports reach the brief. Instances show the folder they run in, on the project and on the Instances page.
 - What Cairn made for a task is shown without being linked: its worktrees and the Claudes opened on it. A subtask also gets its parents' and its project's links.
 - Each is described where it lives: its last commits from the project's copies, the pull request from GitHub, the conversation from Cairn. The task's brief has a **Linked work** section with all of it; text from a pull request is data, as everywhere else.

@@ -345,7 +345,7 @@ def register(
 
     @server.tool()
     def link_work(
-        kind: Literal["branch", "commit", "pull", "claude", "folder"],
+        kind: Literal["branch", "commit", "pull", "claude", "folder", "instance"],
         ref: str,
         project: str | None = None,
         task_id: str | None = None,
@@ -353,7 +353,8 @@ def register(
     ) -> dict[str, Any]:
         """Link work to a task or a project, when the owner asks or once you made it: the branch you work on,
         a commit, a pull request (#123, owner/name#123 or its link), this conversation (`claude` with its
-        id), a folder. Default: this session's project. Every later Claude on it reads them first."""
+        id), a folder, one of the project's instances (by its name). Default: this session's project.
+        Every later Claude on it reads them first."""
 
         def work():
             link = target(project, task_id, needed=True)

@@ -31,6 +31,7 @@ LABELS = {
     "pull": ("Pull request", "fa-code-pull-request"),
     "claude": ("Claude", "fa-claude"),
     "folder": ("Folder", "fa-folder-open"),
+    "instance": ("Instance", "fa-server"),
 }
 
 
@@ -66,6 +67,9 @@ def add(data: WorkLinkCreate) -> WorkLink:
     )
     if same is not None:
         return same
+    target = _target(data.target_type, data.target_id)
+    if data.kind == "instance" and not _instance_facts(_project_of(target), data.ref)["found"]:
+        raise WorkLinkError(f"The project has no instance named “{data.ref}”.")
     with batch():
         link = WorkLink(**data.model_dump())
         db.session.add(link)
@@ -191,6 +195,26 @@ def _claude_facts(ref: str) -> dict[str, Any]:
     }
 
 
+def _instance_facts(project: Project | None, ref: str) -> dict[str, Any]:
+    """One of the project's instances, by its id or its name: running or not, where, on which ports."""
+    from app.features.instances import instances_core  # instances build on Claude's sessions
+
+    for item in instances_core.for_project(project.id) if project else []:
+        instance = item["instance"]
+        if ref in (str(instance.id), instance.name) or ref.lower() == instance.name.lower():
+            live = item["running"]
+            return {
+                "found": True,
+                "title": instance.name,
+                "state": "running" if live else "stopped",
+                "folder": item["folder"],
+                "command": instance.command,
+                "ports": item["ports"],
+                "url": f"/claude/sessions/{live.id}" if live else f"/projects/{project.slug}?tab=instances",
+            }
+    return {"found": False}
+
+
 def describe(kind: str, ref: str, project: Project | None, *, deep: bool = True) -> dict[str, Any]:
     label, icon = LABELS[kind]
     facts: dict[str, Any] = {}
@@ -200,6 +224,8 @@ def describe(kind: str, ref: str, project: Project | None, *, deep: bool = True)
         facts = _pull_facts(project, ref)
     elif kind == "claude":
         facts = _claude_facts(ref)
+    elif kind == "instance":
+        facts = _instance_facts(project, ref)
     elif kind == "folder":
         facts = {"found": Path(ref).expanduser().is_dir(), "folder": ref}
     return {"kind": kind, "ref": ref, "label": label, "icon": icon, **facts}
@@ -264,6 +290,10 @@ def brief_lines(task: Task) -> list[str]:
             extra.append(f"in `{item['folder']}`")
         if item.get("url", "").startswith("http"):
             extra.append(item["url"])
+        if item.get("command"):
+            extra.append(f"runs `{item['command']}`")
+        if item.get("ports"):
+            extra.append("on " + ", ".join(f"http://localhost:{port}/" for port in item["ports"]))
         if item.get("conversation"):
             extra.append(f"conversation {item['conversation']}")
         lines.append(head + (": " + ", ".join(extra) if extra else ""))

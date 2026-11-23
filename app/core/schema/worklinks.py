@@ -17,6 +17,7 @@ SHAPES = {
     "pull": re.compile(r"^(?:[\w.-]+/[\w.-]+)?#\d{1,7}$"),
     "claude": re.compile(r"^[0-9a-fA-F-]{36}$"),
     "folder": re.compile(r"^(/|[A-Za-z]:[\\/]|~).{0,498}$"),
+    "instance": re.compile(r"^.{1,80}$"),
 }
 TOLD = {
     "branch": "a branch name",
@@ -24,6 +25,7 @@ TOLD = {
     "pull": "#123 or owner/name#123",
     "claude": "a conversation or session id",
     "folder": "a full path",
+    "instance": "one of the project's instances, by its name",
 }
 PULL_URL = re.compile(r"github\.com/([\w.-]+/[\w.-]+)/pull/(\d+)")
 

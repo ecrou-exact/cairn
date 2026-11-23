@@ -135,6 +135,15 @@ def _folder(instance: ProjectInstance) -> tuple[Project, Path]:
     return project, folder
 
 
+def where(instance: ProjectInstance) -> str:
+    """The folder it runs in, as far as it can be said; "" when the project has none."""
+    project = db.session.get(Project, instance.project_id)
+    if project is None or not project.local_path:
+        return ""
+    root = Path(project.local_path).expanduser()
+    return str(root / instance.subfolder) if instance.subfolder else str(root)
+
+
 # -- definitions ---------------------------------------------------------------------------
 
 
@@ -202,6 +211,7 @@ def for_project(project_id: uuid.UUID) -> list[dict[str, Any]]:
                 "running": live,
                 "last": last,
                 "ports": listening_ports(live.pid) if live else [],
+                "folder": live.cwd if live else where(instance),
             }
         )
     return found

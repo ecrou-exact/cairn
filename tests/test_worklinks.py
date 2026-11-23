@@ -91,3 +91,23 @@ def test_pages_api_and_claude(app, signed_in, tmp_path):
     linked = _data(_call(server, "linked_work", {"task_id": task_id}))
     assert {w["kind"] for w in linked["own"]} == {"branch", "claude"}
     assert "link_work" in mcp_server.WRITE_TOOLS and "linked_work" in mcp_server.READ_TOOLS
+
+
+def test_an_instance_is_linked_with_its_folder(ctx, tmp_path):
+    from app.core.schema.instances import InstanceCreate
+    from app.features.instances import instances_core
+
+    root = _clone(tmp_path / "loo", ORIGIN)
+    (root / "web").mkdir()
+    project = _project(root)
+    task = tasks_core.create(TaskCreate(title="Tree", project_id=project.id))
+    instances_core.create(
+        InstanceCreate(project_id=project.id, name="Web", command="poetry run start", subfolder="web")
+    )
+    assert instances_core.for_project(project.id)[0]["folder"] == str(root / "web")
+    worklinks_core.add(_link("task", task.id, "instance", "web"))
+    (item,) = worklinks_core.for_target("task", task.id)["own"]
+    assert (item["title"], item["state"], item["folder"]) == ("Web", "stopped", str(root / "web"))
+    assert "runs `poetry run start`" in brief_core.task_brief(task)
+    with pytest.raises(worklinks_core.WorkLinkError):
+        worklinks_core.add(_link("task", task.id, "instance", "nope"))
