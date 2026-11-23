@@ -14,11 +14,15 @@ def test_autostart_writes_and_removes_its_files(tmp_path, monkeypatch):
     monkeypatch.setattr(autostart.shutil, "which", lambda name: "/bin/systemctl")
     monkeypatch.setattr(autostart, "_systemctl", lambda *args: calls.append(args) or 0)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    old = tmp_path / "autostart" / "cairn.desktop"
+    old.parent.mkdir()
+    old.write_text("[Desktop Entry]")  # the page opened at each session start before D-100
     root = Path("/srv/my cairn")
     assert autostart.run("on", root) == 0
     unit = (tmp_path / "systemd" / "user" / "cairn-web.service").read_text()
     assert f'ExecStart="{sys.executable}" "{root}/manage.py" serve' in unit
-    assert (tmp_path / "autostart" / "cairn.desktop").is_file()
+    assert (tmp_path / "data" / "applications" / "cairn.desktop").is_file() and not old.exists()
     assert calls[-1] == ("restart", "cairn-web", "cairn-worker")
     assert autostart.run("off", root) == 0
     assert not [path for path in tmp_path.rglob("*") if path.is_file()]

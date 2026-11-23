@@ -38,6 +38,41 @@ def settings_file() -> Path:
     return _home() / "settings.json"
 
 
+HOOK = "claude-hook"
+
+
+def hook_command() -> str:
+    return " ".join(f'"{part}"' for part in server_command()).replace('"mcp"', HOOK)
+
+
+def session_context(raw: str) -> str:
+    """What Claude Code is told when a session starts in a Cairn project's folder (D-100)."""
+    import json as _json
+
+    from app import create_app
+    from app.features.projects import place_core
+    from app.features.tasks import tasks_core
+
+    cwd = (_json.loads(raw or "{}") or {}).get("cwd") or os.getcwd()
+    with create_app().app_context():
+        project = place_core.project_for(cwd)
+        if project is None:
+            return ""
+        nxt = [t.title for t in tasks_core.next_actions(limit=3, project_id=project.id)]
+        return (
+            f"This folder is the project “{project.name}” in Cairn, the owner's planning workspace "
+            f"(server `cairn`, /cairn). Keep it true as you work: find the task you work on (this_project, "
+            "list_tasks) or create it, set_task_status, tick_checklist and the subtasks as they are done, "
+            "link_work the branch and the pull request, and before you say the work is done comment_on_task "
+            "with what was done. The owner relies on Cairn to find everything later."
+            + (f" Next in this project: {'; '.join(nxt)}." if nxt else "")
+        )
+
+
+def _hooks_mine(entry: dict) -> bool:
+    return any(HOOK in str(hook.get("command", "")) for hook in entry.get("hooks", []))
+
+
 def rules() -> list[str]:
     return [f"mcp__{mcp_server.SERVER_NAME}__{name}" for name in mcp_server.WRITE_TOOLS]
 
@@ -122,7 +157,11 @@ def show() -> str:
             f"2. Rules in {settings_file()} (permissions.ask), so that writing in Cairn is always asked:",
             *(f"   {rule}" for rule in rules()),
             "",
-            f"3. A skill, {skill_file()}:",
+            f"3. A session start hook in {settings_file()}: in a Cairn project's folder, Claude is told so",
+            "   and to keep its tasks true; silent anywhere else:",
+            f"   {hook_command()}",
+            "",
+            f"4. A skill, {skill_file()}:",
             "",
             *(f"   {line}".rstrip() for line in SKILL.read_text(encoding="utf-8").splitlines()),
             "",
@@ -132,8 +171,10 @@ def show() -> str:
 
 
 def status() -> dict[str, bool]:
-    asked = _settings().get("permissions", {}).get("ask", [])
-    return {"server": _registered(), "rules": set(rules()) <= set(asked), "skill": _ours()}
+    data = _settings()
+    asked = data.get("permissions", {}).get("ask", [])
+    hook = any(_hooks_mine(e) for e in data.get("hooks", {}).get("SessionStart", []))
+    return {"server": _registered(), "rules": set(rules()) <= set(asked), "skill": _ours(), "hook": hook}
 
 
 def on() -> None:
@@ -152,7 +193,12 @@ def on() -> None:
     permissions = data.setdefault("permissions", {})
     asked = permissions.setdefault("ask", [])
     missing = [rule for rule in rules() if rule not in asked]
-    if missing:
+    starts = data.setdefault("hooks", {}).setdefault("SessionStart", [])
+    mine = {"hooks": [{"type": "command", "command": hook_command(), "timeout": 20}]}
+    hook_changed = [e for e in starts if _hooks_mine(e)] != [mine]
+    if hook_changed:
+        starts[:] = [e for e in starts if not _hooks_mine(e)] + [mine]
+    if missing or hook_changed:
         asked += missing
         _write(data)
     skill_file().parent.mkdir(parents=True, exist_ok=True)
@@ -167,6 +213,15 @@ def off() -> None:
     asked = permissions.get("ask", [])
     mine = f"mcp__{mcp_server.SERVER_NAME}__"
     kept = [rule for rule in asked if not str(rule).startswith(mine)]
+    hooks = data.get("hooks", {})
+    starts = hooks.get("SessionStart", [])
+    if any(_hooks_mine(e) for e in starts):
+        hooks["SessionStart"] = [e for e in starts if not _hooks_mine(e)]
+        if not hooks["SessionStart"]:
+            del hooks["SessionStart"]
+        if not hooks:
+            del data["hooks"]
+        _write(data)
     if kept != asked:
         permissions["ask"] = kept
         if not kept:

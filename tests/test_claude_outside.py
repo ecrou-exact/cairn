@@ -150,10 +150,12 @@ def test_connecting_changes_only_what_is_cairns(claude_home):
     assert "claude mcp add --scope user cairn" in connect_core.show() and not held
     connect_core.on()
     connect_core.on()  # again, after an update
-    assert connect_core.status() == {"server": True, "rules": True, "skill": True}
+    assert connect_core.status() == {"server": True, "rules": True, "skill": True, "hook": True}
     data = json.loads((home / "settings.json").read_text())
     assert data["model"] == "opus" and data["permissions"]["ask"][0] == "Bash(git push *)"
     assert "mcp__cairn__start_project" in data["permissions"]["ask"]
+    (hook,) = data["hooks"]["SessionStart"]
+    assert "claude-hook" in hook["hooks"][0]["command"]
     assert len(data["permissions"]["ask"]) == len(set(data["permissions"]["ask"]))
     assert len(list(home.glob("settings.json.cairn-*.bak"))) == 1
     connect_core.off()
@@ -194,3 +196,26 @@ def test_a_projects_tab_shows_its_claude_codes_from_any_copy(app, signed_in, tmp
     page = signed_in.get("/projects/intel?tab=claude").data.decode()
     assert "In your terminals" in page and "pid 11" in page and "pid 12" not in page
     assert "pid 12" in signed_in.get("/claude").data.decode()
+
+
+def test_the_session_start_hook(app, tmp_path):
+    import json
+
+    folder = _repo(tmp_path / "intel", URL)
+    with app.app_context():
+        projects_core.create(ProjectCreate(name="Intel", local_path=str(folder)))
+    monkeypatch_app = app
+
+    def made(*_a, **_k):
+        return monkeypatch_app
+
+    import app as package
+
+    original = package.create_app
+    package.create_app = made
+    try:
+        told = connect_core.session_context(json.dumps({"cwd": str(folder)}))
+        assert "Intel" in told and "tick_checklist" in told
+        assert connect_core.session_context(json.dumps({"cwd": str(tmp_path)})) == ""
+    finally:
+        package.create_app = original

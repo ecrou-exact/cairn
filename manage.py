@@ -147,6 +147,9 @@ def cmd_open(_: argparse.Namespace) -> int:
 
     load_dotenv(ENV_FILE)
     url = f"http://{os.environ.get('CAIRN_HOST', '127.0.0.1')}:{os.environ.get('CAIRN_PORT', '7010')}/"
+    from app.core import autostart
+
+    autostart.wake()  # stopped by hand: the menu entry starts it again
     for _attempt in range(60):
         try:
             with urllib.request.urlopen(url + "login", timeout=2):  # noqa: S310  # nosec B310
@@ -159,6 +162,23 @@ def cmd_open(_: argparse.Namespace) -> int:
         print("Cairn does not answer.")
         return 1
     return 0 if webbrowser.open(url) else 1
+
+
+def cmd_claude_hook(_: argparse.Namespace) -> int:
+    """Claude Code's SessionStart hook (D-100): in a folder of a Cairn project, Claude is told so and
+    to keep its tasks true. Silent anywhere else, and when Cairn cannot be read: never in the way."""
+    from dotenv import load_dotenv
+
+    load_dotenv(ENV_FILE)
+    try:
+        from app.features.claude import connect_core
+
+        told = connect_core.session_context(sys.stdin.read())
+    except Exception:  # a hook never stops Claude Code
+        return 0
+    if told:
+        print(told)
+    return 0
 
 
 def cmd_autostart(args: argparse.Namespace) -> int:
@@ -243,6 +263,9 @@ def main() -> int:
     sub.add_parser("mcp", help="Cairn's MCP server over stdio (started by Claude Code)").set_defaults(
         func=cmd_mcp
     )
+    sub.add_parser(
+        "claude-hook", help="Claude Code's session start hook (used by claude-connect)"
+    ).set_defaults(func=cmd_claude_hook)
     connect = sub.add_parser("claude-connect", help="Cairn's tools in every Claude Code of this machine")
     connect.add_argument("action", choices=("show", "on", "off", "status"))
     connect.set_defaults(func=cmd_claude_connect)

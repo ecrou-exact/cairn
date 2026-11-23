@@ -33,7 +33,7 @@ Open the URL, create the owner account, then turn on two-factor sign-in under **
 | `python manage.py start` | Development server with auto-reload |
 | `python manage.py serve` | Production server (gunicorn on Linux/macOS, waitress on Windows) |
 | `python manage.py open` | Open Cairn in the browser once it answers |
-| `python manage.py autostart on` | Start the server and the worker with your session and open the page (Linux; `off`, `status`) |
+| `python manage.py autostart on` | Start the server and the worker with your session, and put Cairn in the applications menu: a click opens the page (Linux; `off`, `status`) |
 | `python manage.py claude-connect on` | Cairn's tools in every Claude Code of the machine, to start a project from any folder (`show` first, `off`, `status`) |
 | `python manage.py worker` | Background job worker (one per SQLite database) |
 | `python manage.py roadmap [file]` | Import a plan; without a file, Cairn's own roadmap (`docs/roadmap.json`) |
