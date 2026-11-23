@@ -287,6 +287,7 @@ def command(
     mcp: Path | None = None,
     settings: str | None = None,
     skills: Path | None = None,
+    add_dir: Path | None = None,
 ) -> list[str]:
     """The argv Claude Code is started with. The first message comes right after the
     executable: `--mcp-config` and `--allowedTools` take several values and would swallow
@@ -298,6 +299,8 @@ def command(
     argv += ["--resume" if resume else "--session-id", str(cli_session_id)]
     if rules is not None:
         argv += ["--append-system-prompt-file", str(rules)]
+    if add_dir is not None:  # takes several values: never before the first message
+        argv += ["--add-dir", str(add_dir)]
     if skills is not None:
         argv += ["--plugin-dir", str(skills)]
     if settings is not None:
@@ -512,9 +515,18 @@ def resume(data: ResumeStart) -> ClaudeSession:
     )
 
 
-def open_claude(folder: Path, title: str, *, preset: str, resume: uuid.UUID | None = None) -> ClaudeSession:
+def open_claude(
+    folder: Path,
+    title: str,
+    *,
+    preset: str,
+    resume: uuid.UUID | None = None,
+    add_dir: Path | None = None,
+) -> ClaudeSession:
     """Claude Code in a folder of Cairn's own, free of any project."""
-    return _launch(None, None, folder, None, title, cols=120, rows=32, preset=preset, resume=resume)
+    return _launch(
+        None, None, folder, None, title, cols=120, rows=32, preset=preset, resume=resume, add_dir=add_dir
+    )
 
 
 def _launch(
@@ -528,6 +540,7 @@ def _launch(
     rows: int,
     preset: str,
     resume: uuid.UUID | None = None,
+    add_dir: Path | None = None,
 ) -> ClaudeSession:
     executable = connections_core.claude_code_path()
     if not executable:
@@ -550,6 +563,7 @@ def _launch(
             mcp=mcp,
             settings=limits_core.settings_json(),
             skills=skills,
+            add_dir=add_dir,
         )
         return argv, (rules, mcp, *([skills] if skills else []))
 

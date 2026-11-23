@@ -9,6 +9,7 @@ from flask import jsonify, request
 
 from app.api import ApiError, api_blueprint, body
 from app.core.schema.claude import (
+    CurrentPage,
     NewProjectStart,
     OutsideStop,
     ResumeStart,
@@ -54,6 +55,32 @@ def start_session():
 def live():
     """What every running Claude is doing, as a graph; `session`: one of them, in full."""
     return jsonify(live_core.graph(request.args.get("session") or None))
+
+
+@claude_api.get("/claude/main")
+def main_session():
+    """Cairn's own Claude, if it runs."""
+    session = main_core.running()
+    return jsonify(session=claude_core.describe(session) if session else None)
+
+
+@claude_api.post("/claude/main/restart")
+def restart_main():
+    """Close Cairn's own Claude and open it again on its conversation."""
+    return jsonify(session=claude_core.describe(_guard(main_core.restart_main)))
+
+
+@claude_api.post("/claude/main/stop")
+def stop_main():
+    _guard(main_core.stop_main)
+    return jsonify(session=None)
+
+
+@claude_api.post("/claude/page")
+def current_page():
+    """The page in front of the owner (what "here" means to Cairn's Claude)."""
+    main_core.set_page(body(CurrentPage))
+    return jsonify(ok=True)
 
 
 @claude_api.post("/claude/main")

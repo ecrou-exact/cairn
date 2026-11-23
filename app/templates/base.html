@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="{{ current_user.theme if current_user.is_authenticated else 'auto' }}"{% if request.cookies.get('cn_nav') == 'collapsed' %} class="cn-nav-collapsed"{% endif %}>
+<html lang="en" data-theme="{{ current_user.theme if current_user.is_authenticated else 'auto' }}"{% set folded = request.cookies.get('cn_nav') == 'collapsed' %}{% set docked = dock and dock_open() %}{% if folded or docked %} class="{{ 'cn-nav-collapsed' if folded }}{{ ' cn-dock-open' if docked }}"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/live-status.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/dialog.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components/palette.css') }}">
+  {% if dock %}<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/dock.css') }}">{% endif %}
   {% block styles %}{% endblock %}
 </head>
 <body>

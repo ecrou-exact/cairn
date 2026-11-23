@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en" data-theme="{{ current_user.theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{{ session.title }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/core/tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/core/themes.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/xterm/xterm.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/claude/dock.css') }}">
+</head>
+<body class="cn-panel-page">
+  <cn-terminal session="{{ session.id }}" nonce="{{ nonce }}" aria-label="Claude Code terminal"></cn-terminal>
+  <script type="module" src="{{ url_for('static', filename='js/claude/panel.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/components/cn-terminal.js') }}"></script>
+</body>
+</html>

@@ -82,6 +82,7 @@
 </div>
 <cn-palette></cn-palette>
 <cn-claude-launch></cn-claude-launch>
+{% if dock %}<cn-claude-dock page="{{ url_for('claude.index') }}"></cn-claude-dock>{% endif %}
 {% endblock %}
 
 {% block shell_scripts %}
@@ -89,6 +90,7 @@
 <script type="module" src="{{ url_for('static', filename='js/components/cn-confirm.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-palette.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-claude-launch.js') }}"></script>
+{% if dock %}<script type="module" src="{{ url_for('static', filename='js/components/cn-claude-dock.js') }}"></script>{% endif %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-picker.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-timer.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/core/shortcuts.js') }}"></script>

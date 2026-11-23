@@ -57,11 +57,13 @@ class CnTerminal extends HTMLElement {
   #fit = null;
   #notice = null;
   #source = null;
+  #last = 0; // the last output received
   #queue = '';
   #sending = Promise.resolve();
   #timer = 0;
   #resizeTimer = 0;
   #ended = false;
+  #redrawn = false;
 
   connectedCallback() {
     if (this.#term) return;
@@ -99,13 +101,37 @@ class CnTerminal extends HTMLElement {
     this.#fitNow();
     new ResizeObserver(() => this.#fitNow()).observe(this);
 
-    this.#source = new EventSource(`/claude/sessions/${id}/stream?after=0`);
-    this.#source.addEventListener('message', (event) => {
-      const { t } = JSON.parse(event.data);
-      if (t) this.#term.write(t);
-    });
-    this.#source.addEventListener('end', () => this.#end());
+    // Only while in view: a browser allows six connections to Cairn, over all its tabs.
+    document.addEventListener('visibilitychange', () => this.#listen(id));
+    this.#listen(id);
     this.#term.focus();
+  }
+
+  /** Once, after the kept output: it was drawn at other sizes, so the program draws again (a
+   *  terminal program does when its size changes: one row less, then back). */
+  #redraw(id) {
+    if (this.#redrawn || this.#ended) return;
+    this.#redrawn = true;
+    const { cols, rows } = this.#term;
+    const size = (height) => api(`/claude/sessions/${id}/resize`, { method: 'POST', body: { cols, rows: height } });
+    size(Math.max(5, rows - 1))
+      .then(() => new Promise((done) => { setTimeout(done, 150); }))
+      .then(() => size(this.#term.rows))
+      .catch(() => {});
+  }
+
+  #listen(id) {
+    this.#source?.close();
+    this.#source = null;
+    if (document.hidden || this.#ended) return;
+    const source = new EventSource(`/claude/sessions/${id}/stream?after=${this.#last}`);
+    source.addEventListener('message', (event) => {
+      this.#last = Number(event.lastEventId) || this.#last;
+      const { t } = JSON.parse(event.data);
+      if (t) this.#term.write(t, () => this.#redraw(id));
+    });
+    source.addEventListener('end', () => this.#end());
+    this.#source = source;
   }
 
   disconnectedCallback() {

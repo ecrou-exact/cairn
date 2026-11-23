@@ -31,7 +31,7 @@ def fake_claude(app, monkeypatch, tmp_path):
     monkeypatch.setattr(
         terminal_core,
         "command",
-        lambda exe, sid, first, rules=None, resume=False, mcp=None, settings=None, skills=None: [
+        lambda exe, sid, first, rules=None, resume=False, **_: [
             exe,
             "-c",
             FAKE,
@@ -603,3 +603,50 @@ def test_main_claude_page(signed_in, fake_claude):
     assert "/claude/sessions/" in signed_in.post("/claude/main").location
     page = signed_in.get("/claude").data
     assert b"every project" in page and b"Open Cairn" not in page
+
+
+def test_dock_on_every_page(signed_in, fake_claude):
+    page = signed_in.get("/tasks").data
+    assert b"<cn-claude-dock" in page and b"cn-dock-open" in page  # opens with Cairn by default
+    signed_in.set_cookie("cn_dock", "closed")
+    assert b'class="cn-dock-open"' not in signed_in.get("/tasks").data
+    assert signed_in.get("/api/claude/main").json["session"] is None
+    first = signed_in.post("/api/claude/main").json["session"]["id"]
+    panel = signed_in.get(f"/claude/sessions/{first}/panel")
+    csp = panel.headers["Content-Security-Policy"]
+    assert "frame-ancestors 'self'" in csp and panel.headers["X-Frame-Options"] == "SAMEORIGIN"
+    assert "script-src 'self'" in csp and b"<cn-terminal" in panel.data
+    full = signed_in.get(f"/claude/sessions/{first}")
+    assert b"<cn-claude-dock" not in full.data  # its terminal is the page
+    assert "frame-ancestors 'none'" in full.headers["Content-Security-Policy"]
+    again = signed_in.post("/api/claude/main/restart").json["session"]["id"]
+    assert again != first
+    assert signed_in.post("/api/claude/main/stop").json["session"] is None
+    deadline = time.monotonic() + 10
+    while signed_in.get("/api/claude/main").json["session"] and time.monotonic() < deadline:
+        time.sleep(0.1)
+    assert signed_in.get("/api/claude/main").json["session"] is None
+
+
+def test_claude_knows_the_page_in_front(app, signed_in):
+    with app.app_context():
+        assert main_core.current_page() == {"page": None}
+    project = signed_in.post("/api/projects", json={"name": "Pandora"}).json["project"]
+    task = signed_in.post("/api/tasks", json={"title": "Read it", "project_id": project["id"]}).json["task"]
+    for path, key, name in (
+        (f"/projects/{project['slug']}?tab=plan", "project", "Pandora"),
+        (f"/tasks/{task['id']}", "task", "Read it"),
+    ):
+        sent = signed_in.post("/api/claude/page", json={"path": path, "title": "x"})
+        assert sent.status_code == 200
+        with app.app_context():
+            found = main_core.current_page()
+        assert found["page"] == path and name in found[key].values()
+    for bad in ("https://evil.example", "//evil.example", ""):
+        assert signed_in.post("/api/claude/page", json={"path": bad}).status_code == 422
+
+
+def test_main_claude_may_work_on_cairn(ctx, tmp_path):
+    assert str(main_core.code_folder()) in main_core.rules(str(main_core.folder()))
+    argv = terminal_core.command("claude", uuid.uuid4(), None, add_dir=tmp_path, mcp=tmp_path / "m")
+    assert argv[argv.index("--add-dir") + 1] == str(tmp_path) and argv[-2] == "--allowedTools"

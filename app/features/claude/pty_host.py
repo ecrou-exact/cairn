@@ -77,4 +77,6 @@ class Pty:
                     os.killpg(self.pid, number)
                 except ProcessLookupError:
                     return
+                except PermissionError:
+                    pass  # macOS, for a program that has just ended: its reader is about to see it
             self._reaped.wait(STOP_GRACE)

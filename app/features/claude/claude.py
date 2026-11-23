@@ -23,7 +23,7 @@ from flask import (
 )
 
 from app.core.schema.claude import OutsideStop, ResumeStart, SessionLink, SessionStart
-from app.core.security.headers import csp_terminal
+from app.core.security.headers import allow_own_frame, csp_terminal
 from app.core.utils.events import latest_event_id
 from app.core.utils.web import FormErrors, local_path, validate
 from app.features.claude import claude_core, main_core, terminal_core
@@ -81,11 +81,24 @@ def session(session_id: uuid.UUID):
     page = render_template(
         "claude/session.html",
         session=claude_core.describe(row),
+        **({"dock": False} if main_core.is_main(row) else {}),  # already on the page
         targets=claude_core.targets(),
         nonce=nonce,
         events_after=latest_event_id(),
     )
     return with_terminal_csp(make_response(page), nonce)
+
+
+@claude.get("/claude/sessions/<uuid:session_id>/panel")
+def panel(session_id: uuid.UUID):
+    """A session's terminal alone, for the dock's frame (D-063)."""
+    try:
+        row = terminal_core.get(session_id)
+    except terminal_core.TerminalError:
+        abort(404)
+    nonce = secrets.token_urlsafe(16)
+    page = make_response(render_template("claude/panel.html", session=row, nonce=nonce))
+    return allow_own_frame(with_terminal_csp(page, nonce))
 
 
 def _stream(session_id: uuid.UUID, after: int, lifetime: float):

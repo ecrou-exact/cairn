@@ -374,3 +374,11 @@
 
 ## D-062 · 2026-11-23 · accepted — Cairn starts with the session (Linux)
 - Owner request: Cairn opens every morning. `manage.py autostart on` writes two systemd user services (`cairn-web` running `serve`, `cairn-worker`), with the PATH of the shell that ran it (Claude Code, node, docker are found), and an autostart entry that opens the page once Cairn answers. No root; `off` removes everything. They follow the graphical session: the master key is in its keyring. `serve`, not `start`: no auto-reload, so a file change does not close the terminals.
+
+## D-063 · 2026-11-23 · accepted — The main Claude beside every page
+- Owner request: the Claude that opens with Cairn is the most important one: a panel beside the pages, opened, folded, closed and relaunched at will, told to act on the page in front, on everything, or on Cairn itself.
+- **Dock** (`<cn-claude-dock>` in the shell, `Alt+J`): open or folded (cookie, read by the server; by default as `claude.main_autostart`), fold keeps Claude running, stop closes it, relaunch resumes its conversation. Not on the main session's own page: its terminal is there.
+- **In a frame** (`/claude/sessions/<id>/panel`): a terminal needs a looser style policy, which stays in that page, frameable by Cairn's own pages only; every other page keeps the strict policy and cannot be framed.
+- **The page in front:** the dock tells it (`/api/claude/page`), `current_page` gives it to Claude with the project, task or resource it shows.
+- **Cairn itself:** `--add-dir` on Cairn's code, with rules: CLAUDE.md first, a branch in a worktree, the diff shown, the owner's go before merging, never a restart by itself.
+- A terminal's stream is open only while its tab is in view (six connections per browser).

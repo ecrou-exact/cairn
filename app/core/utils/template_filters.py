@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from flask import Flask
+from flask_login import current_user
 
 
 def pretty_json(value: Any) -> str:
@@ -52,6 +53,7 @@ def host(url: str | None) -> str:
 
 
 def register_template_filters(app: Flask) -> None:
+    from app.features.claude import main_core
     from app.features.comments import comments_core
     from app.features.resources import resources_core
     from app.features.tasks import recurrence_core, timer_core, workflow
@@ -72,3 +74,8 @@ def register_template_filters(app: Flask) -> None:
     app.add_template_filter(lambda value: (value, value), "pair")
     app.add_template_test(lambda condition: condition.is_waiting(date.today()), "is_waiting_today")
     app.add_template_global(timer_core.running, "running_timer")
+    app.add_template_global(main_core.dock_open, "dock_open")
+
+    @app.context_processor
+    def _dock() -> dict[str, bool]:
+        return {"dock": current_user.is_authenticated}  # the main Claude beside the page (D-063)

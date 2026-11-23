@@ -136,7 +136,7 @@ def test_overview_shows_what_is_alive(ctx, machine):
 
 def test_a_session_in_full(ctx, machine):
     cards = {n["id"]: n["data"] for n in live_core.graph("k")["nodes"]}
-    assert cards["k/file//" + machine["cwd"].lstrip("/") + "/a.py"]["label"] == "a.py"
+    assert cards["k/file/" + machine["cwd"] + "/a.py"]["label"] == "a.py"
     assert cards["k/server/cairn"]["state"] == "1×"
     assert cards["k"]["drill"] is None
     assert live_core.graph("other")["nodes"] == []

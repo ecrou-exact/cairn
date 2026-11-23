@@ -36,6 +36,16 @@ def csp_terminal(nonce: str) -> str:
     return CSP_GRAPH.replace("style-src 'self';", f"style-src 'self'; style-src-elem 'self' 'nonce-{nonce}';")
 
 
+def allow_own_frame(response: Response) -> Response:
+    """The dock's terminal (D-063) is shown in a frame, by Cairn's own pages only."""
+    csp = response.headers["Content-Security-Policy"]
+    response.headers["Content-Security-Policy"] = csp.replace(
+        "frame-ancestors 'none'", "frame-ancestors 'self'"
+    )
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    return response
+
+
 TRUSTED_TYPES_REPORT_ONLY = "require-trusted-types-for 'script'; trusted-types vitrine cairn"
 
 HEADERS = {

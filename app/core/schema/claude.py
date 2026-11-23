@@ -70,6 +70,13 @@ class SessionLink(Strict):
         return self
 
 
+class CurrentPage(Strict):
+    """The page in front of the owner, told by the dock."""
+
+    path: Annotated[str, Field(min_length=1, max_length=500, pattern=r"^/([^/].*)?$")]
+    title: Annotated[str, Field(max_length=300)] = ""
+
+
 class OutsideStop(Strict):
     """Close a Claude Code running outside Cairn: its pid and start time, so that a reused pid
     is never closed."""

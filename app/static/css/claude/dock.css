@@ -1,0 +1,24 @@
+/* Cairn's main Claude beside every page (D-063). */
+:root { --cn-dock-width: clamp(24rem, 32vw, 40rem); }
+.cn-dock { position: fixed; z-index: 30; top: var(--cn-header-height); right: 0; bottom: 0; width: var(--cn-dock-width); display: flex; flex-direction: column; background: var(--cn-chrome-bg); color: var(--cn-chrome-text); border-left: var(--cn-border-width) solid var(--cn-chrome-border); }
+.cn-dock[hidden], .cn-dock-tab[hidden] { display: none; }
+.cn-dock-head { display: flex; align-items: center; gap: var(--cn-space-1); padding: var(--cn-space-2) var(--cn-space-3); border-bottom: var(--cn-border-width) solid var(--cn-chrome-border); }
+.cn-dock-head strong { flex: 1; font-size: var(--cn-text-sm); }
+.cn-dock-head .cn-icon-button { color: var(--cn-chrome-muted); }
+.cn-dock-head .cn-icon-button:hover { color: var(--cn-chrome-text); background: color-mix(in srgb, var(--cn-chrome-text) 12%, transparent); }
+.cn-dock-head [hidden] { display: none; }
+.cn-dock-note { margin: 0; padding: var(--cn-space-2) var(--cn-space-3); font-size: var(--cn-text-sm); color: var(--cn-mark); }
+.cn-dock-body { flex: 1; min-height: 0; display: grid; }
+.cn-dock-frame { width: 100%; height: 100%; border: 0; background: var(--cn-chrome-bg); }
+.cn-dock-empty { place-self: center; display: grid; justify-items: center; gap: var(--cn-space-3); }
+.cn-dock-empty p { margin: 0; color: var(--cn-chrome-muted); }
+.cn-dock-tab { position: fixed; z-index: 30; right: 0; top: 50%; transform: translateY(-50%); display: grid; justify-items: center; gap: var(--cn-space-2); padding: var(--cn-space-3) var(--cn-space-2); border: 0; border-radius: var(--cn-radius-lg) 0 0 var(--cn-radius-lg); background: var(--cn-mark); color: var(--cn-on-accent); font-size: var(--cn-text-xs); font-weight: var(--cn-weight-strong); box-shadow: var(--cn-slab-shadow); }
+.cn-dock-tab span { writing-mode: vertical-rl; }
+@media (min-width: 64rem) { .cn-dock-open .cn-main { margin-right: var(--cn-dock-width); } }
+@media (max-width: 48rem) { .cn-dock { width: 100%; } }
+
+/* The terminal's own page, in the frame */
+.cn-panel-page { margin: 0; height: 100vh; overflow: hidden; background: var(--cn-chrome-bg); }
+.cn-panel-page cn-terminal { display: block; height: 100vh; padding: var(--cn-space-2); }
+.cn-panel-page .cn-terminal-screen { width: 100%; height: 100%; }
+.cn-panel-page .cn-terminal-notice { position: fixed; inset: auto 0 0; margin: 0; padding: var(--cn-space-2); background: var(--cn-chrome-bg); color: var(--cn-mark); }
