@@ -3,7 +3,7 @@
     <li class="cn-instance is-running">
       <span class="cn-instance-dot" aria-hidden="true"></span>
       <div class="cn-instance-body">
-        <p class="cn-instance-name">{{ item["copy"] }}{% if item.branch %} <span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ item.branch }}</span>{% endif %} <span class="cn-muted">{{ item.where }}{% if item.since %} · since <time data-instance-since="{{ item.since }}"></time>{% endif %}</span></p>
+        <p class="cn-instance-name">{{ item["copy"] }}{% if item.branch %} <span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ item.branch }}</span>{% endif %} <span class="cn-muted">{{ item.where }}{% if item.since %} · since <time data-since="{{ item.since }}"></time>{% endif %}</span></p>
         <p class="cn-instance-command"><code>{{ item.label }}</code> <span class="cn-muted">{{ item.folder }}</span></p>
         <p class="cn-instance-ports">{% for port in item.ports %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> localhost:{{ port }}</a>{% endfor %}</p>
       </div>

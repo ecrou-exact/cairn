@@ -85,8 +85,8 @@ def outside() -> list[dict[str, Any]]:
 
 
 def overview(*, project_id: uuid.UUID | None = None, task_id: uuid.UUID | None = None) -> dict[str, Any]:
-    """Cairn's sessions (of a project or a task, or all) and, for the full view, the ones
-    running outside Cairn."""
+    """Cairn's sessions (of a project or a task, or all) and the ones running outside Cairn: all
+    of them, or the project's."""
     rows = terminal_core.sessions(project_id=project_id, task_id=task_id)
     mine = [describe(row) for row in rows]
     instances = [
@@ -94,7 +94,12 @@ def overview(*, project_id: uuid.UUID | None = None, task_id: uuid.UUID | None =
         for row in terminal_core.sessions(kind="instance", project_id=project_id, limit=30)
         if terminal_core.is_running(row.id)
     ]
-    found = [] if project_id or task_id else outside()
+    if task_id:
+        found = []
+    elif project_id:  # the project's own Claude Codes of the owner's terminals, whatever the copy (D-082)
+        found = [s for s in outside() if s["project"] and s["project"]["id"] == str(project_id)]
+    else:
+        found = outside()
     return {
         "sessions": mine,
         "outside": found,

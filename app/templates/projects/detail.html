@@ -129,6 +129,10 @@
   {% if project.local_path %}{{ start_form(project=project, label="Open Claude in this project") }}
   {% else %}<p class="cn-muted">Claude Code opens in the project's folder: <a href="{{ url_for('projects.edit', slug=project.slug) }}">set its local folder</a> first.</p>{% endif %}
   {% if claude.sessions %}<ul class="cn-claude-cards">{% for s in claude.sessions %}{{ session_card(s) }}{% endfor %}</ul>{% endif %}
+  {% if claude.outside %}
+  <h3 class="cn-instances-outside">In your terminals <span class="cn-muted">Claude Code started outside Cairn, in a copy of this project</span></h3>
+  <ul class="cn-claude-cards">{% for s in claude.outside %}{{ session_card(s, outside=True) }}{% endfor %}</ul>
+  {% endif %}
   {% if worktrees %}
   <h3 class="cn-instances-outside">Worktrees <span class="cn-muted">a folder and a branch of their own</span></h3>
   <ul class="cn-instances">

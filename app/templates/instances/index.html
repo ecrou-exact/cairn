@@ -3,7 +3,7 @@
 {% from "macros/instances.html" import outside_row %}
 {% block title %}Instances{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">{% endblock %}
-{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/instances/machine.js') }}"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-refresh.js') }}"></script>{% endblock %}
 {% block content %}
 {% set here = url_for("instances.index", q=q or none) %}
 <header class="cn-page-header">
@@ -12,7 +12,7 @@
   <p>The servers of every project, started from Cairn, your terminal, Claude or Docker.</p>
 </header>
 <form class="cn-instances-search" method="get" role="search"><label class="visually-hidden" for="q">Search</label><input class="form-control" type="search" id="q" name="q" value="{{ q }}" maxlength="100" placeholder="Search a project, a port, a branch"><button class="btn btn-outline-secondary" type="submit">Search</button></form>
-<div data-machine>
+<cn-refresh id="machine" every="8000">
 {% for g in found.groups %}{% set project = g.project %}
 <section class="cn-panel cn-instances-panel" aria-label="{{ project.name }}">
   <header class="cn-home-head"><h2><a href="{{ url_for('projects.detail', slug=project.slug) }}">{{ project_mark(project) }} {{ project.name }}</a></h2>
@@ -35,5 +35,5 @@
   <ul class="cn-instances">{% for item in found.loose %}{{ outside_row(item, none, here) }}{% endfor %}</ul>
 </section>{% endif %}
 {% if not found.total %}<p class="cn-muted">{{ "Nothing running matches." if q else "Nothing is running." }}</p>{% endif %}
-</div>
+</cn-refresh>
 {% endblock %}

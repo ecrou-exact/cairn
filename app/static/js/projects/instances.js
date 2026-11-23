@@ -10,8 +10,8 @@ const EVERY = 5000;
 const notice = document.getElementById('instances-changed');
 let shown = null;
 
-for (const time of document.querySelectorAll('[data-instance-since]')) {
-  const date = new Date(Number(time.dataset.instanceSince) * 1000);
+for (const time of document.querySelectorAll('[data-instance-since], [data-since]')) {
+  const date = new Date(Number(time.dataset.instanceSince || time.dataset.since) * 1000);
   time.dateTime = date.toISOString();
   time.textContent = date.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
 }

@@ -177,3 +177,20 @@ def test_nothing_changes_when_something_is_in_the_way(claude_home):
     with pytest.raises(connect_core.ConnectError):
         connect_core.on()
     assert held["cairn"] == "someone else's" and not (home / "settings.json").exists()
+
+
+def test_a_projects_tab_shows_its_claude_codes_from_any_copy(app, signed_in, tmp_path, monkeypatch):
+    main = _repo(tmp_path / "intel", URL)
+    clone = _repo(tmp_path / "intel-fix", "https://github.com/flow/intel")
+    other = _repo(tmp_path / "else", "https://github.com/x/else")
+    with app.app_context():
+        projects_core.create(ProjectCreate(name="Intel", local_path=str(main)))
+    usage = transcript_core.Usage(title="Fixing the tree").as_dict()
+    running = [
+        {"pid": n, "cwd": str(f), "usage": usage, "host": "a terminal", "cli_session_id": None}
+        for n, f in ((11, clone), (12, other))
+    ]
+    monkeypatch.setattr(transcript_core, "outside_sessions", lambda known: [dict(r) for r in running])
+    page = signed_in.get("/projects/intel?tab=claude").data.decode()
+    assert "In your terminals" in page and "pid 11" in page and "pid 12" not in page
+    assert "pid 12" in signed_in.get("/claude").data.decode()

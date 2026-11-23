@@ -107,6 +107,7 @@ Goal: owner approves architecture + design direction.
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
 - [x] "Start a project on Cairn" from any Claude Code, `/cairn` with its arguments (D-080)
 - [x] A project's copies with their pull requests; to-do lists, issues, skills and commands brought in (D-081)
+- [x] Outside Cairn, in the project: its Claude Codes in its Claude tab, its copies and pull requests kept up to date (D-082)
 - [ ] Two-way sync (owner request 2026-11-23): what is done outside Cairn shows up live; Claude Code in the owner's terminal keeps Cairn up to date
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS
