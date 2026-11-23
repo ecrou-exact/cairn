@@ -140,3 +140,14 @@ def test_old_logs_go(ctx):
         os.utime(path, (0, 0))
     assert survivor.prune({kept}, 10) == 1
     assert survivor.log_path(kept).exists() and not survivor.log_path(old).exists()
+
+
+def test_a_long_runtime_folder_is_not_used(instance, tmp_path, monkeypatch):
+    long = tmp_path / ("x" * 90)
+    long.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(long))
+    session = instances_core.start(instance.id)
+    sock = survivor._socket_path(session.id)
+    assert sock.exists() and not sock.is_relative_to(long) and len(str(sock)) <= survivor.SOCKET_MAX
+    terminal_core.write(session.id, "hello\r")
+    assert _until(lambda: "GOT hello" in _seen(session.id))

@@ -69,11 +69,16 @@ def main() -> int:
     except Exception as exc:
         write_state(state, pid=os.getpid(), ended=True, exit_code=127, error=str(exc)[:300])
         return 1
-    sock_path.unlink(missing_ok=True)
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    server.bind(str(sock_path))
-    sock_path.chmod(0o600)
-    server.listen(4)
+    try:
+        sock_path.unlink(missing_ok=True)
+        server.bind(str(sock_path))
+        sock_path.chmod(0o600)
+        server.listen(4)
+    except OSError as exc:  # told, instead of a program nobody can reach
+        child.terminate(force=True)
+        write_state(state, pid=os.getpid(), ended=True, exit_code=126, error=f"its socket: {exc}"[:300])
+        return 1
     write_state(state, pid=os.getpid(), child=child.pid, ended=False)
 
     clients: dict[int, tuple[socket.socket, bytes]] = {}

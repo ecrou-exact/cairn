@@ -25,6 +25,7 @@ from app.features.instances import runner
 
 START_WAIT = 8.0
 POLL = 0.25
+SOCKET_MAX = 100  # bytes: 104 on macOS, 108 on Linux
 TAIL = 512 * 1024
 STOP_WAIT = runner.GRACE + 3.0
 
@@ -49,13 +50,15 @@ def _state_path(session_id: uuid.UUID) -> Path:
 
 def _socket_path(session_id: uuid.UUID) -> Path:
     """In a short, private folder: a Unix socket's path is limited to about 100 characters."""
-    base = os.environ.get("XDG_RUNTIME_DIR")
-    place = Path(base) / "cairn" if base else Path(tempfile.gettempdir()) / f"cairn-{os.getuid()}"
+    base, name = os.environ.get("XDG_RUNTIME_DIR"), f"{session_id.hex[:20]}.sock"
+    places = [Path(base) / "cairn"] if base else []
+    places += [Path(top) / f"cairn-{os.getuid()}" for top in (tempfile.gettempdir(), "/tmp")]  # noqa: S108  # nosec B108
+    place = next((p for p in places if len(os.fsencode(p / name)) <= SOCKET_MAX), places[-1])
     place.mkdir(mode=0o700, exist_ok=True)
     stat = place.lstat()
     if stat.st_uid != os.getuid() or stat.st_mode & 0o077 or place.is_symlink():
         raise OSError(f"{place} is not private")
-    return place / f"{session_id.hex[:20]}.sock"
+    return place / name
 
 
 def _read_state(path: Path) -> dict[str, Any]:
