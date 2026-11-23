@@ -1,5 +1,5 @@
 {% extends "layout/shell.html" %}
-{% from "macros/claude.html" import session_card, instance_card, usage_left %}
+{% from "macros/claude.html" import session_card, instance_card, usage_left, views %}
 {% block title %}Claude{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">{% endblock %}
@@ -21,6 +21,8 @@
     <div><dt>Outside</dt><dd>{{ overview.outside | length }}</dd></div>
   </dl>
 </header>
+
+{{ views("cards") }}
 
 <div class="cn-live-notice" id="claude-changed" hidden role="status"><span>Sessions started or ended.</span> <a href="{{ url_for('claude.index') }}">Reload</a></div>
 

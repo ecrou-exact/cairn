@@ -1,0 +1,21 @@
+/* The live graph of the Claude sessions (D-059), on the plan graph's stage and cards. */
+.cn-live-graph { height: calc(100vh - var(--cn-header-height) - 18rem); }
+.cn-live-graph.is-stale .cn-graph-canvas { opacity: 0.5; }
+.cn-live-card.is-quiet { opacity: 0.8; }
+.cn-live-card.is-live { box-shadow: inset 0 0 0 2px var(--cn-project); }
+.cn-live-session .cn-gcard-title { font-size: 15px; }
+.cn-live-pulse { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--cn-mark); animation: cn-live-pulse 1.4s ease-in-out infinite; }
+@keyframes cn-live-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cn-mark) 55%, transparent); }
+  100% { box-shadow: 0 0 0 7px transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .cn-live-pulse { animation: none; } }
+.cn-live-graph .cn-facts dd { overflow-wrap: anywhere; }
+.cn-live-prompt { margin: 0; font-size: var(--cn-text-sm); white-space: pre-line; overflow-wrap: anywhere; }
+.cn-live-steps li { align-items: baseline; }
+.cn-live-steps li span { min-width: 0; overflow-wrap: anywhere; }
+.cn-live-steps time { flex: none; font-family: var(--cn-font-mono); font-size: var(--cn-text-xs); color: var(--cn-text-faint); }
+.cn-live-steps .is-running span { color: var(--cn-mark); font-weight: var(--cn-weight-medium); }
+.cn-live-steps .is-failed span { color: var(--cn-danger); }
+
+.cn-live-card { grid-template-columns: minmax(0, 1fr); }

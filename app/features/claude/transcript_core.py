@@ -57,16 +57,33 @@ def registry_root() -> Path:
     return Path.home() / ".claude" / "sessions"
 
 
-def registered(process: psutil.Process) -> str | None:
-    """The conversation Claude Code registered for a process. A file left by a dead process
-    whose pid was reused is told apart by its start time."""
+def _registry(process: psutil.Process) -> dict:
+    """Claude Code's entry for a process, or {}. A file left by a dead process whose pid was
+    reused is told apart by its start time."""
     try:
         entry = json.loads((registry_root() / f"{process.pid}.json").read_text(encoding="utf-8"))
         if process.create_time() > float(entry["startedAt"]) / 1000 + 5:
-            return None
-        return str(uuid.UUID(entry["sessionId"]))
-    except (OSError, ValueError, KeyError, TypeError, AttributeError, psutil.Error):
+            return {}
+        return entry
+    except (OSError, ValueError, KeyError, TypeError, psutil.Error):
+        return {}
+
+
+def registered(process: psutil.Process) -> str | None:
+    """The conversation Claude Code registered for a process."""
+    try:
+        return str(uuid.UUID(_registry(process)["sessionId"]))
+    except (ValueError, KeyError, TypeError, AttributeError):
         return None
+
+
+def registered_status(pid: int | None) -> str | None:
+    """`busy`, `idle`…: what Claude Code says it is doing; None when it says nothing."""
+    try:
+        status = _registry(psutil.Process(pid)).get("status") if pid else None
+    except psutil.Error:
+        return None
+    return status if isinstance(status, str) else None
 
 
 def own_ancestors() -> set[int]:
@@ -103,7 +120,7 @@ def _window(model: str, used: int) -> int:
     return max(size, NEXT_WINDOW) if used > size else size
 
 
-def _tail_lines(path: Path) -> list[str]:
+def tail_lines(path: Path) -> list[str]:
     with path.open("rb") as handle:
         handle.seek(0, 2)
         end = handle.tell()
@@ -250,7 +267,7 @@ def host_of(pid: int) -> str:
 def read_usage(path: Path, cwd: str = "") -> Usage:
     """Context use, model and title of one transcript; an empty Usage when it is missing."""
     try:
-        lines = _tail_lines(path)
+        lines = tail_lines(path)
         modified = path.stat().st_mtime
     except OSError:
         return Usage()

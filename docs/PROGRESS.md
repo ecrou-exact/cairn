@@ -94,7 +94,7 @@ Goal: owner approves architecture + design direction.
 - [x] Terminal fixes: every key reaches Claude, closing never hangs on Linux / macOS, a conversation open elsewhere is moved to Cairn instead of doubled (D-055)
 - [x] Free sessions linked to a project at any time, a folder read into a new project (`update_project`), stop any Claude, account usage in the menu and on sessions (D-056)
 - [x] Claude skills in the library, given to the sessions opened from Cairn; context gauge on the window Claude Code reports (D-058)
-- [ ] Claude live graph (owner request 2026-11-23): a panel on the Claude page showing, as a Pivotick graph, what each Claude is doing now: sessions, the agents, shells and background tasks they open, tools and files used, live
+- [x] Claude live graph: sessions, their agents, running tools, background tasks and processes, skills; one session in full with its files, commands, searches and servers since the last request (D-059)
 - [ ] More MCP tools: resources, schedule, changesets for bulk changes
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections

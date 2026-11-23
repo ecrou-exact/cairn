@@ -12,38 +12,12 @@
  *   into view, selected, with its side panel open.
  */
 
-import { Node, Pivotick } from '../../vendor/pivotick/pivotick.es.js';
+import { Pivotick } from '../../vendor/pivotick/pivotick.es.js';
 import { api, debounce } from '../core/api.js';
 import { subscribe } from '../core/events.js';
+import { CARD_H, CARD_W, applyChanges, chip, el, fact, fitCards, icon, placePeek, token, viewAt as moveView } from './stage.js';
 
 const READABLE = 0.6; // below this zoom the cards' text is too small to read
-const CARD_W = 224; // a card's size in graph units (graph_core.CARD_W / CARD_H)
-const CARD_H = 96;
-
-/** A design token's resolved colour, so the canvas follows the theme. */
-function token(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
-}
-
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined && text !== null) node.textContent = String(text);
-  return node;
-}
-
-function icon(classes) {
-  const i = el('i', classes);
-  i.setAttribute('aria-hidden', 'true');
-  return i;
-}
-
-function chip(className, iconClass, text) {
-  const span = el('span', className);
-  if (iconClass) span.append(icon(iconClass), document.createTextNode(' '));
-  span.append(document.createTextNode(text));
-  return span;
-}
 
 // -- the card ---------------------------------------------------------------------------
 
@@ -168,24 +142,12 @@ function mount(stage) {
     movePeek(event);
   }
 
-  function movePeek(event) {
-    if (peek.hidden || !event) return;
-    const box = stage.getBoundingClientRect();
-    const x = Math.min(event.clientX - box.left + 18, box.width - peek.offsetWidth - 12);
-    const y = Math.min(event.clientY - box.top + 18, box.height - peek.offsetHeight - 12);
-    peek.style.transform = `translate(${Math.max(12, x)}px, ${Math.max(12, y)}px)`;
-  }
+  const movePeek = (event) => placePeek(stage, peek, event);
 
   const hidePeek = () => { peek.hidden = true; };
 
   function open(d) {
     window.location.assign(d.drill && !d.isRoot ? d.drill : d.url);
-  }
-
-  function fact(label, value) {
-    const row = el('div');
-    row.append(el('dt', '', label), el('dd', '', value));
-    return row;
   }
 
   /** A project in the side panel: what is there, the projects around it, order it. */
@@ -762,35 +724,14 @@ function mount(stage) {
 
   // -- view ----------------------------------------------------------------------------
 
-  function viewAt(scale, x, y, smooth = true) {
-    const renderer = graph.renderer;
-    renderer.cancelDeferredFit?.(); // Pivotick's own late fit would undo this view
-    const canvasSel = renderer.getCanvasSelection();
-    const svg = canvasSel.node();
-    const Transform = renderer.getZoomTransform().constructor;
-    const target = new Transform(scale, svg.clientWidth / 2 - scale * x, svg.clientHeight / 2 - scale * y);
-    (smooth ? canvasSel.transition().duration(350) : canvasSel).call(renderer.getZoomBehavior().transform, target);
-  }
+  const viewAt = (scale, x, y, smooth = true) => moveView(graph, scale, x, y, smooth);
 
   function nowNode() {
     const ready = current.nodes.filter((n) => n.data.open && !n.data.blocked);
     return (ready.length ? ready : current.nodes).reduce((a, b) => (b.data.score > a.data.score ? b : a), current.nodes[0]);
   }
 
-  /** The whole plan in view, from the cards' own (pinned) places: Pivotick's own fit measures
-   *  the SVG, which does not see the size of HTML cards and can leave the view untouched. */
-  function fitAll(smooth = true) {
-    if (!current.nodes.length) return;
-    const svg = graph.renderer.getCanvasSelection().node();
-    const xs = current.nodes.map((n) => n.x);
-    const ys = current.nodes.map((n) => n.y);
-    const left = Math.min(...xs) - CARD_W / 2 - 48; // a card's x, y is its centre
-    const top = Math.min(...ys) - CARD_H / 2 - 48;
-    const width = Math.max(...xs) + CARD_W / 2 + 48 - left;
-    const height = Math.max(...ys) + CARD_H / 2 + 48 - top;
-    const scale = Math.min(svg.clientWidth / width, svg.clientHeight / height, 1);
-    viewAt(scale, left + width / 2, top + height / 2, smooth);
-  }
+  const fitAll = (smooth = true) => fitCards(graph, current.nodes, smooth);
 
   function openView(smooth = false) {
     if (!current.nodes.length) return;
@@ -927,21 +868,7 @@ function mount(stage) {
   /** Apply what changed since the last load without rebuilding the graph. */
   async function refresh() {
     const next = await api(`/graph?${query()}`);
-    const before = new Map(current.nodes.map((n) => [n.id, JSON.stringify([n.data, n.x, n.y])]));
-    const after = new Set(next.nodes.map((n) => n.id));
-    const edgesAfter = new Set(next.edges.map((e) => e.id));
-    const edgesBefore = new Set(current.edges.map((e) => e.id));
-    for (const edge of current.edges) if (!edgesAfter.has(edge.id)) graph.removeEdge(edge.id);
-    for (const node of current.nodes) if (!after.has(node.id)) graph.removeNode(node.id);
-    for (const node of next.nodes) {
-      if (!before.has(node.id)) graph.addNode(node);
-      else if (before.get(node.id) !== JSON.stringify([node.data, node.x, node.y])) {
-        const fresh = new Node(node.id, node.data);
-        Object.assign(fresh, { x: node.x, y: node.y, fx: node.fx, fy: node.fy });
-        graph.updateData([fresh]);
-      }
-    }
-    for (const edge of next.edges) if (!edgesBefore.has(edge.id)) graph.addEdge(edge);
+    applyChanges(graph, current, next);
     current = next;
     summary();
     drawTable();

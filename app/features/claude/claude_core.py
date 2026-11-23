@@ -62,6 +62,15 @@ def describe(session: ClaudeSession) -> dict[str, Any]:
     }
 
 
+def outside() -> list[dict[str, Any]]:
+    """The Claude Codes running outside Cairn, with the project of their folder."""
+    sessions = transcript_core.outside_sessions(terminal_core.running_pids())
+    for session in sessions:
+        project = projects_core.by_folder(session["cwd"])
+        session["project"] = _project_chip(project) if project else None
+    return sessions
+
+
 def overview(*, project_id: uuid.UUID | None = None, task_id: uuid.UUID | None = None) -> dict[str, Any]:
     """Cairn's sessions (of a project or a task, or all) and, for the full view, the ones
     running outside Cairn."""
@@ -72,16 +81,13 @@ def overview(*, project_id: uuid.UUID | None = None, task_id: uuid.UUID | None =
         for row in terminal_core.sessions(kind="instance", project_id=project_id, limit=30)
         if terminal_core.is_running(row.id)
     ]
-    outside = [] if project_id or task_id else transcript_core.outside_sessions(terminal_core.running_pids())
-    for found in outside:
-        project = projects_core.by_folder(found["cwd"])
-        found["project"] = _project_chip(project) if project else None
+    found = [] if project_id or task_id else outside()
     return {
         "sessions": mine,
-        "outside": outside,
+        "outside": found,
         "instances": instances,
         "limits": limits_core.limits(),
-        "running": sum(1 for s in mine if s["running"]) + len(outside),
+        "running": sum(1 for s in mine if s["running"]) + len(found),
     }
 
 

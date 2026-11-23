@@ -50,7 +50,7 @@
     {"key": "controls", "parent": "p5", "title": "Stop, pause / resume, new instruction mid-run, re-run with corrections", "type": "feature", "priority": "high", "estimate_hours": 8, "blocked_by": ["runner"]},
     {"key": "perms", "parent": "p5", "title": "Permission UI (can_use_tool + PreToolUse), directory allowlist, sandbox", "type": "feature", "priority": "critical", "estimate_hours": 10, "blocked_by": ["runner"]},
     {"key": "worktree", "parent": "p5", "title": "Git worktree per run and generated context files", "type": "feature", "priority": "high", "estimate_hours": 6, "blocked_by": ["runner"]},
-    {"key": "claude-graph", "parent": "p5", "title": "Claude live graph: sessions, agents, shells and tools as they run", "type": "feature", "priority": "high", "estimate_hours": 10,
+    {"key": "claude-graph", "parent": "p5", "status": "done", "title": "Claude live graph: sessions, agents, shells and tools as they run", "type": "feature", "priority": "high", "estimate_hours": 10,
      "description_md": "Owner request (2026-11-23). A panel on the Claude page showing, as a graph, concretely what is going on: each Claude session, the agents, shells and background tasks it opens, the tools and files it uses.",
      "acceptance_md": "- Live updates from the transcripts and processes, sessions outside Cairn included\n- Pivotick, in Cairn's graph look\n- A session opens its own graph; a node shows its details\n- Only facts read from Claude Code: nothing guessed"},
     {"key": "chat", "parent": "p5", "title": "Chat, accounts and models, usage dashboard, skills library", "type": "feature", "priority": "high", "estimate_hours": 16, "blocked_by": ["mcp", "runner"]},

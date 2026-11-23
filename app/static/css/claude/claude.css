@@ -66,6 +66,8 @@
 .cn-claude-start { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); margin: 0; }
 .cn-claude-ended { margin-top: var(--cn-space-5); }
 
+.cn-claude-views { display: flex; gap: var(--cn-space-2); margin-bottom: var(--cn-space-4); }
+.cn-claude-views [aria-current="page"] { background: var(--cn-accent-soft); border-color: var(--cn-accent); }
 .cn-claude-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--cn-space-2); flex: 1 0 100%; align-self: flex-end; padding-top: var(--cn-space-3); border-top: var(--cn-border-width) solid var(--cn-border); font-size: var(--cn-text-xs); }
 .cn-claude-actions:empty { display: none; }
 .cn-claude-actions form { margin: 0; }

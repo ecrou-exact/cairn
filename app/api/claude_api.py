@@ -17,7 +17,7 @@ from app.core.schema.claude import (
     TerminalInput,
     TerminalResize,
 )
-from app.features.claude import claude_core, terminal_core
+from app.features.claude import claude_core, live_core, terminal_core
 from app.features.projects import projects_core
 
 claude_api = api_blueprint("claude_api")
@@ -48,6 +48,12 @@ def list_sessions():
 def start_session():
     session = _guard(terminal_core.start, body(SessionStart))
     return jsonify(session=claude_core.describe(session)), 201
+
+
+@claude_api.get("/claude/live")
+def live():
+    """What every running Claude is doing, as a graph; `session`: one of them, in full."""
+    return jsonify(live_core.graph(request.args.get("session") or None))
 
 
 @claude_api.get("/claude/targets")

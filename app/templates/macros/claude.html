@@ -50,6 +50,7 @@
     {{ steps(u.events) }}
   </div>
   <div class="cn-claude-actions">
+  {% if outside or s.running %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.live', session=('pid-' ~ s.pid) if outside else s.id) }}"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span>Graph</span></a>{% endif %}
   {% if not outside and s.running %}
   <a class="btn btn-sm btn-outline-secondary" href="{{ s.url }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Open</span></a>
   <cn-confirm message="Stop this Claude?" detail="What it is doing stops. Its conversation stays in Claude Code and can be resumed." confirm-label="Stop it" danger>
@@ -133,4 +134,12 @@
 <p class="cn-claude-limits" data-claude-limits aria-label="Claude usage of your account">
   {% if not limits.windows %}<span class="cn-muted">Usage left: known after the first answer of a Claude opened in Cairn</span>{% endif %}
 </p>
+{%- endmacro %}
+
+{# The Claude page's two views. #}
+{% macro views(current) -%}
+<nav class="cn-claude-views" aria-label="Views">
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.index') }}" {% if current == "cards" %}aria-current="page"{% endif %}><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>Cards</span></a>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.live') }}" {% if current == "live" %}aria-current="page"{% endif %}><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span>Live graph</span></a>
+</nav>
 {%- endmacro %}
