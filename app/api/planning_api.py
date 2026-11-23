@@ -330,7 +330,16 @@ def search():
             for p in found["projects"]
         ],
         github=(
-            {"repo": place[0], "kind": place[1], "what": place[2], "known": bool(found["projects"])}
+            {
+                "repo": place[0],
+                "kind": place[1],
+                "what": place[2],
+                "known": bool(found["projects"]),
+                # its branch on the project's Git tab, to make the task from there (D-086)
+                "git": url_for("projects.detail", slug=found["projects"][0].slug, tab="git", pull=place[2])
+                if found["projects"] and place[1] == "pull" and place[2].isdigit()
+                else None,
+            }
             if place
             else None
         ),

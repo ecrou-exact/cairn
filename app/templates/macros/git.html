@@ -1,6 +1,7 @@
 {# Git for a project or a task (D-087). `rows`: copies_core rows. #}
-{% macro copy_row(c, project, here) -%}
-<li class="cn-copy {{ 'is-running' if c.ours or c.outside }}">
+{% macro copy_row(c, project, here, wanted="") -%}
+{% set lit = wanted and c.pull and c.pull.number | string == wanted %}
+<li class="cn-copy {{ 'is-running' if c.ours or c.outside }} {{ 'is-wanted' if lit }}" {% if lit %}id="wanted-copy" tabindex="-1"{% endif %}>
   <div class="cn-copy-body">
     <p class="cn-copy-name"><strong>{{ c.name }}</strong>{% if c.main %} <span class="cn-badge">project folder</span>{% elif c.worktree %} <span class="cn-badge">worktree</span>{% endif %}
       {% if c.branch %}<span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ c.branch }}</span>{% endif %}
@@ -24,12 +25,15 @@
 </li>
 {%- endmacro %}
 
-{% macro project_git(found, project, here) -%}
+{% macro project_git(found, project, here, wanted="") -%}
 <section class="cn-panel" aria-labelledby="git-title">
   <header class="cn-home-head"><h2 id="git-title">Git</h2>{% if found.repo %}<a href="https://github.com/{{ found.repo }}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github" aria-hidden="true"></i> {{ found.repo }}</a>{% endif %}</header>
   <p class="cn-muted">Each copy of the project on this machine. Fetch and pull bring work in; commit, push and merge stay yours, in the folder or with Claude.</p>
   {% if not found.github %}<p class="alert alert-warning">Pull requests could not be read: sign in with <code>gh auth login</code>.</p>{% endif %}
-  <cn-refresh id="git-copies" every="20000">{% if found.copies %}<ul class="cn-copies">{% for c in found.copies %}{{ copy_row(c, project, here) }}{% endfor %}</ul>{% else %}<p class="cn-muted">No git folder of this project here: <a href="{{ url_for('projects.edit', slug=project.slug) }}">set its local folder</a>.</p>{% endif %}</cn-refresh>
+  {% if wanted %}{% set match = found.copies | selectattr("pull") | selectattr("pull.number", "equalto", wanted | int) | list %}
+  {% if match %}<p class="cn-git-wanted"><i class="fa-solid fa-code-pull-request" aria-hidden="true"></i> Pull request #{{ wanted }} is on <strong>{{ match[0].branch }}</strong>, in {{ match[0].name }}{% if not match[0].task %}: <a href="#wanted-copy">create its task</a>{% endif %}.</p>
+  {% else %}<p class="alert alert-warning">No copy on this machine is on the branch of pull request #{{ wanted }}. Fetch, or <a href="{{ url_for('worklinks.github', slug=project.slug) }}">make its task from GitHub</a>; Run with Claude on a task fetches its branch.</p>{% endif %}{% endif %}
+  <cn-refresh id="git-copies" every="20000">{% if found.copies %}<ul class="cn-copies">{% for c in found.copies %}{{ copy_row(c, project, here, wanted) }}{% endfor %}</ul>{% else %}<p class="cn-muted">No git folder of this project here: <a href="{{ url_for('projects.edit', slug=project.slug) }}">set its local folder</a>.</p>{% endif %}</cn-refresh>
 </section>
 {%- endmacro %}
 

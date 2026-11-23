@@ -35,3 +35,5 @@
 .cn-copy-run { float: right; margin-left: var(--cn-space-3); }
 .cn-bring-all { display: inline-flex; gap: var(--cn-space-2); align-items: center; margin-bottom: var(--cn-space-2); font-size: var(--cn-text-sm); }
 .cn-bring-go { display: flex; gap: var(--cn-space-3); align-items: center; position: sticky; bottom: var(--cn-space-3); }
+.cn-copy.is-wanted { box-shadow: 0 0 0 2px var(--cn-mark), var(--cn-slab-shadow); }
+.cn-git-wanted { padding: var(--cn-space-2) var(--cn-space-3); border-radius: var(--cn-radius); background: var(--cn-accent-soft); }

@@ -131,6 +131,15 @@ class CnPalette extends HTMLElement {
       ...(data.resources || []).map((r) => ({ label: r.title, icon: r.icon, url: r.url, group: 'Resources', meta: r.kind })),
     ];
     if (data.github && !data.github.known) found.push(this.#fromGithub(q, data.github));
+    if (data.github?.git && !data.tasks.length) {
+      found.unshift({
+        label: `Pull request #${data.github.what}: its branch in Git`,
+        icon: 'fa-code-branch',
+        url: data.github.git,
+        group: 'Pull request',
+        meta: 'No task yet: create it from its copy',
+      });
+    }
     this.#refresh(found);
   }
 

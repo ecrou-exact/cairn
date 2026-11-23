@@ -523,3 +523,4 @@
 
 ## D-093 · 2026-11-23 · accepted — Quick add without reloading
 - Owner request: quick add (tasks, a project's tasks, subtasks, home) goes through the API: the field empties and keeps the focus, a line says what was added, and the list of the page is read again in place. Many tasks are typed one after the other. Without JavaScript the form still posts.
+- (D-086, later) A pull request of a known project with no task yet leads, from the palette, to the project’s Git tab with the copy on its branch lit and brought into view, where **Create a task** is one click; when no copy has that branch, the tab says so and how to get it.

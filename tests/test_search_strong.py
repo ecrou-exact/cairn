@@ -63,7 +63,13 @@ def test_an_address_of_no_project_offers_to_start_it(app, signed_in, monkeypatch
     with app.app_context():
         projects_core.create(ProjectCreate(name="Lookyloo", github_repo="Lookyloo/lookyloo"))
     found = signed_in.get("/api/search?q=https://github.com/Lookyloo/lookyloo/pull/1446").json
-    assert found["github"] == {"repo": "Lookyloo/lookyloo", "kind": "pull", "what": "1446", "known": True}
+    assert found["github"] == {
+        "repo": "Lookyloo/lookyloo",
+        "kind": "pull",
+        "what": "1446",
+        "known": True,
+        "git": "/projects/lookyloo?tab=git&pull=1446",
+    }
     new = signed_in.get("/api/search?q=https://github.com/acme/tool/pull/7").json["github"]
     assert new["known"] is False
     launched = []
@@ -78,3 +84,33 @@ def test_an_address_of_no_project_offers_to_start_it(app, signed_in, monkeypatch
             assert "already" in str(exc)
         else:
             raise AssertionError("a known repository is not started twice")
+
+
+def test_a_pull_request_of_a_project_leads_to_its_branch(app, signed_in, tmp_path, monkeypatch):
+    from app.features.claude import claude_core
+    from app.features.folder import programs
+    from app.features.instances import found_core
+    from app.features.recap import facts_core
+    from tests.test_folder import _clone, _git
+
+    monkeypatch.setattr(found_core, "_containers", list)
+    monkeypatch.setattr(found_core, "_listeners", dict)
+    monkeypatch.setattr(claude_core, "outside", list)
+    monkeypatch.setattr(facts_core, "repositories", list)
+    main = _clone(tmp_path / "loo", ("origin", "https://github.com/Look/loo.git"))
+    _git(main, "worktree", "add", "-q", "-b", "menus", str(tmp_path / "loo-menus"))
+    pull = {
+        "number": 1450, "title": "Menus", "html_url": "https://x/1450", "state": "open", "draft": True,
+        "base": {"ref": "main", "repo": {"full_name": "Look/loo"}},
+        "head": {"ref": "menus", "repo": {"full_name": "look/loo"}},
+    }  # fmt: skip
+    monkeypatch.setattr(
+        programs, "gh", lambda path, *f, **k: [pull] if path.endswith("/pulls") and "page=1" in f else None
+    )
+    with app.app_context():
+        projects_core.create(ProjectCreate(name="Loo", local_path=str(main), github_repo="Look/loo"))
+    found = signed_in.get("/api/search?q=https://github.com/Look/loo/pull/1450").json["github"]
+    assert found["git"] == "/projects/loo?tab=git&pull=1450"
+    page = signed_in.get(found["git"]).data.decode()
+    assert 'id="wanted-copy"' in page and "is on <strong>menus</strong>" in page and "create its task" in page
+    assert "No copy on this machine" in signed_in.get("/projects/loo?tab=git&pull=9").data.decode()

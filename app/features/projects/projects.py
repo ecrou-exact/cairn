@@ -273,6 +273,7 @@ def detail(slug: str):
             worktrees=worktrees_core.for_project(project.id) if tab == "claude" else None,
             instances=instances_core.for_project(project.id) if tab == "instances" else None,
             git=git_core.state(project) if tab == "git" else None,
+            wanted_pull=request.args.get("pull", "")[:10] if tab == "git" else "",
             outside=outside,
             proposals=changesets_core.waiting(project.id),
             editor=get_setting("projects.editor"),
