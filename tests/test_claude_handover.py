@@ -1,7 +1,9 @@
 """The main Claude opens a project's Claude and hands it work (D-068)."""
 
+import time
 import uuid
 from datetime import timedelta
+from types import SimpleNamespace
 
 import pytest
 
@@ -83,7 +85,9 @@ def test_the_tool_asks_and_waits(app, main, tmp_path, monkeypatch):
     assert "open_project_claude" in mcp_server.WRITE_TOOLS  # so Claude Code asks, in every mode
     # The web process answers while the tool waits. Here in its pause, not in a thread: the tests'
     # database is one connection, which two threads cannot share.
-    monkeypatch.setattr(handover_core.time, "sleep", lambda seconds: handover_core.serve_pending())
+    # Its own clock only: `time.sleep` itself is also the terminals' (pywinpty).
+    clock = SimpleNamespace(monotonic=time.monotonic, sleep=lambda seconds: handover_core.serve_pending())
+    monkeypatch.setattr(handover_core, "time", clock)
     answer = _call(server, "open_project_claude", {"project": "pandora", "work": "Read it"})
     assert "/claude/sessions/" in _data(answer)["url"]
     db.session.expire_all()
