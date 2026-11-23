@@ -194,7 +194,7 @@
       {{ quick_add("Add a subtask…", project=task.project, parent=task) }}
     </section>
     {% elif tab == "linked" %}
-    {{ work_panel(work, "task", task.id) }}
+    {{ work_panel(work, "task", task.id, choices) }}
     {% elif tab == "plan" %}
     <section class="cn-panel" id="dependencies" aria-labelledby="deps-title">
       <h2 id="deps-title">Links</h2>

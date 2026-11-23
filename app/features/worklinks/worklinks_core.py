@@ -29,6 +29,7 @@ LABELS = {
     "branch": ("Branch", "fa-code-branch"),
     "commit": ("Commit", "fa-code-commit"),
     "pull": ("Pull request", "fa-code-pull-request"),
+    "issue": ("Issue", "fa-circle-dot"),
     "claude": ("Claude", "fa-claude"),
     "folder": ("Folder", "fa-folder-open"),
     "instance": ("Instance", "fa-server"),
@@ -154,6 +155,23 @@ def _git_facts(project: Project | None, kind: str, ref: str) -> dict[str, Any]:
     return {"found": False}
 
 
+def _issue_facts(project: Project | None, ref: str) -> dict[str, Any]:
+    repo, _, number = ref.partition("#")
+    repo = repo or (project.github_repo if project else "")
+    if not repo:
+        return {"found": False}
+    found = programs.gh(f"repos/{repo}/issues/{number}")
+    if not isinstance(found, dict) or "number" not in found:
+        return {"found": False, "url": f"https://github.com/{repo}/issues/{number}"}
+    return {
+        "found": True,
+        "title": found["title"],
+        "url": found["html_url"],
+        "state": found["state"],
+        "body": (found.get("body") or "")[:1500],
+    }
+
+
 def _pull_facts(project: Project | None, ref: str) -> dict[str, Any]:
     repo, _, number = ref.partition("#")
     repo = repo or (project.github_repo if project else "")
@@ -222,6 +240,8 @@ def describe(kind: str, ref: str, project: Project | None, *, deep: bool = True)
         facts = _git_facts(project, kind, ref)
     elif deep and kind == "pull":
         facts = _pull_facts(project, ref)
+    elif deep and kind == "issue":
+        facts = _issue_facts(project, ref)
     elif kind == "claude":
         facts = _claude_facts(ref)
     elif kind == "instance":

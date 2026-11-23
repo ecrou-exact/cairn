@@ -29,7 +29,7 @@ from app.features.tasks import (
     workflow,
 )
 from app.features.tasks.tasks_forms import values_from_form, values_from_task, values_from_text
-from app.features.worklinks import worklinks_core
+from app.features.worklinks import github_work_core, worklinks_core
 
 tasks = Blueprint("tasks", __name__)
 
@@ -275,6 +275,7 @@ def detail(task_id: uuid.UUID):
         directions=DEPENDENCY_DIRECTIONS,
         resources=resources_core.for_target("task", task.id),
         work=worklinks_core.for_target("task", task.id, deep=tab == "linked"),
+        choices=github_work_core.choices(task.project) if tab == "linked" and task.project else None,
         max_mb=get_setting("resources.max_upload_mb"),
         comments=comments_core.for_target("task", task.id),
         inherited=[

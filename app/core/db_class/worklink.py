@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db_class.base import BaseEntity
 
-WORK_KINDS = ("branch", "commit", "pull", "claude", "folder", "instance")
+WORK_KINDS = ("branch", "commit", "pull", "issue", "claude", "folder", "instance")
 WORK_TARGETS = ("project", "task")
 
 

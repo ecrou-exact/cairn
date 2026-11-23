@@ -485,3 +485,7 @@
 - Rows keep their ids, so the same project is merged back and forth: new rows added, changed ones taken when newer in the file, newer ones here kept. The folder and the address (slug) stay this machine's; a new project asks for its folder.
 - An **exchange folder** (setting `projects.transfer_folder`: a Nextcloud, Dropbox or Syncthing folder, a USB key) spares the download and the upload: Export saves there, Import lists what is there. Mail cannot carry a file from a link (`mailto:` has no attachments), so it is not offered.
 - Not in the file: secrets, tokens, the vault, `.env`, the history of changes, Claude's sessions. Scores and counters are recomputed. An import is not undoable: the preview says what it does first.
+
+## D-085 · 2026-11-23 · accepted — A task per pull request; links picked from the project
+- Owner request (Lookyloo: one task per pull request). **A task per pull request or issue** (project's Actions menu) lists the open pull requests and issues of the project's GitHub repository and the branches of its copies, each with the task that has it already; the chosen ones become tasks (an issue a bug), each linked to it and, for a pull request, to its branch. Undoable in one step.
+- A task's Linked work tab offers the same, **Pick from the project**, one click a link. An issue is a kind of link too.

@@ -15,7 +15,19 @@
 </li>
 {%- endmacro %}
 
-{% macro work_panel(found, target_type, target_id) -%}
+{% macro work_picker(choices, target_type, target_id) -%}
+{% set free = choices["items"] | rejectattr("task") | list %}
+{% if free %}<details class="cn-fold"><summary><i class="fa-brands fa-github" aria-hidden="true"></i> Pick from the project <span class="cn-muted">{{ free | length }} open</span></summary>
+  <ul class="cn-bring-list cn-fold-body">{% for i in free %}<li><form method="post" action="{{ url_for('worklinks.add') }}" class="cn-day-pick">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+    <input type="hidden" name="target_type" value="{{ target_type }}"><input type="hidden" name="target_id" value="{{ target_id }}">
+    <input type="hidden" name="kind" value="{{ i.kind }}"><input type="hidden" name="ref" value="{{ i.ref }}">
+    <button class="btn btn-sm btn-outline-secondary" type="submit">Link</button>
+    <span><span class="cn-muted">{{ {"pull": "PR", "issue": "Issue", "branch": "Branch"}[i.kind] }}</span> {% if i.number %}#{{ i.number }} {{ i.title }}{% else %}{{ i.ref }}{% endif %}{% if i.mine %} <span class="cn-badge">yours</span>{% endif %}</span>
+  </form></li>{% endfor %}</ul></details>{% endif %}
+{%- endmacro %}
+
+{% macro work_panel(found, target_type, target_id, choices=none) -%}
 <section class="cn-panel" id="work" aria-labelledby="work-title">
   <h2 id="work-title">Linked work</h2>
   <p class="cn-muted">Branches, commits, pull requests and Claude conversations of this work: every Claude on it reads them first.</p>
@@ -24,12 +36,13 @@
     {% for w in found.own %}{{ work_row(w, True) }}{% endfor %}
     {% for w in found.known + found.inherited %}{{ work_row(w, False) }}{% endfor %}
   </ul>{% endif %}
-  <details class="cn-fold" {% if not rows %}open{% endif %}><summary><i class="fa-solid fa-link" aria-hidden="true"></i> Link work</summary>
+  {% if choices %}{{ work_picker(choices, target_type, target_id) }}{% endif %}
+  <details class="cn-fold" {% if not rows and not choices %}open{% endif %}><summary><i class="fa-solid fa-link" aria-hidden="true"></i> Link by hand</summary>
     <form class="cn-fold-body cn-work-form" method="post" action="{{ url_for('worklinks.add') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
       <input type="hidden" name="target_type" value="{{ target_type }}"><input type="hidden" name="target_id" value="{{ target_id }}">
       <div><label class="form-label" for="work-kind">What</label><select class="form-select" id="work-kind" name="kind">
-        <option value="branch">Branch</option><option value="commit">Commit</option><option value="pull">Pull request</option><option value="claude">Claude conversation</option><option value="folder">Folder</option><option value="instance">Instance</option></select></div>
+        <option value="branch">Branch</option><option value="commit">Commit</option><option value="pull">Pull request</option><option value="issue">Issue</option><option value="claude">Claude conversation</option><option value="folder">Folder</option><option value="instance">Instance</option></select></div>
       <div><label class="form-label" for="work-ref">Which</label><input class="form-control" id="work-ref" name="ref" required maxlength="500" placeholder="feature/x · 3f2a9c1 · #1451 · an instance's name"></div>
       <div class="cn-work-wide"><label class="form-label" for="work-note">Why (optional)</label><input class="form-control" id="work-note" name="note" maxlength="500"></div>
       <div><button class="btn btn-outline-secondary" type="submit">Link</button></div>

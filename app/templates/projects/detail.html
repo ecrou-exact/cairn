@@ -71,6 +71,7 @@
       <div class="cn-menu-panel" role="menu" aria-label="Project actions">
         {% if project.local_path %}<button class="cn-menu-item" type="button" role="menuitem" data-claude-launch data-project="{{ project.id }}"><i class="fa-solid fa-claude" aria-hidden="true"></i><span>Open Claude here</span></button>{% endif %}
         <a class="cn-menu-item" role="menuitem" href="{{ url_for('folder.bring', slug=project.slug) }}"><i class="fa-solid fa-file-import" aria-hidden="true"></i><span>Bring in tasks, skills, commands</span></a>
+        <a class="cn-menu-item" role="menuitem" href="{{ url_for('worklinks.github', slug=project.slug) }}"><i class="fa-solid fa-code-pull-request" aria-hidden="true"></i><span>A task per pull request or issue</span></a>
         <a class="cn-menu-item" role="menuitem" href="{{ url_for('folder.copies', slug=project.slug) }}"><i class="fa-solid fa-code-branch" aria-hidden="true"></i><span>Copies and pull requests</span></a>
         <hr class="cn-menu-sep">
         <a class="cn-menu-item" role="menuitem" href="{{ url_for('projects.export', slug=project.slug) }}"><i class="fa-solid fa-file-export" aria-hidden="true"></i><span>Export (download)</span></a>

@@ -1,0 +1,25 @@
+{% extends "layout/shell.html" %}
+{% block title %}Tasks from GitHub: {{ project.name }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('projects.detail', slug=project.slug) }}">{{ project.name }}</a></div>
+  <h1>A task per pull request</h1>
+  <p>The open pull requests and issues of {{ found.repo or "its repository" }}, and the branches of its copies. Choose: each becomes a task linked to it, so that every Claude on it reads it.</p>
+</header>
+{% if not found.repo %}<p class="alert alert-warning">Set the project's GitHub repository (Actions → Edit) to see its pull requests and issues.</p>{% elif not found.github %}<p class="alert alert-warning">GitHub could not be read in full: sign in with <code>gh auth login</code>.</p>{% endif %}
+{% if found["items"] %}
+<form method="post" class="cn-bring"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for kind, title in [("pull", "Pull requests"), ("issue", "Issues"), ("branch", "Branches")] %}{% set rows = found["items"] | selectattr("kind", "equalto", kind) | list %}{% if rows %}
+  <section class="cn-panel" aria-label="{{ title }}"><h2>{{ title }} <span class="cn-muted">{{ rows | length }}</span></h2><ul class="cn-bring-list">
+    {% for i in rows %}<li>
+      {% if i.task %}<i class="fa-solid fa-check" aria-hidden="true"></i> <a href="{{ url_for('tasks.detail', task_id=i.task.id, tab='linked') }}">{{ i.task.title }}</a>
+      {% else %}<input class="form-check-input" type="checkbox" name="refs" value="{{ i.kind }}:{{ i.ref }}" id="r-{{ loop.index }}-{{ kind }}"> <label for="r-{{ loop.index }}-{{ kind }}">{% if i.number %}#{{ i.number }} {{ i.title }}{% else %}{{ i.ref }}{% endif %}</label>{% endif %}
+      {% if i.url %}<a class="cn-muted" href="{{ i.url }}" target="_blank" rel="noopener noreferrer">on GitHub</a>{% endif %}
+      {% if i.state == "draft" %}<span class="cn-badge">draft</span>{% endif %}{% if i.mine %} <span class="cn-badge">yours</span>{% endif %}{% if i.branch and kind == "pull" %} <span class="cn-muted">{{ i.branch }}</span>{% endif %}
+    </li>{% endfor %}
+  </ul></section>{% endif %}{% endfor %}
+  <button class="btn btn-primary" type="submit">Make the tasks</button>
+</form>
+{% else %}<p class="cn-muted">Nothing open was found.</p>{% endif %}
+{% endblock %}

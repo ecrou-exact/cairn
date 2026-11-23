@@ -15,6 +15,7 @@ SHAPES = {
     "branch": re.compile(r"^[^\s~^:?*\[\\]{1,250}$"),
     "commit": re.compile(r"^[0-9a-fA-F]{7,40}$"),
     "pull": re.compile(r"^(?:[\w.-]+/[\w.-]+)?#\d{1,7}$"),
+    "issue": re.compile(r"^(?:[\w.-]+/[\w.-]+)?#\d{1,7}$"),
     "claude": re.compile(r"^[0-9a-fA-F-]{36}$"),
     "folder": re.compile(r"^(/|[A-Za-z]:[\\/]|~).{0,498}$"),
     "instance": re.compile(r"^.{1,80}$"),
@@ -23,11 +24,15 @@ TOLD = {
     "branch": "a branch name",
     "commit": "a commit's sha (7 to 40 characters)",
     "pull": "#123 or owner/name#123",
+    "issue": "#123 or owner/name#123",
     "claude": "a conversation or session id",
     "folder": "a full path",
     "instance": "one of the project's instances, by its name",
 }
-PULL_URL = re.compile(r"github\.com/([\w.-]+/[\w.-]+)/pull/(\d+)")
+GITHUB_URL = {
+    "pull": re.compile(r"github\.com/([\w.-]+/[\w.-]+)/pull/(\d+)"),
+    "issue": re.compile(r"github\.com/([\w.-]+/[\w.-]+)/issues/(\d+)"),
+}
 
 
 class WorkLinkCreate(Strict):
@@ -39,7 +44,7 @@ class WorkLinkCreate(Strict):
 
     @model_validator(mode="after")
     def _shape(self) -> WorkLinkCreate:
-        if self.kind == "pull" and (found := PULL_URL.search(self.ref)):
+        if self.kind in GITHUB_URL and (found := GITHUB_URL[self.kind].search(self.ref)):
             self.ref = f"{found[1]}#{found[2]}"
         if self.kind == "commit":
             self.ref = self.ref.lower()
