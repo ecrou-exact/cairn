@@ -26,7 +26,7 @@ from app.core.schema.claude import OutsideStop, ResumeStart, SessionLink, Sessio
 from app.core.security.headers import csp_terminal
 from app.core.utils.events import latest_event_id
 from app.core.utils.web import FormErrors, local_path, validate
-from app.features.claude import claude_core, terminal_core
+from app.features.claude import claude_core, main_core, terminal_core
 from app.features.graph.graph import with_graph_csp
 from app.features.projects import projects_core
 
@@ -44,6 +44,17 @@ def with_terminal_csp(response, nonce: str):
 def index():
     after = latest_event_id()
     return render_template("claude/index.html", overview=claude_core.overview(), events_after=after)
+
+
+@claude.post("/claude/main")
+def open_main():
+    """Go to Cairn's own Claude, opening it if needed (D-060)."""
+    try:
+        session = main_core.open_main()
+    except terminal_core.TerminalError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("claude.index"))
+    return redirect(url_for("claude.session", session_id=session.id))
 
 
 @claude.get("/claude/live")

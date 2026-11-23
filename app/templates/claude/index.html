@@ -6,7 +6,8 @@
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/claude/overview.js') }}"></script>{% endblock %}
 {% block content %}
-{% set running = overview.sessions | selectattr("running") | list %}
+{% set main = overview.sessions | selectattr("main") | selectattr("running") | first %}
+{% set running = overview.sessions | selectattr("running") | rejectattr("main") | list %}
 {% set ended = overview.sessions | rejectattr("running") | list %}
 <header class="cn-page-header cn-page-header-actions">
   <div>
@@ -26,12 +27,23 @@
 
 <div class="cn-live-notice" id="claude-changed" hidden role="status"><span>Sessions started or ended.</span> <a href="{{ url_for('claude.index') }}">Reload</a></div>
 
+<section class="cn-claude-section" aria-labelledby="main-title">
+  <header class="cn-home-head"><h2 id="main-title">Cairn's Claude</h2><span class="cn-muted">Looks after every project{% if overview.notes %} · <a href="{{ url_for('resources.index', q='', kind='note') }}">{{ overview.notes }} note{{ 's' if overview.notes > 1 }} waiting for it</a>{% endif %}</span></header>
+  {% if main %}<ul class="cn-claude-cards">{{ session_card(main) }}</ul>
+  {% else %}
+  <form class="cn-claude-start" method="post" action="{{ url_for('claude.open_main') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit"><i class="fa-solid fa-mountain-sun" aria-hidden="true"></i><span>Open Cairn's Claude</span></button>
+  </form>
+  {% endif %}
+</section>
+
 <section class="cn-claude-section" aria-labelledby="mine-title">
-  <header class="cn-home-head"><h2 id="mine-title">In Cairn</h2><span class="cn-muted">Open Claude from a project or a task (its Claude tab)</span></header>
+  <header class="cn-home-head"><h2 id="mine-title">Projects</h2><span class="cn-muted">Open Claude from a project or a task (its Claude tab)</span></header>
   {% if running %}
   <ul class="cn-claude-cards">{% for s in running %}{{ session_card(s) }}{% endfor %}</ul>
   {% else %}
-  <div class="cn-empty"><i class="fa-solid fa-terminal" aria-hidden="true"></i><h2>No Claude running in Cairn</h2><p>A project's or a task's Claude tab opens your Claude Code in its folder.</p></div>
+  <div class="cn-empty"><i class="fa-solid fa-terminal" aria-hidden="true"></i><h2>No project has its Claude open</h2><p>A project's or a task's Claude tab opens your Claude Code in its folder.</p></div>
   {% endif %}
 </section>
 

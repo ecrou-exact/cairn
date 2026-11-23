@@ -29,8 +29,8 @@ def _run(*args: str, env: dict[str, str] | None = None) -> int:
     return subprocess.call(list(args), cwd=ROOT, env={**os.environ, **(env or {})})  # noqa: S603  # nosec B603
 
 
-def _flask(*args: str) -> int:
-    return _run(sys.executable, "-m", "flask", "--app", "wsgi:app", *args)
+def _flask(*args: str, env: dict[str, str] | None = None) -> int:
+    return _run(sys.executable, "-m", "flask", "--app", "wsgi:app", *args, env=env)
 
 
 def cmd_setup(_: argparse.Namespace) -> int:
@@ -78,13 +78,14 @@ def cmd_mcp(_: argparse.Namespace) -> int:
 def cmd_start(_: argparse.Namespace) -> int:
     host = os.environ.get("CAIRN_HOST", "127.0.0.1")
     port = os.environ.get("CAIRN_PORT", "7010")
-    return _flask("run", "--debug", "--host", host, "--port", port)
+    env = {"CAIRN_WEB": "1", "CAIRN_RELOAD": "1"}
+    return _flask("run", "--debug", "--host", host, "--port", port, env=env)
 
 
 def cmd_serve(_: argparse.Namespace) -> int:
     host = os.environ.get("CAIRN_HOST", "127.0.0.1")
     port = os.environ.get("CAIRN_PORT", "7010")
-    env = {"CAIRN_ENV": os.environ.get("CAIRN_ENV", "production")}
+    env = {"CAIRN_ENV": os.environ.get("CAIRN_ENV", "production"), "CAIRN_WEB": "1"}
     # Threads, not processes alone: every open tab keeps one live-events stream (SSE) open.
     if os.name == "nt":
         return _run(

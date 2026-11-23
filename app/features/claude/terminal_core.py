@@ -40,7 +40,7 @@ from app.core.utils.events import publish
 from app.core.utils.history import batch
 from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
-from app.features.claude import limits_core, mcp_server, skills_core, transcript_core
+from app.features.claude import limits_core, main_core, mcp_server, skills_core, transcript_core
 from app.features.claude.pty_host import Pty
 from app.features.connections import connections_core
 from app.features.projects import projects_core
@@ -62,6 +62,10 @@ HIDDEN_ENV = frozenset(
         "CLAUDE_CODE_ENTRYPOINT",
         "CLAUDE_CODE_EXECPATH",
         "CLAUDE_AGENT_SDK_VERSION",
+        "CAIRN_WEB",  # Cairn's own: only its web server opens the main Claude (D-060)
+        "CAIRN_RELOAD",
+        "WERKZEUG_RUN_MAIN",
+        "WERKZEUG_SERVER_FD",
     }
 )
 HIDDEN_ENV_PREFIXES = ("CLAUDE_CODE_CHILD_", "CLAUDE_CODE_SESSION_", "CLAUDE_CODE_MESSAGING_")
@@ -237,7 +241,7 @@ def _title(data: SessionStart, name: str, task: Task | None) -> str:
     return task.title if task is not None else name
 
 
-def _rules_file(session_id: uuid.UUID, project: Project | None) -> Path:
+def _rules_file(session_id: uuid.UUID, project: Project | None, cwd: str) -> Path:
     """The owner's rules and the project's instructions, appended to Claude Code's system
     prompt (a file: a command line is limited to 32k characters on Windows)."""
     folder = Path(current_app.config["CAIRN_DATA_DIR"]) / "claude"
@@ -248,6 +252,7 @@ def _rules_file(session_id: uuid.UUID, project: Project | None) -> Path:
         text += (
             f"\n\nInstructions for the project “{project.name}”:\n{project.claude_instructions_md.strip()}"
         )
+    text += main_core.rules(cwd)
     path = folder / f"{session_id}.md"
     path.write_text(text + "\n", encoding="utf-8")
     return path
@@ -507,6 +512,11 @@ def resume(data: ResumeStart) -> ClaudeSession:
     )
 
 
+def open_claude(folder: Path, title: str, *, preset: str, resume: uuid.UUID | None = None) -> ClaudeSession:
+    """Claude Code in a folder of Cairn's own, free of any project."""
+    return _launch(None, None, folder, None, title, cols=120, rows=32, preset=preset, resume=resume)
+
+
 def _launch(
     project: Project | None,
     task: Task | None,
@@ -527,7 +537,7 @@ def _launch(
     cli_session_id = resume or uuid.uuid4()  # names the transcript Claude Code writes (context gauge)
 
     def build(session: ClaudeSession) -> tuple[list[str], tuple[Path, ...]]:
-        rules, mcp = _rules_file(session.id, project), _mcp_config(session.id)
+        rules, mcp = _rules_file(session.id, project, session.cwd), _mcp_config(session.id)
         skills = skills_core.write_plugin(
             rules.with_name(f"{session.id}-skills"), skills_core.for_session(project, task)
         )

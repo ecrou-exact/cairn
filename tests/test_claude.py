@@ -15,7 +15,7 @@ import pytest
 from app.core.schema.claude import OutsideStop, ResumeStart, SessionLink, SessionStart
 from app.core.schema.planning import ProjectCreate, TaskCreate
 from app.core.schema.resources import LinkCreate, ResourceCreate
-from app.features.claude import limits_core, skills_core, terminal_core, transcript_core
+from app.features.claude import limits_core, main_core, skills_core, terminal_core, transcript_core
 from app.features.projects import projects_core
 from app.features.resources import resources_core
 from app.features.tasks import tasks_core
@@ -559,3 +559,47 @@ def test_context_window_is_the_one_claude_code_reports(ctx, tmp_path, monkeypatc
     old = {"rate_limits": {"five_hour": {"used_percentage": 3}}}  # an idle session, with older numbers
     statusline.keep(old, limits_core.limits_file())
     assert limits_core.limits()["windows"][0]["used"] == 5
+
+
+def test_main_claude_opens_once_and_takes_up_its_conversation(ctx, tmp_path, fake_claude, monkeypatch):
+    monkeypatch.setattr(transcript_core, "projects_root", lambda: tmp_path / "transcripts")
+    first = main_core.open_main()
+    assert main_core.is_main(first) and first.project_id is None
+    assert main_core.open_main().id == first.id  # already open
+    _wait_for(first.id, "ARGS")
+    kept = transcript_core.transcript_path(first.cwd, str(first.cli_session_id))
+    conversation = first.cli_session_id
+    terminal_core.close_all()
+    kept.parent.mkdir(parents=True)
+    kept.write_text("{}", encoding="utf-8")
+    again = main_core.open_main()
+    assert again.cli_session_id == conversation
+    assert "--resume" in _wait_for(again.id, "ARGS")[0]
+    assert "main Claude" in main_core.rules(again.cwd) and "take_note" in main_core.rules("/elsewhere")
+
+
+def test_main_claude_opens_only_with_the_web_server(app, monkeypatch):
+    started = []
+    monkeypatch.setattr(main_core.threading, "Thread", lambda **k: started.append(k) or _NoThread())
+    for web, reload, serving, expected in (
+        (None, None, None, 0),  # worker, MCP server, migrations
+        ("1", "1", None, 0),  # the auto-reload watcher
+        ("1", "1", "true", 1),
+        ("1", None, None, 2),
+    ):
+        for name, value in (("CAIRN_WEB", web), ("CAIRN_RELOAD", reload), ("WERKZEUG_RUN_MAIN", serving)):
+            monkeypatch.setenv(name, value) if value else monkeypatch.delenv(name, raising=False)
+        main_core.open_with_cairn(app)
+        assert len(started) == expected
+
+
+class _NoThread:
+    def start(self):
+        pass
+
+
+def test_main_claude_page(signed_in, fake_claude):
+    assert b"Open Cairn" in signed_in.get("/claude").data
+    assert "/claude/sessions/" in signed_in.post("/claude/main").location
+    page = signed_in.get("/claude").data
+    assert b"every project" in page and b"Open Cairn" not in page

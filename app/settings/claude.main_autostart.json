@@ -1,0 +1,6 @@
+{
+  "label": "Open Cairn's Claude with Cairn",
+  "category": "Claude",
+  "description": "Open the main Claude, the one that looks after every project, when Cairn starts. It takes up its last conversation; it uses nothing of your account until you talk to it.",
+  "value": true
+}

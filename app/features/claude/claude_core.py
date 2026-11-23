@@ -12,7 +12,7 @@ from sqlalchemy import select
 from app.core.db_class.claude import ClaudeSession
 from app.core.db_class.planning import Project, Task
 from app.core.extensions import db
-from app.features.claude import limits_core, terminal_core, transcript_core
+from app.features.claude import limits_core, main_core, terminal_core, transcript_core
 from app.features.projects import projects_core
 
 
@@ -47,6 +47,7 @@ def describe(session: ClaudeSession) -> dict[str, Any]:
         "url": f"/claude/sessions/{session.id}",
         "title": usage.title or session.title,
         "label": session.title,
+        "main": main_core.is_main(session),
         "cwd": session.cwd,
         "cli_session_id": str(session.cli_session_id),
         "status": session.status,
@@ -87,6 +88,7 @@ def overview(*, project_id: uuid.UUID | None = None, task_id: uuid.UUID | None =
         "outside": found,
         "instances": instances,
         "limits": limits_core.limits(),
+        "notes": main_core.waiting(),
         "running": sum(1 for s in mine if s["running"]) + len(found),
     }
 

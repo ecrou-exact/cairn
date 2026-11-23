@@ -3,13 +3,15 @@
 import asyncio
 import json
 import sys
+import uuid
 
 from mcp import Client
 
 from app.core.db_class.activity import Activity
+from app.core.db_class.claude import ClaudeSession
 from app.core.extensions import db
 from app.core.schema.planning import ProjectCreate, TaskCreate
-from app.features.claude import mcp_server, terminal_core
+from app.features.claude import main_core, mcp_server, terminal_core
 from app.features.projects import projects_core
 from app.features.tasks import tasks_core
 
@@ -94,3 +96,32 @@ def test_sessions_get_the_server(app, tmp_path, monkeypatch):
     assert argv[1] == " -x first"  # the message comes first, never read as an option
     assert argv[-4] == "--mcp-config" and argv[-2] == "--allowedTools"
     assert argv[-1] == ",".join(f"mcp__cairn__{n}" for n in mcp_server.READ_TOOLS)  # writes still ask
+
+
+def test_notes_travel_between_claudes(app, tmp_path):
+    with app.app_context():
+        project = projects_core.create(ProjectCreate(name="Pandora", local_path=str(tmp_path)))
+        main = ClaudeSession(kind="claude", cwd=str(main_core.folder()), cli_session_id=uuid.uuid4())
+        theirs = ClaudeSession(
+            kind="claude", cwd=str(tmp_path), cli_session_id=uuid.uuid4(), project_id=project.id
+        )
+        db.session.add_all([main, theirs])
+        db.session.commit()
+        main_server = mcp_server.build(app, str(main.id))
+        project_server = mcp_server.build(app, str(theirs.id))
+    noted = _data(_call(project_server, "take_note", {"text": "Write a connector"}))
+    assert noted["for"] == "Cairn"
+    assert _data(_call(project_server, "inbox")) == []  # not for the one who wrote it
+    (note,) = _data(_call(main_server, "inbox"))
+    assert (note["text"], note["about"]) == ("Write a connector", ["Pandora"])
+    assert _call(project_server, "note_done", {"note_id": note["id"]}).is_error
+    assert _data(_call(main_server, "note_done", {"note_id": note["id"]}))["done"]
+    assert _data(_call(main_server, "inbox")) == []
+    _call(main_server, "take_note", {"text": "Do it", "for_project": "pandora"})
+    assert [n["text"] for n in _data(_call(project_server, "inbox"))] == ["Do it"]
+    assert _call(main_server, "take_note", {"text": "x", "for_project": "nope"}).is_error
+    (tmp_path / "new").mkdir()
+    made = _data(_call(main_server, "create_project", {"name": "New", "folder": str(tmp_path / "new")}))
+    assert made["slug"] == "new"
+    assert _call(main_server, "create_project", {"name": "B", "folder": str(tmp_path / "gone")}).is_error
+    assert [s["main"] for s in _data(_call(main_server, "claude_sessions"))] == [True, False]

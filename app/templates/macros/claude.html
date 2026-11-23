@@ -36,7 +36,7 @@
       {% if not outside %}<a href="{{ s.url }}">{{ s.title or s.label }}</a>{% else %}{{ u.title or "Claude Code" }}{% endif %}
     </p>
     <p class="cn-claude-card-where">
-      {% if s.project %}<span class="cn-project-chip cn-color-{{ s.project.color }}"><i class="fa-solid {{ s.project.icon }}" aria-hidden="true"></i> {{ s.project.name }}</span>{% else %}<span class="cn-muted">free, no project</span>{% endif %}
+      {% if s.project %}<span class="cn-project-chip cn-color-{{ s.project.color }}"><i class="fa-solid {{ s.project.icon }}" aria-hidden="true"></i> {{ s.project.name }}</span>{% else %}<span class="cn-muted">{{ "every project" if s.main else "free, no project" }}</span>{% endif %}
       {% if not outside and s.task %}<a href="{{ url_for('tasks.detail', task_id=s.task.id) }}"><i class="fa-solid fa-list-check" aria-hidden="true"></i> {{ s.task.title }}</a>{% endif %}
       <code title="{{ s.cwd }}">{{ s.cwd }}</code>
     </p>

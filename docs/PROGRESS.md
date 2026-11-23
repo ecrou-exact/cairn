@@ -95,6 +95,8 @@ Goal: owner approves architecture + design direction.
 - [x] Free sessions linked to a project at any time, a folder read into a new project (`update_project`), stop any Claude, account usage in the menu and on sessions (D-056)
 - [x] Claude skills in the library, given to the sessions opened from Cairn; context gauge on the window Claude Code reports (D-058)
 - [x] Claude live graph: sessions, their agents, running tools, background tasks and processes, skills; one session in full with its files, commands, searches and servers since the last request (D-059)
+- [x] Cairn's own Claude, opened with the app; notes between it and the projects' Claudes (`take_note`, `inbox`, `note_done`), `create_project`, `claude_sessions` (D-060)
+- [ ] The main Claude opens a project's Claude itself (MCP → web process)
 - [ ] More MCP tools: resources, schedule, changesets for bulk changes
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
