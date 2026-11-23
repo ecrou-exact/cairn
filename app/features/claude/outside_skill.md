@@ -1,8 +1,20 @@
 ---
 name: cairn
 description: Work with Cairn, the owner's planning workspace. Use when the user says to start, open or continue a project on Cairn ("commence un projet sur cairn", "start this on Cairn", "ouvre le projet dans Cairn"), to update Cairn or put tasks in it ("mets Cairn à jour", "ajoute ça dans Cairn", "note ça pour Cairn"), asks what to do next in a project, or when work just done belongs to a project Cairn knows.
+argument-hint: "[-init | -status | -next | -update | -bring | -copies | -note <text>]"
 ---
 <!-- Written by Cairn (manage.py claude-connect). Changes are replaced; `claude-connect off` removes it. -->
+
+## /cairn arguments
+Called as `/cairn $ARGUMENTS`. Do only what the argument says:
+- *(none)* or `-status`: `this_project`; give the project, its address and the next tasks; with none, say so and offer `-init`.
+- `-init`: start the project of this folder, steps below. Words after it are the name or what it is about.
+- `-next`: `next_tasks` of this project; say which one you would take and why.
+- `-update`: the task worked on in this conversation: `comment_on_task` with what was done, the branch and what was checked, then its new status. Ask when it is not clear which task.
+- `-bring`: `found_in_project`, then the `bring_in` address.
+- `-copies`: `project_copies`: each folder, its branch, its pull request, what runs.
+- `-note <text>`: `take_note` with the text, for this project.
+- Anything else: list these arguments in a few lines.
 
 Cairn's tools are the MCP tools of the server `cairn`. If they are not there, Cairn is not connected or could not start: say so in one line and carry on with the work, without them.
 
