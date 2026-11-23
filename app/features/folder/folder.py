@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from app.core.schema.folder import BringInput
+from app.core.jobs import jobs_core
+from app.core.schema.folder import BringInput, DiscoverMake
 from app.core.utils.web import FormErrors, local_path, validate
 from app.features.changesets.changesets_core import ChangesetError
-from app.features.folder import copies_core, git_core, scan_core
+from app.features.folder import copies_core, discover_core, git_core, scan_core
 from app.features.instances.instances_core import InstanceError
 from app.features.projects import projects_core
 from app.features.resources.resources_core import ResourceError
@@ -68,3 +69,29 @@ def git_action(slug: str, action: str):
     else:
         flash(f"{action.capitalize()}: {said.splitlines()[-1][:200]}", "success")
     return redirect(back)
+
+
+# -- every project of the machine (D-088) ------------------------------------------------------------
+
+
+@folder.get("/projects/discover")
+def discover():
+    found, made = discover_core.last(discover_core.FIND), discover_core.last(discover_core.MAKE)
+    return render_template("folder/discover.html", found=found, made=made, roots=discover_core._roots())
+
+
+@folder.post("/projects/discover")
+def discover_start():
+    jobs_core.enqueue(discover_core.FIND, {}, title="Look for my projects")
+    return redirect(url_for("folder.discover"))
+
+
+@folder.post("/projects/discover/make")
+def discover_make():
+    try:
+        keys = validate(DiscoverMake, {"keys": request.form.getlist("keys")}).keys
+    except FormErrors:
+        flash("Choose at least one project.", "warning")
+        return redirect(url_for("folder.discover"))
+    jobs_core.enqueue(discover_core.MAKE, {"keys": keys}, title=f"Start {len(keys)} projects")
+    return redirect(url_for("folder.discover"))

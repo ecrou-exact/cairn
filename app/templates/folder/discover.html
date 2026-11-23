@@ -1,0 +1,37 @@
+{% extends "layout/shell.html" %}
+{% block title %}Find my projects{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-refresh.js') }}"></script>{% endblock %}
+{% macro job_line(job) %}<p class="cn-muted"><a href="{{ url_for('jobs.detail', job_id=job.id) }}">{{ job.title }}</a>: {{ job.status }}{% if job.status in ("queued", "running") %}, {{ job.progress }}%{% endif %}</p>{% endmacro %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('projects.index') }}">Projects</a></div>
+  <h1>Find my projects</h1>
+  <p>Cairn looks for the git repositories in {{ roots | join(", ") }} (Settings → Day summary), puts their clones, worktrees and forks together, and shows each one. Those you committed in are chosen first; you decide. Nothing is written in your folders.</p>
+</header>
+<cn-refresh id="discover" every="3000">
+<form method="post" action="{{ url_for('folder.discover_start') }}" class="cn-day-bar"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn {{ 'btn-outline-secondary' if found else 'btn-primary' }}" type="submit" {% if found and found.status in ("queued", "running") %}disabled{% endif %}><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="ms-2">{{ "Look again" if found else "Look for my projects" }}</span></button>
+</form>
+{% if found %}{{ job_line(found) }}{% endif %}
+{% if made %}{{ job_line(made) }}{% if made.result and made.result.made %}<p>Started: {% for p in made.result.made %}<a href="{{ url_for('projects.detail', slug=p.slug) }}">{{ p.name }}</a>{{ ", " if not loop.last }}{% endfor %}.</p>{% endif %}{% endif %}
+{% if found and found.status == "succeeded" and found.result %}{% set groups = found.result.groups %}{% set new = groups | rejectattr("project") | list %}
+<form method="post" action="{{ url_for('folder.discover_make') }}" class="cn-bring"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <section class="cn-panel" aria-label="New"><h2>Not in Cairn yet <span class="cn-muted">{{ new | length }}</span></h2>
+    {% if new %}<ul class="cn-bring-list">{% for g in new %}<li>
+      <input class="form-check-input" type="checkbox" name="keys" value="{{ g.key }}" id="g-{{ loop.index }}" {% if g.mine %}checked{% endif %}> <label for="g-{{ loop.index }}"><strong>{{ g.name }}</strong></label>
+      {% if g.repo %}<span class="cn-muted">{{ g.repo }}</span>{% endif %} <span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ g.branch }}</span>
+      {% if g.mine %}<span class="cn-muted">your last commit <time data-since="{{ g.mine }}"></time></span>{% else %}<span class="cn-badge">never committed in</span>{% endif %}
+      <p class="cn-copy-folder cn-muted">{{ g.main }}{% if g.copies %} and {{ g.copies | length }} other cop{{ "y" if g.copies | length == 1 else "ies" }}{% endif %}</p>
+      {% if g.about %}<p class="cn-muted">{{ g.about | truncate(220) }}</p>{% endif %}
+    </li>{% endfor %}</ul>
+    <button class="btn btn-primary" type="submit">Start the chosen projects</button>{% else %}<p class="cn-muted">Every repository found is in Cairn.</p>{% endif %}
+  </section>
+</form>
+{% set known = groups | selectattr("project") | list %}{% if known %}
+<section class="cn-panel" aria-label="Already in Cairn"><h2>Already in Cairn <span class="cn-muted">{{ known | length }}</span></h2><ul class="cn-bring-list">
+  {% for g in known %}<li><a href="{{ url_for('projects.detail', slug=g.project.slug) }}">{{ g.project.name }}</a> <span class="cn-muted">{{ g.main }}{% if g.copies %} and {{ g.copies | length }} other cop{{ "y" if g.copies | length == 1 else "ies" }}{% endif %}</span></li>{% endfor %}
+</ul></section>{% endif %}
+{% endif %}
+</cn-refresh>
+{% endblock %}

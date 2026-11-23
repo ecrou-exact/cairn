@@ -197,6 +197,7 @@ def test_jobs_api(app, signed_in):
     assert signed_in.post(f"/api/jobs/{job_id}/cancel").status_code == 409
     assert signed_in.post(f"/api/jobs/{uuid.uuid4()}/retry").status_code == 404
     assert [t["type"] for t in signed_in.get("/api/jobs/types").json] == [
+        "projects.discover",
         "system.prune",
         "system.self_check",
         "tasks.rescore",

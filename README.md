@@ -59,6 +59,10 @@ Open the URL, create the owner account, then turn on two-factor sign-in under **
 
 Writing in Cairn is always asked first, whatever the permission mode. Cairn must be running.
 
+## Your projects at once
+
+**Projects → Find my projects** looks for every git repository in your folders (Settings → Day summary), puts clones, worktrees and forks of one project together, and starts the ones you choose. It runs as a job: its progress shows on the page.
+
 ## Two machines
 
 On a project's page, **Export** gives one `.cairn` file. On the other machine, **Projects → Import** shows what it changes, then brings it in. Do it each way: what is newer wins, row by row; folders stay each machine's own. Secrets are never in the file. With an exchange folder both machines see (Settings → Projects: Nextcloud, Dropbox, Syncthing, a USB key), **To the exchange folder** saves it there and Import lists it: no download, no upload.

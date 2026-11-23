@@ -7,9 +7,10 @@ import uuid
 from flask import jsonify
 
 from app.api import ApiError, api_blueprint, body
-from app.core.schema.folder import BringInput, GitAction
+from app.core.jobs import jobs_core
+from app.core.schema.folder import BringInput, DiscoverMake, GitAction
 from app.features.changesets.changesets_core import ChangesetError
-from app.features.folder import copies_core, git_core, scan_core
+from app.features.folder import copies_core, discover_core, git_core, scan_core
 from app.features.instances.instances_core import InstanceError
 from app.features.projects import projects_core
 from app.features.resources.resources_core import ResourceError
@@ -62,3 +63,18 @@ def git_action(project_id: uuid.UUID, action: str):
     except git_core.GitError as exc:
         raise ApiError(str(exc), 409) from exc
     return jsonify(said=said)
+
+
+@folder_api.post("/projects/discover")
+def discover_start():
+    """Look for every project of the machine, in a job; its result lists them."""
+    job = jobs_core.enqueue(discover_core.FIND, {}, title="Look for my projects")
+    return jsonify(job=str(job.id)), 202
+
+
+@folder_api.post("/projects/discover/make")
+def discover_make():
+    """Start the projects named by their main folder (`keys`), in a job."""
+    keys = body(DiscoverMake).keys
+    job = jobs_core.enqueue(discover_core.MAKE, {"keys": keys}, title=f"Start {len(keys)} projects")
+    return jsonify(job=str(job.id)), 202

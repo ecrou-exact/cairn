@@ -17,3 +17,9 @@ class BringInput(Strict):
 
 class GitAction(Strict):
     folder: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class DiscoverMake(Strict):
+    keys: Annotated[
+        list[Annotated[str, Field(min_length=1, max_length=500)]], Field(min_length=1, max_length=300)
+    ]
