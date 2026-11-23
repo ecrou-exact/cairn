@@ -21,6 +21,7 @@ PartOf=graphical-session.target
 WorkingDirectory={root}
 ExecStart="{python}" "{root}/manage.py" {command}
 Environment="PATH={path}"
+Environment=CAIRN_ENV=production
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30

@@ -85,6 +85,9 @@ def cmd_start(_: argparse.Namespace) -> int:
 
 
 def cmd_serve(_: argparse.Namespace) -> int:
+    from dotenv import load_dotenv
+
+    load_dotenv(ENV_FILE)  # unlike `flask run`, gunicorn and waitress do not read it
     host = os.environ.get("CAIRN_HOST", "127.0.0.1")
     port = os.environ.get("CAIRN_PORT", "7010")
     env = {"CAIRN_ENV": os.environ.get("CAIRN_ENV", "production"), "CAIRN_WEB": "1"}

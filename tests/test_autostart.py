@@ -1,8 +1,10 @@
 """Cairn at session start (D-062)."""
 
+import os
 import sys
 from pathlib import Path
 
+import manage
 from app.core import autostart
 
 
@@ -25,3 +27,14 @@ def test_autostart_writes_and_removes_its_files(tmp_path, monkeypatch):
 def test_autostart_is_refused_elsewhere(monkeypatch):
     monkeypatch.setattr(sys, "platform", "darwin")
     assert autostart.run("on", Path("/x")) == 1
+
+
+def test_serve_reads_the_env_file(tmp_path, monkeypatch):
+    env = tmp_path / ".env"
+    env.write_text("CAIRN_SECRET_KEY=from-file\nCAIRN_PORT=7999\n")
+    monkeypatch.setattr(manage, "ENV_FILE", env)
+    monkeypatch.setattr(os, "environ", {k: v for k, v in os.environ.items() if not k.startswith("CAIRN_")})
+    started = []
+    monkeypatch.setattr(manage, "_run", lambda *args, env=None: started.append(args) or 0)
+    assert manage.cmd_serve(None) == 0
+    assert os.environ["CAIRN_SECRET_KEY"] == "from-file" and any("7999" in arg for arg in started[0])
