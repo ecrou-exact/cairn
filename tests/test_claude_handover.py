@@ -1,7 +1,5 @@
 """The main Claude opens a project's Claude and hands it work (D-068)."""
 
-import threading
-import time
 import uuid
 from datetime import timedelta
 
@@ -77,26 +75,17 @@ def test_only_the_main_claude_and_within_limits(main, tmp_path, monkeypatch):
     assert not [r for r in db.session.scalars(db.select(ClaudeRequest)) if r.status == "opened"]
 
 
-def test_the_tool_asks_and_waits(app, main, tmp_path):
+def test_the_tool_asks_and_waits(app, main, tmp_path, monkeypatch):
     from tests.test_claude_mcp import _call, _data
 
     project = projects_core.create(ProjectCreate(name="Pandora", local_path=str(tmp_path)))
     server, project_id = mcp_server.build(app, str(main.id)), project.id
     assert "open_project_claude" in mcp_server.WRITE_TOOLS  # so Claude Code asks, in every mode
-    answers = []
-
-    def call():
-        answers.append(_call(server, "open_project_claude", {"project": "pandora", "work": "Read it"}))
-
-    asking = threading.Thread(target=call)
-    asking.start()
-    deadline = time.monotonic() + 10
-    while asking.is_alive() and time.monotonic() < deadline:
-        handover_core.serve_pending()
-        db.session.rollback()
-        time.sleep(0.2)
-    asking.join(15)
-    assert "/claude/sessions/" in _data(answers[0])["url"]
+    # The web process answers while the tool waits. Here in its pause, not in a thread: the tests'
+    # database is one connection, which two threads cannot share.
+    monkeypatch.setattr(handover_core.time, "sleep", lambda seconds: handover_core.serve_pending())
+    answer = _call(server, "open_project_claude", {"project": "pandora", "work": "Read it"})
+    assert "/claude/sessions/" in _data(answer)["url"]
     db.session.expire_all()
     opened = [s for s in terminal_core.sessions() if s.project_id == project_id]
     assert len(opened) == 1
