@@ -1,0 +1,37 @@
+{% extends "layout/shell.html" %}
+{% block title %}Import a project{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('projects.index') }}">Projects</a></div>
+  <h1>Import a project</h1>
+  <p>A file exported from Cairn on another machine. What is new is added; what changed is taken when it is newer there; what is newer here stays. Nothing is written before you confirm.</p>
+</header>
+{% if not found %}
+{% if files %}<section class="cn-panel" aria-labelledby="waiting-title">
+  <h2 id="waiting-title">In the exchange folder <span class="cn-muted">{{ folder }}</span></h2>
+  <ul class="cn-bring-list">{% for f in files %}<li><form method="post" action="{{ url_for('projects.import_preview') }}" class="cn-day-pick"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="name" value="{{ f.name }}"><button class="btn btn-sm btn-outline-secondary" type="submit">See what it changes</button> <span>{{ f.name }}</span> <span class="cn-muted">{{ f.at.strftime("%d %b, %H:%M") }}</span></form></li>{% endfor %}</ul>
+</section>{% elif not folder %}<p class="cn-muted">To skip the download and the upload, set an <a href="{{ url_for('settings.index') }}">exchange folder</a> both machines see (Nextcloud, Dropbox, Syncthing, a USB key).</p>{% endif %}
+<section class="cn-panel">
+  <form method="post" enctype="multipart/form-data" action="{{ url_for('projects.import_preview') }}" class="cn-day-pick">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="visually-hidden" for="file">File</label><input class="form-control" type="file" id="file" name="file" accept=".cairn,application/gzip" required>
+    <button class="btn btn-primary" type="submit">See what it changes</button>
+  </form>
+</section>
+{% else %}
+<section class="cn-panel" aria-labelledby="preview-title">
+  <h2 id="preview-title">{{ found.name }} <span class="cn-muted">exported {{ found.exported_at[:16] | replace("T", " ") }} UTC</span></h2>
+  <p>{{ "This project is here already: it is brought up to date." if found.exists else "This project is new here." }}</p>
+  <div class="cn-table-wrap"><table class="table cn-table">
+    <thead><tr><th scope="col">What</th><th scope="col">New</th><th scope="col">Updated</th><th scope="col">Newer here, kept</th></tr></thead>
+    <tbody>{% for table, c in found.counts.items() if c.new or c.updated or c.kept %}<tr><td>{{ table | replace("_", " ") }}</td><td>{{ c.new }}</td><td>{{ c.updated }}</td><td>{{ c.kept }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if found.changed %}<details><summary>{{ found.changed | length }} task{{ "s" if found.changed | length != 1 }} changed</summary><ul>{% for line in found.changed %}<li>{{ line }}</li>{% endfor %}</ul></details>{% endif %}
+  <form method="post" action="{{ url_for('projects.import_apply', token=token) }}" class="mt-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if not found.exists %}<div class="mb-3"><label class="form-label" for="folder">Its folder on this machine (optional)</label><input class="form-control" id="folder" name="folder" maxlength="500" placeholder="~/Documents/project/{{ found.name | lower }}"></div>{% endif %}
+    <button class="btn btn-primary" type="submit">Import</button> <a class="btn btn-outline-secondary" href="{{ url_for('projects.import_form') }}">Cancel</a>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

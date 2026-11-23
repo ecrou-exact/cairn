@@ -68,6 +68,8 @@
     {% endif %}
     {% if project.local_path %}<button class="btn btn-outline-light" type="button" data-claude-launch data-project="{{ project.id }}" title="Open Claude in this project: a fix, a PR, a review…"><i class="fa-solid fa-claude" aria-hidden="true"></i><span>Claude</span></button>{% endif %}
     <a class="btn btn-outline-light" href="{{ url_for('folder.bring', slug=project.slug) }}" title="Tasks, skills and commands this project already has"><i class="fa-solid fa-file-import" aria-hidden="true"></i><span class="ms-2">Bring in</span></a>
+    <a class="btn btn-outline-light" href="{{ url_for('projects.export', slug=project.slug) }}" title="To bring it to another machine: Projects → Import there"><i class="fa-solid fa-file-export" aria-hidden="true"></i><span class="ms-2">Export</span></a>
+    <form method="post" action="{{ url_for('projects.export_save', slug=project.slug) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline-light" type="submit" title="Save the file in the exchange folder your other machine sees (Settings → Projects)"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i><span class="ms-2">To the exchange folder</span></button></form>
     <a class="btn btn-outline-light" href="{{ url_for('projects.edit', slug=project.slug) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="ms-2">Edit</span></a>
     <cn-confirm message="Move “{{ project.name }}” to the trash?" detail="Its {{ total }} task{{ 's' if total != 1 }} go with it. You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
       <form method="post" action="{{ url_for('projects.delete', slug=project.slug) }}">

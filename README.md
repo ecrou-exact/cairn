@@ -57,6 +57,10 @@ Open the URL, create the owner account, then turn on two-factor sign-in under **
 
 Writing in Cairn is always asked first, whatever the permission mode. Cairn must be running.
 
+## Two machines
+
+On a project's page, **Export** gives one `.cairn` file. On the other machine, **Projects → Import** shows what it changes, then brings it in. Do it each way: what is newer wins, row by row; folders stay each machine's own. Secrets are never in the file. With an exchange folder both machines see (Settings → Projects: Nextcloud, Dropbox, Syncthing, a USB key), **To the exchange folder** saves it there and Import lists it: no download, no upload.
+
 ## Configuration
 Environment variables (or `.env`):
 

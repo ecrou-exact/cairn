@@ -2,9 +2,22 @@
 
 from __future__ import annotations
 
-from pathlib import PurePath
+import re
+import uuid
+from pathlib import Path, PurePath
 
-from flask import Blueprint, abort, flash, make_response, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    Response,
+    abort,
+    current_app,
+    flash,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 from app.core.db_class.planning import PROJECT_COLORS, PROJECT_STATUSES
 from app.core.schema.planning import ProjectCreate, ProjectUpdate
@@ -17,7 +30,7 @@ from app.features.claude import claude_core, worktrees_core
 from app.features.comments import comments_core
 from app.features.graph.graph import graph_view, with_graph_csp
 from app.features.instances import found_core, instances_core
-from app.features.projects import open_core, project_links_core, projects_core
+from app.features.projects import open_core, project_links_core, projects_core, transfer_core
 from app.features.projects.projects_forms import values_from_form, values_from_project
 from app.features.resources import resources_core, storage_core
 from app.features.resources.storage_core import StorageError
@@ -105,6 +118,87 @@ def create():
     _picture(project)
     if project.local_path or project.github_repo:
         return redirect(url_for("folder.bring", slug=project.slug))
+    return redirect(url_for("projects.detail", slug=project.slug))
+
+
+# -- from one machine to another (D-084) ---------------------------------------------------------
+
+
+def _waiting(token: str) -> Path:
+    if not re.fullmatch(r"[0-9a-f]{32}", token or ""):
+        abort(404)
+    folder = Path(current_app.config["CAIRN_DATA_DIR"]) / "imports"
+    folder.mkdir(mode=0o700, exist_ok=True)
+    return folder / f"{token}.cairn"
+
+
+@projects.get("/projects/<slug>/export")
+def export(slug: str):
+    project = _project_or_404(slug)
+    name = transfer_core.file_name(project)
+    return Response(
+        transfer_core.export(project),
+        mimetype="application/gzip",
+        headers={"Content-Disposition": f"attachment; filename={name}"},
+    )
+
+
+@projects.post("/projects/<slug>/export/save")
+def export_save(slug: str):
+    project = _project_or_404(slug)
+    try:
+        path = transfer_core.save(project)
+    except (transfer_core.TransferError, OSError) as exc:
+        flash(str(exc), "danger")
+    else:
+        flash(f"Saved in the exchange folder: {path.name}. Import it on the other machine.", "success")
+    return redirect(url_for("projects.detail", slug=slug))
+
+
+@projects.get("/projects/import")
+def import_form():
+    return render_template(
+        "projects/import.html",
+        found=None,
+        folder=transfer_core.exchange_folder(),
+        files=transfer_core.waiting_files(),
+    )
+
+
+@projects.post("/projects/import")
+def import_preview():
+    sent = request.files.get("file")
+    try:
+        if request.form.get("name"):
+            blob = transfer_core.from_folder(request.form["name"])
+        else:
+            blob = sent.read() if sent else b""
+            if not blob:
+                flash("Choose a file exported by Cairn.", "warning")
+                return redirect(url_for("projects.import_form"))
+        found = transfer_core.preview(blob)
+    except transfer_core.TransferError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("projects.import_form"))
+    token = uuid.uuid4().hex
+    _waiting(token).write_bytes(blob)
+    return render_template("projects/import.html", found=found, token=token)
+
+
+@projects.post("/projects/import/<token>")
+def import_apply(token: str):
+    path = _waiting(token)
+    if not path.exists():
+        flash("This import is no longer waiting: choose the file again.", "warning")
+        return redirect(url_for("projects.import_form"))
+    folder = (request.form.get("folder") or "").strip() or None
+    try:
+        project, _ = transfer_core.bring(path.read_bytes(), folder)
+    except transfer_core.TransferError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("projects.import_form"))
+    path.unlink(missing_ok=True)
+    flash(f"“{project.name}” is up to date with the file.", "success")
     return redirect(url_for("projects.detail", slug=project.slug))
 
 

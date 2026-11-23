@@ -160,6 +160,7 @@ SETTING_TYPES: dict[str, TypeAdapter] = {
     "claude.main_autostart": TypeAdapter(Annotated[bool, Field(strict=True)]),
     "claude.worktrees": TypeAdapter(Annotated[bool, Field(strict=True)]),
     "claude.max_open": TypeAdapter(Annotated[int, Field(strict=True, ge=1, le=50)]),
+    "projects.transfer_folder": TypeAdapter(Annotated[str, Field(max_length=500)]),
     "projects.editor": TypeAdapter(Annotated[str, Field(pattern=r"^[A-Za-z0-9._-]{1,60}$")]),
     "resources.previews": TypeAdapter(Annotated[bool, Field(strict=True)]),
     "jobs.retention_days": TypeAdapter(Annotated[int, Field(strict=True, ge=1, le=3650)]),

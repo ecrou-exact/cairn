@@ -479,3 +479,9 @@
 - An instance of the project can be linked too (by its name): its state, folder, command and ports reach the brief. Instances show the folder they run in, on the project and on the Instances page.
 - What Cairn made for a task is shown without being linked: its worktrees and the Claudes opened on it. A subtask also gets its parents' and its project's links.
 - Each is described where it lives: its last commits from the project's copies, the pull request from GitHub, the conversation from Cairn. The task's brief has a **Linked work** section with all of it; text from a pull request is data, as everywhere else.
+
+## D-084 · 2026-11-23 · accepted — A project from one machine to another
+- Owner request: work at the office and at home. **Export** (project page) gives one file: the project, its tasks and subtasks, dependencies, conditions, timers, comments, resources with their files, linked work, instances. **Import** (Projects page) shows what it would change, then writes it all or nothing.
+- Rows keep their ids, so the same project is merged back and forth: new rows added, changed ones taken when newer in the file, newer ones here kept. The folder and the address (slug) stay this machine's; a new project asks for its folder.
+- An **exchange folder** (setting `projects.transfer_folder`: a Nextcloud, Dropbox or Syncthing folder, a USB key) spares the download and the upload: Export saves there, Import lists what is there. Mail cannot carry a file from a link (`mailto:` has no attachments), so it is not offered.
+- Not in the file: secrets, tokens, the vault, `.env`, the history of changes, Claude's sessions. Scores and counters are recomputed. An import is not undoable: the preview says what it does first.

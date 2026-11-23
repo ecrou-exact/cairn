@@ -1,0 +1,6 @@
+{
+  "label": "Exchange folder",
+  "category": "Projects",
+  "description": "A folder both of your machines see (Nextcloud, Dropbox, Syncthing, a USB key…). Export saves the project's file there, Import lists the files found there. Empty: download and upload by hand.",
+  "value": ""
+}
