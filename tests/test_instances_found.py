@@ -81,6 +81,8 @@ def test_a_log_is_followed_in_a_terminal(ctx, tmp_path, serve):
     folder = _repo(tmp_path / "site", "https://github.com/x/site.git")
     (tmp_path / "secret.log").write_text("secret")
     _, port = serve(folder)
+    if sys.platform != "win32":
+        (folder / "linked.log").symlink_to(tmp_path / "secret.log")
     project = projects_core.create(ProjectCreate(name="Site", local_path=str(folder)))
     key = str(folder / "app.log")
     session = found_core.open_log(project, key)
@@ -91,6 +93,8 @@ def test_a_log_is_followed_in_a_terminal(ctx, tmp_path, serve):
     while "added later" not in seen and time.monotonic() < deadline:
         seen = "".join(text for _, text in terminal_core.output(session.id, 0, wait=0.3)[0])
     assert f"port {port}" in seen and "added later" in seen
+    (item,) = found_core.for_project(project)
+    assert [log["label"] for log in item["logs"]] == ["app.log"]  # a link elsewhere is left out
     with pytest.raises(instances_core.InstanceError, match="no longer there"):
         found_core.open_log(project, str(tmp_path / "secret.log"))  # not one of its logs
 

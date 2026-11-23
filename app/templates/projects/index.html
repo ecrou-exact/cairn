@@ -8,24 +8,28 @@
 {{ graph_assets() }}
 {% endblock %}
 {% block scripts %}
-<script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>
+{% if graph_view %}<script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>{% endif %}
 {% endblock %}
 {% block content %}
 <header class="cn-page-header cn-page-header-actions">
   <div>
     <div class="cn-eyebrow">Planning</div>
     <h1>Projects</h1>
-    <p>In which order to do them: what passes first on the left. Press L to order two projects.</p>
+    <p>{{ "In which order to do them: what passes first on the left. Press L to order two projects." if graph_view else "Each project with what is open, blocked and late." }}</p>
   </div>
   <a class="btn btn-primary" href="{{ url_for('projects.new') }}"><i class="fa-solid fa-plus" aria-hidden="true"></i><span class="ms-2">New project</span></a>
 </header>
 
-{% if not page.has_filters and page.page == 1 %}
+<nav class="cn-tabs" aria-label="View">
+  <a class="cn-tab" href="{{ url_for('projects.index') }}" {% if graph_view %}aria-current="page"{% endif %}><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span>Graph</span></a>
+  <a class="cn-tab" href="{{ url_for('projects.index', view='cards') }}" {% if not graph_view %}aria-current="page"{% endif %}><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>Cards</span><span class="cn-tab-count">{{ page.total }}</span></a>
+</nav>
+
+{% if graph_view %}
 <section class="cn-projects-plan" aria-label="The plan of projects">
   {{ graph_stage("view=projects", label="The plan of projects", projects=True) }}
 </section>
-{% endif %}
-
+{% else %}
 {{ toolbar(page, "Search projects") }}
 
 {% if page.items %}
@@ -75,5 +79,6 @@
   {{ pagination(page) }}
 {% else %}
   {{ empty_state(page, "No projects yet", "A project groups tasks, links and instructions for Claude. Create your first one.") }}
+{% endif %}
 {% endif %}
 {% endblock %}

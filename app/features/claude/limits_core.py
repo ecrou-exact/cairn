@@ -20,11 +20,11 @@ def limits_file() -> Path:
     return Path(current_app.config["CAIRN_DATA_DIR"]) / "claude" / "limits.json"
 
 
-def settings_json() -> str:
-    """The `--settings` of a session: Cairn's status line, which runs the owner's after it."""
+def status_line() -> dict[str, str]:
+    """The status line of a session: Cairn's, which runs the owner's after it."""
     parts = (Path(sys.executable), Path(statusline.__file__).resolve(), limits_file().resolve())
     command = " ".join(f'"{part.as_posix()}"' for part in parts)
-    return json.dumps({"statusLine": {"type": "command", "command": command}})
+    return {"type": "command", "command": command}
 
 
 def context_window(model: str) -> int | None:

@@ -382,3 +382,16 @@
 - **The page in front:** the dock tells it (`/api/claude/page`), `current_page` gives it to Claude with the project, task or resource it shows.
 - **Cairn itself:** `--add-dir` on Cairn's code, with rules: CLAUDE.md first, a branch in a worktree, the diff shown, the owner's go before merging, never a restart by itself.
 - A terminal's stream is open only while its tab is in view (six connections per browser).
+
+## D-064 · 2026-11-23 · accepted — Security review of the main Claude's access
+- **Session key given to every program (fixed, high):** Claudes and instances inherited Cairn's environment, `CAIRN_SECRET_KEY` with it: any of them could forge the owner's session, and so start commands without approval. Nothing named `CAIRN_*` is passed on any more.
+- **Approvals assumed, not enforced (fixed, high):** D-052 counts on Claude Code asking before a change; a permissive mode (auto) need not. Every session gets `ask` rules on Cairn's writing tools; the main one also on edits of Cairn's code, push, merge and service commands.
+- **Files that give the owner's rights (reduced):** `.env`, the vault's key file, the database and session files are refused to Claude Code's file tools. Not a sandbox: a program run by a session is still the owner's user.
+- **Notes as an injection path (reduced):** a project's Claude, steered by hostile content, could write to the main one. Notes come with a warning, the rules say report rather than obey, 8000 characters at most; acting on one meets the `ask` rules.
+- **Data folder readable by other users when outside a private home (fixed):** 0700 at start.
+- **Log links (fixed):** a symbolic link in a repository's log folder could show a file from elsewhere to the owner.
+- Reviewed, nothing to change: the panel's frame (own origin only, messages checked, strict policy elsewhere), CSRF and deny-by-default on the new endpoints, the status line (numbers only; runs the owner's own command).
+- **Accepted:** same-user isolation needs a sandbox (Phase 5, permissions); a project's Claude can write notes as any session of this user could.
+
+## D-065 · 2026-11-23 · accepted — Projects: graph or cards
+- Owner request: not both on one page. Two tabs: the graph (default), and the list (cards or table), which a search, a filter or a page also opens.

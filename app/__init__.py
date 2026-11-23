@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask
@@ -18,6 +20,7 @@ def create_app(env: str | None = None) -> Flask:
     app.config.from_object(config)
     app.config["SQLALCHEMY_DATABASE_URI"] = config.database_uri()
     app.config["CAIRN_DATA_DIR"] = config.data_dir()
+    keep_private(app.config["CAIRN_DATA_DIR"])
     app.config["CAIRN_UPLOAD_DIR"] = app.config["CAIRN_DATA_DIR"] / "uploads"
     if not app.config.get("SECRET_KEY"):
         raise RuntimeError("CAIRN_SECRET_KEY is not set. Run `python manage.py setup` first.")
@@ -40,6 +43,17 @@ def create_app(env: str | None = None) -> Flask:
     register_security_headers(app)
     register_static_versions(app)
     return app
+
+
+def keep_private(folder: Path) -> None:
+    """The data folder (database, vault key, transcripts of what runs) is the owner's alone."""
+    if os.name != "posix" or not folder.is_dir():
+        return
+    try:
+        if folder.stat().st_uid == os.getuid() and folder.stat().st_mode & 0o077:
+            folder.chmod(0o700)
+    except OSError:
+        logging.getLogger("cairn").warning("The data folder %s could not be made private", folder)
 
 
 def _init_extensions(app: Flask) -> None:

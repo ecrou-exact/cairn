@@ -40,7 +40,7 @@ from app.core.utils.events import publish
 from app.core.utils.history import batch
 from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
-from app.features.claude import limits_core, main_core, mcp_server, skills_core, transcript_core
+from app.features.claude import main_core, mcp_server, session_settings, skills_core, transcript_core
 from app.features.claude.pty_host import Pty
 from app.features.connections import connections_core
 from app.features.projects import projects_core
@@ -62,13 +62,13 @@ HIDDEN_ENV = frozenset(
         "CLAUDE_CODE_ENTRYPOINT",
         "CLAUDE_CODE_EXECPATH",
         "CLAUDE_AGENT_SDK_VERSION",
-        "CAIRN_WEB",  # Cairn's own: only its web server opens the main Claude (D-060)
-        "CAIRN_RELOAD",
         "WERKZEUG_RUN_MAIN",
         "WERKZEUG_SERVER_FD",
     }
 )
-HIDDEN_ENV_PREFIXES = ("CLAUDE_CODE_CHILD_", "CLAUDE_CODE_SESSION_", "CLAUDE_CODE_MESSAGING_")
+# Cairn's own settings never reach a program it starts: CAIRN_SECRET_KEY signs the owner's
+# session, CAIRN_MASTER_KEY opens the vault, CAIRN_DATABASE_URL may hold a password (D-064).
+HIDDEN_ENV_PREFIXES = ("CAIRN_", "CLAUDE_CODE_CHILD_", "CLAUDE_CODE_SESSION_", "CLAUDE_CODE_MESSAGING_")
 
 
 class TerminalError(ValueError):
@@ -269,7 +269,10 @@ def _mcp_config(session_id: uuid.UUID) -> Path:
                 "type": "stdio",
                 "command": sys.executable,
                 "args": [str(manage), "mcp"],
-                "env": {"CAIRN_MCP_SESSION": str(session_id)},
+                "env": {
+                    "CAIRN_MCP_SESSION": str(session_id),
+                    "CAIRN_DATA_DIR": str(current_app.config["CAIRN_DATA_DIR"]),
+                },
             }
         }
     }
@@ -561,7 +564,7 @@ def _launch(
             rules,
             resume=bool(resume),
             mcp=mcp,
-            settings=limits_core.settings_json(),
+            settings=session_settings.settings_json(session.cwd),
             skills=skills,
             add_dir=add_dir,
         )

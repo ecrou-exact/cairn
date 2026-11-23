@@ -650,3 +650,32 @@ def test_main_claude_may_work_on_cairn(ctx, tmp_path):
     assert str(main_core.code_folder()) in main_core.rules(str(main_core.folder()))
     argv = terminal_core.command("claude", uuid.uuid4(), None, add_dir=tmp_path, mcp=tmp_path / "m")
     assert argv[argv.index("--add-dir") + 1] == str(tmp_path) and argv[-2] == "--allowedTools"
+
+
+def test_nothing_of_cairn_reaches_what_it_starts(ctx, monkeypatch):
+    for key in ("CAIRN_SECRET_KEY", "CAIRN_MASTER_KEY", "CAIRN_DATABASE_URL", "CAIRN_WEB", "cairn_lower"):
+        monkeypatch.setenv(key, "x")
+    assert not [key for key in terminal_core._environment() if key.upper().startswith("CAIRN_")]
+
+
+def test_rules_ask_for_changes_and_refuse_private_files(ctx, tmp_path):
+    from app.features.claude import mcp_server, session_settings
+
+    code = main_core.code_folder().as_posix().lstrip("/")
+    plain = session_settings.permissions(str(tmp_path))
+    main = session_settings.permissions(str(main_core.folder()))
+    assert f"Read(//{code}/.env)" in plain["deny"] and plain["deny"] == main["deny"]
+    assert {f"mcp__cairn__{name}" for name in mcp_server.WRITE_TOOLS} <= set(plain["ask"])
+    assert f"Edit(//{code}/**)" in main["ask"] and "Bash(git push *)" in main["ask"]
+    assert f"Edit(//{code}/**)" not in plain["ask"]
+    assert not set(mcp_server.READ_TOOLS) & set(mcp_server.WRITE_TOOLS)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permissions")
+def test_data_folder_is_private(tmp_path):
+    from app import keep_private
+
+    folder = tmp_path / "data"
+    folder.mkdir(mode=0o755)
+    keep_private(folder)
+    assert folder.stat().st_mode & 0o077 == 0

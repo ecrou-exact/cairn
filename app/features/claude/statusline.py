@@ -54,7 +54,8 @@ def keep(data: dict, target: Path) -> None:
     if isinstance(model, dict) and isinstance(context, dict):
         name, size = str(model.get("id") or "").split("[")[0], context.get("context_window_size")
         if name and isinstance(size, int) and size > 0:
-            kept.setdefault("context_windows", {})[name] = size
+            sizes = kept.get("context_windows")
+            kept["context_windows"] = {**(sizes if isinstance(sizes, dict) else {}), name: size}
     if json.dumps(kept) == before:
         return
     target.parent.mkdir(parents=True, exist_ok=True)

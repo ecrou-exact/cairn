@@ -50,10 +50,13 @@ def _form(values, errors=None, project=None, status=200):
 def index():
     after = latest_event_id()
     page = projects_core.list_projects(request.args)
+    # Two views (D-065): the graph, or the list as soon as it is asked for or filtered.
+    graph_view = not request.args
     response = make_response(
         render_template(
             "projects/index.html",
             page=page,
+            graph_view=graph_view,
             stats=projects_core.stats([p.id for p in page.items]),
             events_after=after,
         )

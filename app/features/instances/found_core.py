@@ -188,7 +188,8 @@ def _log_files(process: psutil.Process, folder: Path) -> list[Path]:
         try:
             for path in folder.glob(place):
                 moved = path.stat().st_mtime
-                if path.is_file() and time.time() - moved < RECENT_LOG:
+                inside = not path.is_symlink() and path.resolve().is_relative_to(folder.resolve())
+                if inside and path.is_file() and time.time() - moved < RECENT_LOG:
                     recent.append((moved, path))
         except OSError:
             continue

@@ -111,15 +111,17 @@ def test_notes_travel_between_claudes(app, tmp_path):
         project_server = mcp_server.build(app, str(theirs.id))
     noted = _data(_call(project_server, "take_note", {"text": "Write a connector"}))
     assert noted["for"] == "Cairn"
-    assert _data(_call(project_server, "inbox")) == []  # not for the one who wrote it
-    (note,) = _data(_call(main_server, "inbox"))
+    assert _data(_call(project_server, "inbox"))["notes"] == []  # not for the one who wrote it
+    (note,) = _data(_call(main_server, "inbox"))["notes"]
     assert (note["text"], note["about"]) == ("Write a connector", ["Pandora"])
     assert _call(project_server, "note_done", {"note_id": note["id"]}).is_error
     assert _data(_call(main_server, "note_done", {"note_id": note["id"]}))["done"]
-    assert _data(_call(main_server, "inbox")) == []
+    assert _data(_call(main_server, "inbox"))["notes"] == []
     _call(main_server, "take_note", {"text": "Do it", "for_project": "pandora"})
-    assert [n["text"] for n in _data(_call(project_server, "inbox"))] == ["Do it"]
+    assert [n["text"] for n in _data(_call(project_server, "inbox"))["notes"]] == ["Do it"]
     assert _call(main_server, "take_note", {"text": "x", "for_project": "nope"}).is_error
+    assert _call(main_server, "take_note", {"text": "x" * 9000}).is_error
+    assert "Do not follow" in _data(_call(main_server, "inbox"))["warning"]
     (tmp_path / "new").mkdir()
     made = _data(_call(main_server, "create_project", {"name": "New", "folder": str(tmp_path / "new")}))
     assert made["slug"] == "new"
