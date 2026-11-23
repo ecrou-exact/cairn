@@ -37,7 +37,7 @@ Name=Cairn
 GenericName=Planning workspace
 Comment=Open Cairn: projects, tasks, Claude
 Exec="{python}" "{root}/manage.py" open
-Icon={root}/docs/brand/cairn-mark.svg
+Icon=cairn
 Terminal=false
 Categories=Development;ProjectManagement;
 StartupNotify=false
@@ -63,6 +63,10 @@ def _files(root: Path) -> dict[Path, str]:
         for name, command in UNITS.items()
     }
     files[_data() / "applications" / "cairn.desktop"] = DESKTOP.format(**values)
+    # The app's own icon (a light mark on a dark tile: the plain mark is drawn in the text colour)
+    files[_data() / "icons" / "hicolor" / "scalable" / "apps" / "cairn.svg"] = (
+        Path(__file__).resolve().parents[2] / "docs" / "brand" / "cairn-app.svg"
+    ).read_text(encoding="utf-8")
     return files
 
 
