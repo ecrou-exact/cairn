@@ -191,6 +191,12 @@ PRESET_INFO = {
         "hint": "https://github.com/…/pull/42",
     },
     "fix": {"label": "Fix a bug", "icon": "fa-bug", "asks": "text", "hint": "What goes wrong, how to see it"},
+    "fill": {
+        "label": "Fill this project in Cairn",
+        "icon": "fa-wand-magic-sparkles",
+        "asks": "",
+        "hint": "Anything to look at first (optional)",
+    },
     "review": {
         "label": "Review the changes",
         "icon": "fa-magnifying-glass",
@@ -229,6 +235,9 @@ def _first_message(data: SessionStart, task: Task | None) -> str | None:
             "Find the cause first, fix it, add a test that fails without the fix, run the tests, "
             f"then show me the diff and wait for my go before committing.{about}"
         )
+    if data.preset == "fill":
+        focus = f" Look first at: {words}." if words else ""
+        return FILL_MESSAGE + focus
     if data.preset == "review":
         focus = f" Look especially at: {words}." if words else ""
         return (
@@ -239,6 +248,22 @@ def _first_message(data: SessionStart, task: Task | None) -> str | None:
     return (words + about) if words else (about.strip() or None)
 
 
+FILL_MESSAGE = (
+    "Fill this project in Cairn with what this folder already says, without changing any file here. "
+    "Read: the README and every Markdown file (docs/, doc/, *.md), the configuration (pyproject, "
+    "package.json, Dockerfile, compose, CI), the skills (.claude/skills, any SKILL.md), CLAUDE.md, "
+    "AGENTS.md, the logos and images (logo*, docs/images, static), the git log and remotes. Then, with "
+    "Cairn's tools, each change asked to me: update_project (what it is in a few paragraphs, its stack, "
+    "tags, GitHub repository, main branch, its links: site, docs, demo, chat), set_project_logo with "
+    "the best square-ish PNG, JPEG, GIF or WebP logo if there is one, add_resource for the documents "
+    "and links worth keeping (a note with the essentials of a long doc, never a copy of it). Then "
+    "found_in_project: tell me what can be brought in (to-do lists, issues, skills, commands) and give "
+    "me its bring_in address, where I choose; skills are taken there, by me. Last, if the folder shows "
+    "work to do, propose_changeset with the tasks, in order. Only facts from the files; say what you "
+    "did not find."
+)
+
+
 def _title(data: SessionStart, name: str, task: Task | None) -> str:
     words = " ".join(data.detail.split())
     if data.preset == "pr":
@@ -247,6 +272,8 @@ def _title(data: SessionStart, name: str, task: Task | None) -> str:
         return f"Fix: {words[:80]}"
     if data.preset == "review":
         return f"Review of {name}"
+    if data.preset == "fill":
+        return f"Fill {name}"
     return task.title if task is not None else name
 
 

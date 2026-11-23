@@ -44,6 +44,7 @@ from app.features.claude import (
 from app.features.comments import comments_core
 from app.features.projects import place_core, projects_core
 from app.features.resources import resources_core
+from app.features.resources.storage_core import StorageError
 from app.features.tasks import brief_core, dependencies_core, tasks_core, workflow
 from app.features.worklinks import worklinks_core
 
@@ -69,6 +70,7 @@ WRITE_TOOLS = (
     "note_done",
     "create_project",
     "update_project",
+    "set_project_logo",
     "create_task",
     "set_task_status",
     "link_tasks",
@@ -389,6 +391,7 @@ def build(
         tags: list[str] | None = None,
         github_repo: str | None = None,
         default_branch: str | None = None,
+        links: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         """Fill or correct a project after reading it (default: this session's project): what it
         is (Markdown), its stack, tags, GitHub repository (owner/name) and main branch. Only what
@@ -406,6 +409,7 @@ def build(
                 "tags": tags,
                 "github_repo": github_repo,
                 "default_branch": default_branch,
+                "links": links,
             }
             try:
                 data = ProjectUpdate(**{key: value for key, value in given.items() if value is not None})
@@ -415,6 +419,28 @@ def build(
                 ) from exc
             updated = projects_core.update(chosen.id, data)
             return {"id": str(updated.id), "name": updated.name, "changed": sorted(data.model_fields_set)}
+
+        return run(work)
+
+    @server.tool()
+    def set_project_logo(path: str, project: str | None = None) -> dict[str, Any]:
+        """Use a picture of the project's own folder (PNG, JPEG, GIF or WebP; full path, or relative to
+        the folder) as its logo in Cairn, in place of its icon. Default: this session's project."""
+
+        def work():
+            chosen = _project(project) or session_project()
+            if chosen is None or not chosen.local_path:
+                raise CairnToolError("Say which project; it needs its local folder.")
+            root = Path(chosen.local_path).expanduser().resolve()
+            picture = (root / path).resolve() if not Path(path).is_absolute() else Path(path).resolve()
+            if not picture.is_relative_to(root) or not picture.is_file():
+                raise CairnToolError("Give a picture inside the project's folder.")
+            with picture.open("rb") as stream:
+                try:
+                    projects_core.set_image(chosen.id, stream)
+                except StorageError as exc:
+                    raise CairnToolError(str(exc)) from exc
+            return {"project": chosen.name, "logo": str(picture.relative_to(root))}
 
         return run(work)
 

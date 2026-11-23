@@ -296,7 +296,7 @@ def test_launcher_api(app, signed_in, tmp_path, fake_claude):
         "project"
     ]
     targets = signed_in.get("/api/claude/targets").json
-    assert {p["key"] for p in targets["presets"]} == {"free", "task", "pr", "fix", "review"}
+    assert {p["key"] for p in targets["presets"]} == {"free", "task", "pr", "fix", "review", "fill"}
     assert any(p["id"] == project["id"] and p["folder"] for p in targets["projects"])
     made = signed_in.post(
         "/api/claude/projects", json={"name": "Brand new", "folder": str(tmp_path / "brand-new")}
