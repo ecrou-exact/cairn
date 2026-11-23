@@ -105,8 +105,10 @@ const ACTIONS = {
   pin: ['pinned', true], unpin: ['pinned', false],
   hide: ['hidden', true], show: ['hidden', false],
 };
+const SERVER_ONLY = new Set(['pause', 'resume']); // the page shows the state: done by the form
 
 bulk?.addEventListener('submit', async (event) => {
+  if (SERVER_ONLY.has(event.submitter?.value)) return;
   const action = ACTIONS[event.submitter?.value];
   if (!action) return;
   event.preventDefault();

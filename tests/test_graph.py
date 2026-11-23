@@ -185,7 +185,7 @@ def test_find_api(app, signed_in):
     assert [m["label"] for m in body["matches"]] == ["Searchable % card"]
     assert signed_in.get("/api/graph/find?q=x&root=nope").status_code == 422
     project = signed_in.post("/api/projects", json={"name": "Findable"}).json["project"]
-    assert b'id="graph-find"' in signed_in.get(f"/projects/{project['slug']}").data
+    assert b'id="graph-find"' in signed_in.get(f"/projects/{project['slug']}?tab=plan").data
 
 
 def test_graph_lives_in_the_projects(app, signed_in):
@@ -195,7 +195,7 @@ def test_graph_lives_in_the_projects(app, signed_in):
     assert to_project.endswith(f"/projects/{project['slug']}?tab=plan")
     shell = signed_in.get("/projects?mode=graph").data
     assert b'href="/graph"' not in shell and b"data-graph-canvas" in shell and b"view=projects" in shell
-    plan = signed_in.get(f"/projects/{project['slug']}")
+    plan = signed_in.get(f"/projects/{project['slug']}?tab=plan")
     assert b'aria-current="page"' in plan.data and b"cn-graph-toolbar" in plan.data
     assert "style-src-attr" in plan.headers["Content-Security-Policy"]
     listing = signed_in.get(f"/projects/{project['slug']}?q=x").data

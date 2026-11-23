@@ -20,7 +20,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
   <span class="cn-bulk-count" data-selected-count aria-live="polite">Choose projects to change them together</span>
   <div class="cn-bulk-actions">
-    {% for action, icon, label in [("star", "fa-solid fa-star", "Star"), ("unstar", "fa-regular fa-star", "Unstar"), ("pin", "fa-solid fa-thumbtack", "Pin"), ("unpin", "fa-solid fa-thumbtack fa-rotate-90", "Unpin"), ("show" if hidden_view else "hide", "fa-regular fa-eye" if hidden_view else "fa-regular fa-eye-slash", "Show" if hidden_view else "Hide")] %}
+    {% for action, icon, label in [("star", "fa-solid fa-star", "Star"), ("unstar", "fa-regular fa-star", "Unstar"), ("pin", "fa-solid fa-thumbtack", "Pin"), ("unpin", "fa-solid fa-thumbtack fa-rotate-90", "Unpin"), ("show" if hidden_view else "hide", "fa-regular fa-eye" if hidden_view else "fa-regular fa-eye-slash", "Show" if hidden_view else "Hide"), ("pause", "fa-solid fa-pause", "Pause"), ("resume", "fa-solid fa-play", "Resume")] %}
     <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="{{ action }}"><i class="{{ icon }}" aria-hidden="true"></i><span class="ms-1">{{ label }}</span></button>{% endfor %}
   </div>
 </form>

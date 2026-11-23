@@ -37,6 +37,8 @@
 <section class="cn-project-hero cn-color-{{ project.color }}" aria-labelledby="project-title">
   <div class="cn-project-hero-main">
     <nav class="cn-project-hero-crumbs" aria-label="Breadcrumb"><a href="{{ url_for('projects.index') }}">Projects</a></nav>
+    {% if project.status == "paused" %}<p class="cn-paused-note"><i class="fa-solid fa-pause" aria-hidden="true"></i> Paused: its tasks are out of what to do, the home page, the lists and the plan.
+  <form method="post" action="{{ url_for('projects.pause', slug=project.slug, state='resume') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-light" type="submit">Resume it</button></form></p>{% endif %}
     <h1 id="project-title"><span class="cn-project-hero-tile" aria-hidden="true">{{ project_mark(project) }}</span>{{ project.name }}{% if project.status != "active" %} <span class="cn-badge">{{ project.status }}</span>{% endif %}</h1>
     <div class="cn-project-hero-where">
       {% if project.github_repo %}<a href="https://github.com/{{ project.github_repo }}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github" aria-hidden="true"></i> {{ project.github_repo }}</a><span><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ project.default_branch }}</span>{% endif %}
@@ -83,6 +85,7 @@
         <a class="cn-menu-item" role="menuitem" href="{{ url_for('projects.export', slug=project.slug) }}"><i class="fa-solid fa-file-export" aria-hidden="true"></i><span>Export (download)</span></a>
         <form method="post" action="{{ url_for('projects.export_save', slug=project.slug) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="cn-menu-item" type="submit" role="menuitem"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i><span>Export to the exchange folder</span></button></form>
         <hr class="cn-menu-sep">
+        <form method="post" action="{{ url_for('projects.pause', slug=project.slug, state='resume' if project.status == 'paused' else 'pause') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="cn-menu-item" type="submit" role="menuitem"><i class="fa-solid {{ 'fa-play' if project.status == 'paused' else 'fa-pause' }}" aria-hidden="true"></i><span>{{ "Resume the project" if project.status == "paused" else "Pause: out of what to do" }}</span></button></form>
         <form method="post" action="{{ url_for('projects.mark', slug=project.slug, mark='hide') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="cn-menu-item" type="submit" role="menuitem"><i class="fa-regular {{ 'fa-eye' if project.hidden else 'fa-eye-slash' }}" aria-hidden="true"></i><span>{{ "Show in the list again" if project.hidden else "Hide from the list" }}</span></button></form>
         <a class="cn-menu-item" role="menuitem" href="{{ url_for('projects.edit', slug=project.slug) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span>Edit</span></a>
         <cn-confirm message="Move “{{ project.name }}” to the trash?" detail="Its {{ total }} task{{ 's' if total != 1 }} go with it. You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
@@ -99,8 +102,8 @@
 {% set link_count = links.before | length + links.after | length %}
 <nav class="cn-tabs" aria-label="{{ project.name }}">
   {% for key, icon, label, count in [
-      ("plan", "fa-diagram-project", "Plan", None),
       ("tasks", "fa-list-check", "Tasks", stats.open),
+      ("plan", "fa-diagram-project", "Plan", None),
       ("git", "fa-code-branch", "Git", None),
       ("claude", "fa-claude", "Claude", None),
       ("instances", "fa-server", "Instances", instances_running),

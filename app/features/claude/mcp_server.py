@@ -440,7 +440,7 @@ def build(
                     projects_core.set_image(chosen.id, stream)
                 except StorageError as exc:
                     raise CairnToolError(str(exc)) from exc
-            return {"project": chosen.name, "logo": str(picture.relative_to(root))}
+            return {"project": chosen.name, "logo": picture.relative_to(root).as_posix()}
 
         return run(work)
 

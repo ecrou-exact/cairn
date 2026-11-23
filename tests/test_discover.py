@@ -21,6 +21,10 @@ def machine(tmp_path, monkeypatch):
     fix = _clone(tmp_path / "loo-fix", LOO, branch="fix")
     tree = tmp_path / "loo-tree"
     _git(main, "worktree", "add", "-q", "-b", "tree", str(tree))
+    # The folder worked in last is the project's: whatever the machine's clock, main is the newest
+    monkeypatch.setenv("GIT_COMMITTER_DATE", "2030-01-01T00:00:00")
+    _git(main, "commit", "--allow-empty", "-qm", "worked here last")
+    monkeypatch.delenv("GIT_COMMITTER_DATE")
     other = _clone(tmp_path / "cairn", ("origin", "https://github.com/me/cairn.git"))
     loose = _clone(tmp_path / "notes")
     monkeypatch.setattr(facts_core, "repositories", lambda: [fix, main, tree, other, loose])

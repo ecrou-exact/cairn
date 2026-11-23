@@ -527,3 +527,7 @@
 
 ## D-094 · 2026-11-23 · accepted — Where you are, on every page
 - Owner request: a trail at the top left of every page below a section's own: the section, the project, the parent tasks and the task, then the page (a tab, Edit, Bring in, Rules…), each a link. Built from the page's address (`breadcrumbs.trail()`), so every page has it without its own code.
+
+## D-095 · 2026-11-23 · accepted — Pause a project; its tasks first
+- Owner request: a project can be **paused** (its Actions menu, or several at once on the Projects page): its tasks leave what to do, the home page, the task lists, the counts and the plan of projects, as if it were not there; the project itself stays in its list and page, marked, and **Resume** brings it all back. An archived project is left out the same way. A paused project's tasks are still shown when that project is asked for (its page, a filter on it).
+- A project opens on its **Tasks** tab, first of its tabs; the plan is one click away.

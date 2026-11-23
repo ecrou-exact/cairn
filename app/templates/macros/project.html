@@ -6,7 +6,7 @@
 {# A project's tabs on the pages that belong to it (proposals, bring in, copies, GitHub): one click back. #}
 {% macro project_tabs(p, here="") -%}
 <nav class="cn-tabs" aria-label="{{ p.name }}">
-  {% for key, icon, label in [("plan", "fa-diagram-project", "Plan"), ("tasks", "fa-list-check", "Tasks"), ("git", "fa-code-branch", "Git"), ("claude", "fa-claude", "Claude"), ("instances", "fa-server", "Instances"), ("about", "fa-circle-info", "About")] %}
+  {% for key, icon, label in [("tasks", "fa-list-check", "Tasks"), ("plan", "fa-diagram-project", "Plan"), ("git", "fa-code-branch", "Git"), ("claude", "fa-claude", "Claude"), ("instances", "fa-server", "Instances"), ("about", "fa-circle-info", "About")] %}
   <a class="cn-tab" href="{{ url_for('projects.detail', slug=p.slug, tab=key) }}" {% if here == key %}aria-current="page"{% endif %}><i class="fa-solid {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span></a>
   {% endfor %}
 </nav>

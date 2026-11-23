@@ -41,7 +41,7 @@ from app.features.worklinks import worklinks_core
 
 projects = Blueprint("projects", __name__)
 
-TABS = ("plan", "tasks", "git", "claude", "instances", "about")
+TABS = ("tasks", "plan", "git", "claude", "instances", "about")
 
 
 def _project_or_404(slug: str):
@@ -209,6 +209,7 @@ BULK = {
     "star": ("starred", True), "unstar": ("starred", False),
     "pin": ("pinned", True), "unpin": ("pinned", False),
     "hide": ("hidden", True), "show": ("hidden", False),
+    "pause": ("status", "paused"), "resume": ("status", "active"),
 }  # fmt: skip
 
 
@@ -229,6 +230,18 @@ def bulk():
             projects_core.update(project_id, ProjectUpdate(**{field: value}))
     flash_undo(f"{len(ids)} project{'s' if len(ids) != 1 else ''} changed.", batch_id)
     return redirect(back_to(url_for("projects.index")))
+
+
+@projects.post("/projects/<slug>/<any(pause, resume):state>")
+def pause(slug: str, state: str):
+    """A paused project is left out of what to do, the home page, the lists and the plan, as if it
+    were not there; resumed at any time (D-095)."""
+    project = _project_or_404(slug)
+    with batch() as batch_id:
+        projects_core.update(project.id, ProjectUpdate(status="paused" if state == "pause" else "active"))
+    told = "paused: out of what to do until you resume it" if state == "pause" else "resumed"
+    flash_undo(f"{project.name} {told}.", batch_id)
+    return redirect(local_path(request.form.get("next")) or url_for("projects.detail", slug=slug))
 
 
 @projects.post("/projects/<slug>/<any(star, pin, hide):mark>")
@@ -257,10 +270,7 @@ def detail(slug: str):
     # resources, discussion). A list search, filter, sort or page lands on the tasks.
     tab = request.args.get("tab")
     if tab not in TABS:
-        listing = page.has_filters or any(
-            k in request.args for k in ("page", "sort", "dir", "view", "per_page")
-        )
-        tab = "tasks" if listing else "plan"
+        tab = "tasks"  # the tasks first (owner request); the plan is one click
     outside = found_core.for_project(project)
     response = make_response(
         render_template(

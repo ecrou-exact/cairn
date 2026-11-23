@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import ColumnElement, case, func, or_, select
 from sqlalchemy import delete as sql_delete
 
 from app.core.db_class.base import utcnow
@@ -461,6 +461,13 @@ register_undo("task.restore", _undo_restore)
 PRIORITY_RANK = case({p: len(PRIORITIES) - i for i, p in enumerate(PRIORITIES)}, value=Task.priority, else_=0)
 
 
+def in_live_projects() -> ColumnElement:
+    """A task of no project, or of a project that is neither paused nor archived (D-095): the
+    others are left out of what to do, the home page, the lists and the counts until resumed."""
+    resting = select(Project.id).where(Project.status.in_(("paused", "archived")))
+    return Task.project_id.is_(None) | Task.project_id.not_in(resting)
+
+
 def list_spec(*, with_project_filter: bool = True) -> ListSpec:
     today = date.today()
     statuses = tuple((s["key"], s["label"]) for s in workflow.statuses())
@@ -530,6 +537,8 @@ def list_tasks(args: Mapping[str, Any], *, project_id: uuid.UUID | None = None) 
     query = select(Task).where(Task.deleted_at.is_(None))
     if project_id is not None:
         query = query.where(Task.project_id == project_id)
+    elif "project" not in args:  # a paused project's tasks when that project is asked for
+        query = query.where(in_live_projects())
     return run_list(list_spec(with_project_filter=project_id is None), query, args)
 
 
@@ -580,7 +589,7 @@ def next_actions(
     """“What should I do now?”: actionable tasks (open, not blocked, not waiting, not
     scheduled for later), highest score first (PROJECT_BRIEF.md §3), optionally in one project."""
     today = today or date.today()
-    in_project = [Task.project_id == project_id] if project_id is not None else []
+    in_project = [Task.project_id == project_id] if project_id is not None else [in_live_projects()]
     return list(
         db.session.scalars(
             select(Task)
@@ -603,7 +612,7 @@ def needs_attention(today: date | None = None) -> list[tuple[str, str, Task]]:
     """The Today radar: (reason key, sentence, task), most pressing first."""
     today = today or date.today()
     rules = get_setting("tasks.attention")
-    open_tasks = select(Task).where(Task.deleted_at.is_(None), Task.is_open.is_(True))
+    open_tasks = select(Task).where(Task.deleted_at.is_(None), Task.is_open.is_(True), in_live_projects())
     found: list[tuple[str, str, Task]] = []
     seen: set[uuid.UUID] = set()
 
@@ -653,7 +662,7 @@ def pulse(today: date | None = None) -> dict[str, int]:
     """Today's numbers: open, ready to do, blocked, late, and done in the last 7 days."""
     today = today or date.today()
     waiting = workflow.keys_of_kinds("waiting")
-    live = select(func.count()).select_from(Task).where(Task.deleted_at.is_(None))
+    live = select(func.count()).select_from(Task).where(Task.deleted_at.is_(None), in_live_projects())
     is_open = Task.is_open.is_(True)
     since = datetime.combine(today - timedelta(days=7), datetime.min.time(), tzinfo=UTC)
     return {
@@ -673,6 +682,8 @@ def pulse(today: date | None = None) -> dict[str, int]:
 
 def counts_by_state() -> dict[str, int]:
     rows = db.session.execute(
-        select(Task.is_open, func.count()).where(Task.deleted_at.is_(None)).group_by(Task.is_open)
+        select(Task.is_open, func.count())
+        .where(Task.deleted_at.is_(None), in_live_projects())
+        .group_by(Task.is_open)
     ).all()
     return {"open" if is_open else "closed": count for is_open, count in rows}
