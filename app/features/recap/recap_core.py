@@ -297,7 +297,7 @@ def propose(day: date) -> list[DayEntry]:
         raise RecapError("Read the day first.")
     if entries(day):
         raise RecapError("This day already has time entries: remove them to propose again.")
-    planned, lost = plan(found.facts, targets())
+    planned, _ = plan(found.facts, targets())
     if not planned:
         raise RecapError("No rule takes the work of this day yet.")
     taken = kimai.entries(day) if kimai.configured() else []
@@ -306,8 +306,9 @@ def propose(day: date) -> list[DayEntry]:
         raise RecapError("Kimai already holds a full day.")
     clock = _minutes(get_setting("recap.day_start"))
     clock = max([clock, *(_minutes(f"{row['end']:%H:%M}") for row in taken if row["end"])])
-    # The time of the repositories no rule places stays free: it is not another project's.
-    parts = share([*(p[1] for p in planned), *lost.values()], total)[: len(planned)]
+    # The owner's rule: the whole day goes to the projects worked on, in equal parts, however long
+    # each one took; work no rule places takes nothing (D-078).
+    parts = share([1] * len(planned), total)
     made = []
     with batch():
         for (target, _, text), minutes in zip(planned, parts, strict=True):

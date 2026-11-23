@@ -61,7 +61,7 @@
     </div>{% endif %}
   {% endfor %}
   {% if not found.entries and targets and found.facts.repos %}<form method="post" action="{{ url_for('recap.propose', raw=day.isoformat()) }}">{{ csrf() }}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span class="ms-2">Propose the entries</span></button></form>{% endif %}
-  {% if found.unplaced %}<p class="cn-muted">No rule for {{ found.unplaced | join(", ") }}: their share of the day is left free. Add a rule, or leave your own projects out in the <a href="{{ url_for('settings.index') }}">settings</a>.</p>{% endif %}
+  {% if found.unplaced %}<p class="cn-muted">No rule for {{ found.unplaced | join(", ") }}: it is not counted in the day. Add a rule, or leave your own projects out in the <a href="{{ url_for('settings.index') }}">settings</a>.</p>{% endif %}
   {% if targets %}<details class="cn-entry-add"><summary>Add an entry</summary><form method="post" class="cn-entry-fields" action="{{ url_for('recap.add_entry', raw=day.isoformat()) }}">{{ csrf() }}{{ fields("new") }}<div class="cn-entry-full"><button class="btn btn-outline-secondary" type="submit">Add</button></div></form></details>
   {% else %}<p><a href="{{ url_for('recap.rules') }}">Write your first rule</a> to say which project and activity your work goes to.</p>{% endif %}
   {% if drafts and kimai_ready %}

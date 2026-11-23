@@ -171,7 +171,7 @@ def test_drafts_then_the_owner_sends_once(ctx, tracking, monkeypatch):
     monkeypatch.setattr(facts_core, "gather", lambda day: facts)
     recap_core.read_day(DAY - timedelta(days=1))
     (half,) = recap_core.propose(DAY - timedelta(days=1))
-    assert half.minutes == 240  # the rest is the repository no rule places
+    assert half.minutes == 480  # the whole day: work no rule places takes nothing
     with pytest.raises(recap_core.RecapError):
         recap_core.propose(DAY)
     recap_core.update_entry(draft.id, EntryUpdate(minutes=240))
@@ -262,3 +262,9 @@ def test_claude_cannot_send():
     tools = (*mcp_server.READ_TOOLS, *mcp_server.WRITE_TOOLS, *mcp_server.PROPOSAL_TOOLS)
     assert set(mcp_time_tools.WRITE_TOOLS) <= set(mcp_server.WRITE_TOOLS)
     assert not [name for name in tools if "send" in name]
+
+
+def test_the_day_is_shared_equally():
+    assert recap_core.share([1], 480) == [480]
+    assert recap_core.share([1, 1], 480) == [240, 240]
+    assert sorted(recap_core.share([1, 1, 1], 480)) == [150, 165, 165]
