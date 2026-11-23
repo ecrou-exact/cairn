@@ -534,3 +534,6 @@
 
 ## D-096 · 2026-11-23 · accepted — Resources opened, copied, downloaded, zipped where they are attached
 - Owner request: in a project's, a task's or a subtask's Resources, a note, a snippet, a tool or a skill **opens here** (Vitrine), its content is **copied** or **downloaded** as a file in one click, a link's address copied, an image opened in place. Resources are **chosen** (or all at once) and **downloaded as one zip**: files as uploaded, texts as files, links as shortcuts (at most 200 and 500 MB at a time).
+
+## D-097 · 2026-11-23 · accepted — Back from a session; Stop is its own button
+- Owner request: on a Claude session's page, **Back** returns where the owner came from (on this site; else the session's project, else the Claude page) and the session goes on; **Stop the session** (red, confirmed) is the one that ends it. "Close" is gone: it was read as leaving the page.

@@ -130,3 +130,4 @@
 .cn-instance-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 24rem; }
 .cn-instance.is-running .cn-instance-dot { background: var(--cn-success); }
 .cn-instances-search { display: flex; gap: var(--cn-space-2); margin-bottom: var(--cn-space-4); }
+.cn-session-actions { display: flex; gap: var(--cn-space-2); align-items: start; }

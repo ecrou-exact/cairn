@@ -7,6 +7,7 @@ import json
 import secrets
 import time
 import uuid
+from urllib.parse import urlsplit
 
 from flask import (
     Blueprint,
@@ -132,10 +133,24 @@ def session(session_id: uuid.UUID):
         log=claude_core.ended_log(row),
         **({"dock": False} if main_core.is_main(row) else {}),  # already on the page
         targets=claude_core.targets(),
+        back=_came_from(row),
         nonce=nonce,
         events_after=latest_event_id(),
     )
     return with_terminal_csp(make_response(page), nonce)
+
+
+def _came_from(row) -> str:
+    """Where the owner came from, on this site; else the session's project, else the Claude page."""
+    came = urlsplit(request.referrer or "")
+    if came.netloc == request.host and came.path != request.path:
+        found = local_path(came.path + (f"?{came.query}" if came.query else ""))
+        if found:
+            return found
+    described = claude_core.describe(row)
+    if described["project"]:
+        return url_for("projects.detail", slug=described["project"]["slug"], tab="claude")
+    return url_for("claude.index")
 
 
 @claude.get("/claude/sessions/<uuid:session_id>/panel")
