@@ -18,7 +18,7 @@
   </div>
   <dl class="cn-hero-stats cn-claude-stats">
     <div class="{{ 'is-good' if overview.running }}"><dt>Running</dt><dd data-claude-count>{{ overview.running }}</dd></div>
-    <div><dt>In Cairn</dt><dd>{{ running | length }}</dd></div>
+    <div><dt>In Cairn</dt><dd>{{ running | length + (1 if main else 0) }}</dd></div>
     <div><dt>Outside</dt><dd>{{ overview.outside | length }}</dd></div>
   </dl>
 </header>
