@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field, model_validator
 
 from app.core.schema.common import Strict
 
-PRESETS = ("free", "task", "pr", "fix", "review", "fill")
+PRESETS = ("free", "task", "pr", "fix", "review", "fill", "run")
 
 
 class SessionStart(Strict):

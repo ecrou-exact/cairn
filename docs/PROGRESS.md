@@ -116,6 +116,7 @@ Goal: owner approves architecture + design direction.
 - [x] Find my projects: every repository of the machine, grouped, started in one job (D-088)
 - [x] Starred, pinned and hidden projects; a task from a copy in the Git tab (D-089)
 - [x] Fill a project with Claude: docs, skills, logo, links (D-090)
+- [x] Run any version of a project with Claude (D-091)
 - [ ] Two-way sync (owner request 2026-11-23): what is done outside Cairn shows up live; Claude Code in the owner's terminal keeps Cairn up to date
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS

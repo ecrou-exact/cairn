@@ -509,3 +509,7 @@
 - New MCP tool `set_project_logo`: a picture from inside the project's folder only. `update_project` takes the project's links.
 - Later the same day (owner request): on the Projects page, cards and table alike, each project has its star, pin and hide buttons, done in place through the API without reloading (the menu's pinned group follows); projects can be chosen and changed together (star, unstar, pin, unpin, hide, show); the list filters by mark (starred, pinned, neither) and by GitHub owner; the table has the same actions as the cards (Claude, edit).
 - In the plan of projects, touching an arrow offers to remove that order (confirmed, undoable). Order mode shows a **Stop (Esc)** button; Esc or a right-click on the canvas also leaves it.
+
+## D-091 · 2026-11-23 · accepted — Run a version with Claude
+- Owner request: on each copy of a project's Git tab, **Run with Claude** opens a Claude in that copy's folder, on its branch, that finds how the project starts, installs what it needs inside the folder only, runs it on a free port and gives its address; it asks before sudo or a change to tracked files, and says what is missing rather than inventing it. The project's Actions menu has **Run it with Claude** for its own folder (its current branch: main, or the branch it was started from).
+- A Claude opened on a folder is attached to the project that folder belongs to, a worktree or a clone included (`place_core`).

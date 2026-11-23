@@ -144,7 +144,7 @@ def _existing_folder(text: str) -> Path:
 def _where(data: SessionStart) -> tuple[Project | None, Task | None, Path]:
     if data.folder is not None:
         folder = _existing_folder(data.folder)
-        return projects_core.by_folder(str(folder)), None, folder
+        return place_core.project_for(str(folder)), None, folder
     task = db.session.get(Task, data.task_id) if data.task_id else None
     if data.task_id and (task is None or task.is_deleted):
         raise TerminalError("This task does not exist.")
@@ -197,6 +197,12 @@ PRESET_INFO = {
         "asks": "",
         "hint": "Anything to look at first (optional)",
     },
+    "run": {
+        "label": "Run this version",
+        "icon": "fa-play",
+        "asks": "",
+        "hint": "How you want it run (optional)",
+    },
     "review": {
         "label": "Review the changes",
         "icon": "fa-magnifying-glass",
@@ -235,6 +241,9 @@ def _first_message(data: SessionStart, task: Task | None) -> str | None:
             "Find the cause first, fix it, add a test that fails without the fix, run the tests, "
             f"then show me the diff and wait for my go before committing.{about}"
         )
+    if data.preset == "run":
+        extra = f" Also: {words}." if words else ""
+        return RUN_MESSAGE + extra
     if data.preset == "fill":
         focus = f" Look first at: {words}." if words else ""
         return FILL_MESSAGE + focus
@@ -246,6 +255,17 @@ def _first_message(data: SessionStart, task: Task | None) -> str | None:
             f"code unless I ask.{about}"
         )
     return (words + about) if words else (about.strip() or None)
+
+
+RUN_MESSAGE = (
+    "Run the version of the project that is in this folder, on its current branch (say which). Find how "
+    "it is started: README, docs, Makefile, package.json, pyproject, Procfile, compose files, .env.example. "
+    "Install what it needs inside this folder only (its own virtual environment or node_modules), never "
+    "system-wide, and ask before anything that needs sudo or changes files tracked by git. Start it on a "
+    "free port (look at what listens first; another copy of the project may run already), in the "
+    "background so that it keeps running, then give me its address and how to stop it. If it needs a "
+    "database, a key or a service, say what is missing instead of inventing it."
+)
 
 
 FILL_MESSAGE = (
@@ -274,6 +294,8 @@ def _title(data: SessionStart, name: str, task: Task | None) -> str:
         return f"Review of {name}"
     if data.preset == "fill":
         return f"Fill {name}"
+    if data.preset == "run":
+        return f"Run {name}"
     return task.title if task is not None else name
 
 

@@ -5,10 +5,12 @@ from __future__ import annotations
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
 from app.core.jobs import jobs_core
+from app.core.schema.claude import SessionStart
 from app.core.schema.folder import BringInput, DiscoverMake
 from app.core.utils.history import batch
 from app.core.utils.web import FormErrors, flash_undo, local_path, validate
 from app.features.changesets.changesets_core import ChangesetError
+from app.features.claude import terminal_core
 from app.features.folder import copies_core, discover_core, git_core, scan_core
 from app.features.instances.instances_core import InstanceError
 from app.features.projects import projects_core
@@ -83,6 +85,22 @@ def git_task(slug: str):
         return redirect(url_for("projects.detail", slug=slug, tab="git"))
     flash_undo(f"Task made: {task.title}.", batch_id)
     return redirect(url_for("tasks.detail", task_id=task.id, tab="git"))
+
+
+@folder.post("/projects/<slug>/git/run")
+def git_run(slug: str):
+    """Claude runs the version of one copy: its folder, its branch (D-091)."""
+    project = _project(slug)
+    wanted = request.form.get("folder", "")
+    if wanted not in [str(f) for f in copies_core.folders(project)]:
+        flash("This folder is not a copy of the project.", "danger")
+        return redirect(url_for("projects.detail", slug=slug, tab="git"))
+    try:
+        session = terminal_core.start(SessionStart(folder=wanted, preset="run"))
+    except terminal_core.TerminalError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("projects.detail", slug=slug, tab="git"))
+    return redirect(url_for("claude.session", session_id=session.id))
 
 
 # -- every project of the machine (D-088) ------------------------------------------------------------
