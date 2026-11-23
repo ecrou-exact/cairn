@@ -78,6 +78,16 @@
       {{ flashes() }}
       {% block content %}{% endblock %}
     </div>
+    <footer class="cn-footer">
+      <div class="cn-footer-brand">{{ brand_mark("cn-footer-mark") }}<div><strong>Cairn</strong> <span>{{ cairn.version }}</span><p>Plan the path. Let the work follow.</p></div></div>
+      <nav class="cn-footer-links" aria-label="Footer">
+        <a href="{{ url_for('about.built_with') }}"><i class="fa-solid fa-cubes" aria-hidden="true"></i> Built with</a>
+        <a href="{{ cairn.source }}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github" aria-hidden="true"></i> Source</a>
+        <a href="{{ cairn.source }}/blob/main/LICENSE" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i> {{ cairn.license }}</a>
+        <a href="{{ cairn.source }}/blob/main/docs/SECURITY.md" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Security</a>
+      </nav>
+      <p class="cn-footer-note">Self-hosted: your data stays on this machine.</p>
+    </footer>
   </main>
 </div>
 <cn-palette></cn-palette>

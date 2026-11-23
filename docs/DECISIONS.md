@@ -431,3 +431,7 @@
 
 ## D-073 · 2026-11-23 · accepted — An instance started with the machine
 - `ProjectInstance.autostart`, off by default: started as Cairn starts for the first time since the machine did or the session opened again (a mark in the runtime folder), not at each restart of Cairn, so an instance the owner stopped stays stopped.
+
+## D-074 · 2026-11-23 · accepted — Built with, and a footer
+- Owner request: see the tools Cairn itself is made of (terminal in the browser, Vitrine…), and a cleaner footer. `/built-with` lists them by part of Cairn with what each does here; versions and licences come from `vendor.json`, the installed packages and PATH. A test fails when a vendored library or a dependency of `pyproject.toml` is missing from the list. The tools Claude calls stay on Claude → Tools (D-072).
+- Footer on every page: Cairn and its version, Built with, source, licence, security; at the bottom of the window on a short page.

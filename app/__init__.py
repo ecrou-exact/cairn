@@ -87,6 +87,7 @@ def _init_vault(app: Flask) -> None:
 
 def _register_blueprints(app: Flask) -> None:
     from app import jobs as _handlers  # noqa: F401  (registers every job handler)
+    from app.features.about.about import about
     from app.features.account.account import account
     from app.features.changesets.changesets import changesets
     from app.features.claude.claude import claude
@@ -105,6 +106,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.features.trash.trash import trash
 
     for blueprint in (
+        about,
         account,
         home,
         health,

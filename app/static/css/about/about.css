@@ -1,0 +1,15 @@
+/* What Cairn is built with (D-074) */
+.cn-built-filter { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); }
+.cn-built-filter input { flex: 1 1 16rem; }
+.cn-built-filter select { width: auto; }
+.cn-built-group { margin-top: var(--cn-space-6); }
+.cn-built-group h2 { font-size: var(--cn-text-lg); margin: 0 0 var(--cn-space-3); }
+.cn-built-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: var(--cn-space-3); }
+.cn-built { display: flex; gap: var(--cn-space-3); padding: var(--cn-space-4); background: var(--cn-surface); border-radius: var(--cn-radius-slab); box-shadow: var(--cn-slab-shadow); }
+.cn-built.is-absent { opacity: 0.6; }
+.cn-built-icon { flex: none; display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 10px 10px 13px 13px; background: var(--cn-accent-soft); color: var(--cn-accent); }
+.cn-built p { margin: 0; }
+.cn-built-name a { font-weight: var(--cn-weight-strong); color: var(--cn-text); }
+.cn-built-name code { font-size: var(--cn-text-xs); color: var(--cn-text-muted); background: transparent; }
+.cn-built-about { font-size: var(--cn-text-sm); color: var(--cn-text-muted); }
+.cn-built .cn-built-facts { margin-top: var(--cn-space-1); font-size: var(--cn-text-xs); color: var(--cn-text-faint); }

@@ -1,0 +1,34 @@
+{% extends "layout/shell.html" %}
+{% block title %}Built with{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/about/about.css') }}">{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow">Cairn {{ found.version }}</div>
+  <h1>Built with</h1>
+  <p>The {{ found.total }} tools Cairn stands on: what each one does here, its version and its licence.</p>
+</header>
+<form class="cn-built-filter" method="get" role="search">
+  <label class="visually-hidden" for="built-q">Search</label><input class="form-control" id="built-q" type="search" name="q" value="{{ q }}" placeholder="Search: terminal, graph, icons…" maxlength="100">
+  <label class="visually-hidden" for="built-group">Part of Cairn</label>
+  <select class="form-select" id="built-group" name="group"><option value="">Everything</option>{% for key, label in found.groups.items() %}<option value="{{ key }}" {% if group == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  <button class="btn btn-outline-secondary" type="submit">Show</button>
+</form>
+{% for key, label in found.groups.items() %}{% set parts = found.parts | selectattr("group", "equalto", key) | list %}{% if parts %}
+<section class="cn-built-group" aria-labelledby="built-{{ key }}">
+  <h2 id="built-{{ key }}">{{ label }}</h2>
+  <ul class="cn-built-list">
+    {% for part in parts %}
+    <li class="cn-built {{ '' if part.here else 'is-absent' }}">
+      <span class="cn-built-icon" aria-hidden="true"><i class="fa-solid {{ part.icon }}"></i></span>
+      <div>
+        <p class="cn-built-name"><a href="{{ part.url }}" target="_blank" rel="noopener noreferrer">{{ part.name }}</a>{% if part.version %} <code>{{ part.version | truncate(24, True) }}</code>{% endif %}</p>
+        <p class="cn-built-about">{{ part.about }}</p>
+        <p class="cn-built-facts">{% if not part.here %}not on this machine{% else %}{{ part.license or ("found on this machine" if part["from"] == "program" else "licence not stated") }}{% endif %}</p>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}{% else %}{% endfor %}
+{% if not found.parts %}<p class="cn-muted">Nothing matches.</p>{% endif %}
+{% endblock %}

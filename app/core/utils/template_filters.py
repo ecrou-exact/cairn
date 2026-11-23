@@ -53,6 +53,7 @@ def host(url: str | None) -> str:
 
 
 def register_template_filters(app: Flask) -> None:
+    from app.features.about import about_core
     from app.features.claude import main_core
     from app.features.comments import comments_core
     from app.features.resources import resources_core
@@ -77,5 +78,9 @@ def register_template_filters(app: Flask) -> None:
     app.add_template_global(main_core.dock_open, "dock_open")
 
     @app.context_processor
-    def _dock() -> dict[str, bool]:
-        return {"dock": current_user.is_authenticated}  # the main Claude beside the page (D-063)
+    def _shell() -> dict[str, Any]:
+        about = {"version": about_core.version(), "source": about_core.SOURCE, "license": about_core.LICENSE}
+        return {
+            "cairn": about,
+            "dock": current_user.is_authenticated,
+        }  # the main Claude beside the page (D-063)

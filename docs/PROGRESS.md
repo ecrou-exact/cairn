@@ -69,6 +69,7 @@ Goal: owner approves architecture + design direction.
 - [x] Foldable menu, drawer menu on phones
 - [x] Profile (display name, about, picture) and connected accounts (GitHub, Claude API key, others) in the vault, checked by a job; GitHub previews of private issues / PRs (D-034)
 - [x] One look on every page (D-042): dark contour page bands, stone buttons, field wells, filters folded behind a button, floating bulk bar, stone empty states, restyled drop zone with drop-anywhere
+- [x] Built with (the tools Cairn is made of), footer on every page (D-074)
 - [ ] Multi-user system (later, on request)
 
 ## Phase 4 — Graph (Pivotick, full integration per §4)  *(done 2026-11-22)*

@@ -32,6 +32,7 @@ def body[M: BaseModel](schema: type[M]) -> M:
 
 
 def register_api(app: Flask) -> None:
+    from app.api.about_api import about_api
     from app.api.changesets_api import changesets_api
     from app.api.claude_api import claude_api
     from app.api.comments_api import comments_api
@@ -52,6 +53,7 @@ def register_api(app: Flask) -> None:
         claude_api,
         instances_api,
         changesets_api,
+        about_api,
     ):
         app.register_blueprint(blueprint)
 
