@@ -435,3 +435,8 @@
 ## D-074 · 2026-11-23 · accepted — Built with, and a footer
 - Owner request: see the tools Cairn itself is made of (terminal in the browser, Vitrine…), and a cleaner footer. `/built-with` lists them by part of Cairn with what each does here; versions and licences come from `vendor.json`, the installed packages and PATH. A test fails when a vendored library or a dependency of `pyproject.toml` is missing from the list. The tools Claude calls stay on Claude → Tools (D-072).
 - Footer on every page: Cairn and its version, Built with, source, licence, security; at the bottom of the window on a short page.
+
+## D-075 · 2026-11-23 · accepted — Read a Claude running outside Cairn
+- Owner request, besides moving it: see it in Cairn as in its terminal. **View** opens a terminal (`kind` log) that prints the conversation from its transcript as it grows: requests, answers, tool calls with what they changed and the start of their result. Read-only, and the other terminal is not touched. A live mirror is not possible: a terminal Cairn did not open cannot be attached to.
+- What a conversation holds is untrusted: escape sequences and control characters (bidirectional ones too) are removed before anything is printed. The view is found again for the same conversation; the process is checked by pid and start time.
+- **Background sessions** of Claude Code (registered as `bg`, run from a version's own file, so not named `claude`) are found and shown, to read only. A Claude that holds one at work is not moved nor stopped from Cairn: that would cut it. Found on the owner's machine: a conversation sent to the background had left its terminal's card on an old copy.

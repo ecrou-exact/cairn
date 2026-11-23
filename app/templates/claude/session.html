@@ -34,7 +34,7 @@
     {% if session.kind == "claude" %}{{ usage_left(targets.limits) }}{% endif %}
   </div>
   {% if session.running %}
-  <cn-confirm message="{{ 'Close this Claude session?' if session.kind == 'claude' else ('Stop this instance?' if session.kind == 'instance' else 'Close this log?') }}" detail="{{ 'Like closing its terminal: Claude stops here. Its conversation stays in Claude Code (claude --resume).' if session.kind == 'claude' else ('Its process and the ones it started are stopped.' if session.kind == 'instance' else 'Only the view is closed: the instance goes on.') }}" confirm-label="{{ 'Close it' if session.kind == 'claude' else ('Stop it' if session.kind == 'instance' else 'Close it') }}" danger>
+  <cn-confirm message="{{ 'Close this Claude session?' if session.kind == 'claude' else ('Stop this instance?' if session.kind == 'instance' else 'Close this log?') }}" detail="{{ 'Like closing its terminal: Claude stops here. Its conversation stays in Claude Code (claude --resume).' if session.kind == 'claude' else ('Its process and the ones it started are stopped.' if session.kind == 'instance' else 'Only the view is closed: what it shows goes on.') }}" confirm-label="{{ 'Close it' if session.kind == 'claude' else ('Stop it' if session.kind == 'instance' else 'Close it') }}" danger>
     <form method="post" action="{{ url_for('claude.stop', session_id=session.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-outline-light" type="submit"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span>Close</span></button>

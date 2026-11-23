@@ -153,6 +153,13 @@ def link(session_id: uuid.UUID):
     )
 
 
+@claude_api.post("/claude/outside/view")
+def view_outside():
+    """Read, in a terminal, the conversation of a Claude Code running outside Cairn."""
+    session = _guard(terminal_core.view_outside, body(OutsideStop))
+    return jsonify(session=claude_core.describe(session)), 201
+
+
 @claude_api.post("/claude/outside/stop")
 def stop_outside():
     """Close a Claude Code running outside Cairn."""

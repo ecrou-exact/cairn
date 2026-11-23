@@ -40,7 +40,14 @@ from app.core.utils.events import publish
 from app.core.utils.history import batch
 from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
-from app.features.claude import main_core, mcp_server, session_settings, skills_core, transcript_core
+from app.features.claude import (
+    conversation_view,
+    main_core,
+    mcp_server,
+    session_settings,
+    skills_core,
+    transcript_core,
+)
 from app.features.claude.pty_host import Pty
 from app.features.connections import connections_core
 from app.features.projects import projects_core
@@ -434,6 +441,41 @@ def stop_outside(data: OutsideStop) -> None:
     raise TerminalError("This Claude Code is no longer running.")
 
 
+def view_outside(data: OutsideStop) -> ClaudeSession:
+    """Read, in a terminal, the conversation of a Claude Code running outside Cairn, as it goes
+    (D-075): the view already open on it, or a new one. Nothing typed there reaches it."""
+    found = next(
+        (
+            s
+            for s in transcript_core.outside_sessions(running_pids())
+            if s["pid"] == data.pid and abs(s["started"] - data.started) < 1
+        ),
+        None,
+    )
+    if found is None:
+        raise TerminalError("This Claude Code is no longer running.")
+    conversation = found["cli_session_id"]
+    path = transcript_core.transcript_path(found["cwd"], conversation) if conversation else None
+    if path is None or not path.is_file():
+        raise TerminalError("Nothing was said in this conversation yet.")
+    for row in sessions(kind="log"):
+        if row.cli_session_id == uuid.UUID(conversation) and is_running(row.id):
+            return row
+    return open_session(
+        kind="log",
+        folder=Path(found["cwd"]),
+        title=f"Claude · {found['usage']['title'] or Path(found['cwd']).name}",
+        build=lambda session: (
+            [sys.executable, str(Path(conversation_view.__file__).resolve()), str(path)],
+            (),
+        ),
+        env=_environment(),
+        project=projects_core.by_folder(found["cwd"]),
+        cli_session_id=uuid.UUID(conversation),
+        meta={"conversation": conversation, "pid": data.pid},
+    )
+
+
 def _close_outside(pids: list[int], conversation: str | None, action: str) -> None:
     """Close Claude Code processes running outside Cairn. Refused when Cairn itself was started
     from one of them: closing it would stop Cairn."""
@@ -442,6 +484,18 @@ def _close_outside(pids: list[int], conversation: str | None, action: str) -> No
             "Cairn was started from this Claude Code session: closing it would stop Cairn. "
             "Start Cairn from your own terminal first."
         )
+    for pid in pids:
+        try:
+            background = transcript_core.in_background(psutil.Process(pid))
+        except psutil.Error:
+            continue
+        if background:
+            raise TerminalError("It runs in the background of Claude Code: stop it from there.")
+        if transcript_core.holds_background(pid):
+            raise TerminalError(
+                "A background conversation at work depends on this Claude Code: closing it would stop it. "
+                "Wait for it to finish."
+            )
     processes = []
     for pid in pids:
         try:

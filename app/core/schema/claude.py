@@ -78,8 +78,8 @@ class CurrentPage(Strict):
 
 
 class OutsideStop(Strict):
-    """Close a Claude Code running outside Cairn: its pid and start time, so that a reused pid
-    is never closed."""
+    """A Claude Code running outside Cairn, to close or read it: its pid and start time, so that a reused pid
+    is never taken for it."""
 
     pid: Annotated[int, Field(ge=2)]
     started: float

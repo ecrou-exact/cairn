@@ -215,6 +215,21 @@ def link(session_id: uuid.UUID):
     return redirect(url_for("claude.session", session_id=reader.id)) if reader else back
 
 
+@claude.post("/claude/outside/view")
+def view_outside():
+    """Read the conversation of a Claude Code running outside Cairn (form)."""
+    values = {key: request.form.get(key) for key in ("pid", "started")}
+    try:
+        session = terminal_core.view_outside(validate(OutsideStop, values))
+    except FormErrors as exc:
+        flash(" ".join(exc.errors.values()), "danger")
+        return redirect(url_for("claude.index"))
+    except terminal_core.TerminalError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("claude.index"))
+    return redirect(url_for("claude.session", session_id=session.id))
+
+
 @claude.post("/claude/outside/stop")
 def stop_outside():
     """Close a Claude Code running outside Cairn (form)."""

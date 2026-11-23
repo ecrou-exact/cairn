@@ -102,13 +102,33 @@ def own_ancestors() -> set[int]:
         return set()
 
 
+def is_claude(process: psutil.Process, name: str) -> bool:
+    """A Claude Code: by its name, or by its registration (one run from a version's own file, such
+    as a background session, is named after that version)."""
+    return name.lower() in CLAUDE_NAMES or bool(_registry(process))
+
+
+def in_background(process: psutil.Process) -> bool:
+    """A background session of Claude Code: no terminal of its own, another process holds it."""
+    return _registry(process).get("kind") == "bg"
+
+
+def holds_background(pid: int) -> bool:
+    """Whether a background session at work lives under this process: closing it would stop it."""
+    try:
+        family = psutil.Process(pid).children(recursive=True)
+    except psutil.Error:
+        return False
+    return any(in_background(child) and registered_status(child.pid) == "busy" for child in family)
+
+
 def open_elsewhere(cli_session_id: str, known_pids: set[int]) -> list[int]:
     """The `claude` processes, other than Cairn's, that have this conversation open."""
     return [
         process.pid
         for process in psutil.process_iter(["name"])
-        if (process.info.get("name") or "").lower() in CLAUDE_NAMES
-        and process.pid not in known_pids
+        if process.pid not in known_pids
+        and is_claude(process, process.info.get("name") or "")
         and registered(process) == cli_session_id
     ]
 
@@ -325,20 +345,23 @@ def session_usage(cwd: str, cli_session_id: str) -> Usage:
 def outside_sessions(known_pids: set[int]) -> list[dict]:
     """`claude` processes not started by Cairn: where they run, since when, their context.
 
-    A process whose parent is itself `claude` is a helper of that session and is skipped;
+    A process whose parent is itself `claude` is a helper of that session and is skipped, unless
+    it is a background session, which has a conversation of its own;
     one we may not inspect (another user's) is skipped too.
     """
     found = []
     ancestors = own_ancestors()
     for process in psutil.process_iter(["pid", "name", "create_time", "ppid"]):
         info = process.info
-        if (info.get("name") or "").lower() not in CLAUDE_NAMES or info["pid"] in known_pids:
+        if info["pid"] in known_pids or not is_claude(process, info.get("name") or ""):
             continue
+        background = in_background(process)
         try:
             parent = psutil.Process(info["ppid"]) if info.get("ppid") else None
-            if parent is not None and (parent.name() or "").lower() in CLAUDE_NAMES:
-                continue
-            if parent is not None and parent.pid in known_pids:
+            held = parent is not None and (
+                (parent.name() or "").lower() in CLAUDE_NAMES or parent.pid in known_pids
+            )
+            if held and not background:
                 continue
             cwd = process.cwd()
         except (psutil.Error, OSError):
@@ -356,9 +379,13 @@ def outside_sessions(known_pids: set[int]) -> list[dict]:
         elif recent:
             newest = max(recent, key=lambda p: p.stat().st_mtime)
             usage, conversation = read_usage(newest, cwd), newest.stem
+        if background and not usage.transcript:
+            continue  # a spare one, waiting for a conversation
         found.append(
             {
                 "pid": info["pid"],
+                "background": background,
+                "holds_background": not background and holds_background(info["pid"]),
                 "hosts_cairn": info["pid"] in ancestors,
                 "cwd": cwd,
                 "cli_session_id": conversation,
