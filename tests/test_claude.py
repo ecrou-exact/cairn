@@ -580,7 +580,13 @@ def test_main_claude_opens_once_and_takes_up_its_conversation(ctx, tmp_path, fak
 
 def test_main_claude_opens_only_with_the_web_server(app, monkeypatch):
     started = []
-    monkeypatch.setattr(main_core.threading, "Thread", lambda **k: started.append(k) or _NoThread())
+
+    def _thread(**options):
+        if options["name"] == "claude-main":
+            started.append(options)
+        return _NoThread()
+
+    monkeypatch.setattr(main_core.threading, "Thread", _thread)
     for web, reload, serving, expected in (
         (None, None, None, 0),  # worker, MCP server, migrations
         ("1", "1", None, 0),  # the auto-reload watcher

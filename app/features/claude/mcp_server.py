@@ -31,7 +31,7 @@ from app.core.schema.comments import CommentCreate
 from app.core.schema.planning import DependencyCreate, ProjectCreate, ProjectUpdate, TaskCreate
 from app.core.utils.actor import acting_as
 from app.core.utils.history import batch
-from app.features.claude import main_core
+from app.features.claude import handover_core, main_core
 from app.features.comments import comments_core
 from app.features.projects import projects_core
 from app.features.resources import resources_core
@@ -48,6 +48,7 @@ READ_TOOLS = (
     "current_page",
 )
 WRITE_TOOLS = (
+    "open_project_claude",
     "take_note",
     "note_done",
     "create_project",
@@ -134,6 +135,7 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
                 dependencies_core.DependencyError,
                 comments_core.CommentError,
                 resources_core.ResourceError,
+                handover_core.HandoverError,
             ) as exc:
                 raise ToolError(str(exc)) from exc  # a deliberate refusal: Claude gets the reason
 
@@ -241,6 +243,24 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
             return {"warning": UNTRUSTED, "notes": found}
 
         return run(work)
+
+    @server.tool()
+    def open_project_claude(project: str, work: str, task_id: str | None = None) -> dict[str, Any]:
+        """Open a project's own Claude in Cairn and hand it work (main Claude only; the owner
+        approves). `work`: what to do, complete on its own, it has not read this conversation.
+        `task_id`: the task it is about, whose brief it gets. Refused when one is already open."""
+
+        def work_on_it():
+            chosen = _project(project)
+            if chosen is None:
+                raise CairnToolError("Say which project.")
+            request = handover_core.ask(session_row(), chosen, _task(task_id) if task_id else None, work)
+            answered = handover_core.wait(request.id)
+            if answered.status != "opened":
+                raise CairnToolError(answered.error or "It did not answer: look at the Claude page.")
+            return {"opened": True, "project": chosen.name, "url": f"/claude/sessions/{answered.session_id}"}
+
+        return run(work_on_it)
 
     @server.tool()
     def take_note(text: str, title: str = "", for_project: str | None = None) -> dict[str, Any]:

@@ -1,0 +1,6 @@
+{
+  "label": "Claude sessions at once",
+  "category": "Claude",
+  "description": "How many Claude sessions may be open in Cairn for the main Claude to open one more. Those you open yourself are not limited.",
+  "value": 6
+}

@@ -100,7 +100,7 @@ Goal: owner approves architecture + design direction.
 - [x] Security review of the main Claude's access: findings fixed or recorded (D-064)
 - [x] Claude on the plan's graph: the task it is on lit with its current step, its live graph one click away (D-066)
 - [x] A project's icon chosen with Vitrine's icon picker, or a picture; its folder opened in the file manager or the editor (D-067)
-- [ ] The main Claude opens a project's Claude itself (MCP → web process)
+- [x] The main Claude opens a project's Claude and hands it work, approved by the owner (D-068)
 - [ ] More MCP tools: resources, schedule, changesets for bulk changes
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections

@@ -52,7 +52,9 @@ You are Cairn's main Claude: you belong to no project and look after all of them
   {code}: read its CLAUDE.md first and follow it. Work on a branch in a git worktree outside that
   folder, show the diff, and wait for the owner's go before merging. Restarting Cairn closes
   this session and every Claude in Cairn: never do it yourself, say when it is needed.
-- To hand work to a project's Claude, leave it a note with `take_note(for_project=…)`. You do not
+- To have work done in a project, `open_project_claude` opens its Claude on it (the owner approves),
+  on a task when there is one: create the task first. If its Claude is already open, leave it a
+  note with `take_note(for_project=…)`. It answers with a note: read `inbox` later. You do not
   edit another project's files yourself: its own Claude does.
 """
 PROJECT_RULES = """
@@ -217,6 +219,9 @@ def open_with_cairn(app: Flask) -> None:
                 logging.getLogger("cairn.claude").exception("The main Claude did not open")
 
     threading.Thread(target=work, name="claude-main", daemon=True).start()
+    from app.features.claude import handover_core
+
+    handover_core.watch(app)
 
 
 # -- notes -------------------------------------------------------------------------------------

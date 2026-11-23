@@ -404,3 +404,7 @@
 - Owner request. **Icon:** Vitrine's `vt-icon-picker` (two Font Awesome sets vendored from the same commit), wrapped by `<cn-icon-field>` over the text field; brands allowed (`fa-brands fa-docker`). **Picture:** `Project.image_name`, a 256 px square PNG without metadata, shown instead of the icon everywhere (`project_mark`).
 - **Folder:** the path opens the file manager, a button the editor (`projects.editor`, `code`). The project's own folder only, as one argument, no shell; through `systemd-run --user` on Linux so that restarting Cairn does not close it.
 - **Found on the way:** the daily clean-up deleted profile pictures (it knew resources only): it now knows every stored file's owner.
+
+## D-068 · 2026-11-23 · accepted — The main Claude opens a project's Claude and hands it work
+- `open_project_claude(project, work, task_id)` (main session only): the MCP server writes a `ClaudeRequest`, the web process opens the session (`handover_core.watch`) and answers; the tool waits 20 s. With a task, its Claude gets the brief and is lit on the plan (D-066). It is told to stay in the project, ask when unclear, and answer with `take_note`.
+- **Guards:** Claude Code asks the owner first in every mode (`ask` rule, D-064); another session is refused; a request older than a minute, or left when Cairn restarts, is never opened; claimed before opening, so never twice; at most `claude.max_open` sessions; a project whose Claude is open is not typed into, a note is left.

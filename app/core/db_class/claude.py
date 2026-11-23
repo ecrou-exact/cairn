@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Integer, String, Uuid
+from sqlalchemy import ForeignKey, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db_class.base import BaseEntity, UTCDateTime
@@ -54,3 +54,18 @@ class ClaudeSession(BaseEntity):
     ended_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     exit_code: Mapped[int | None] = mapped_column(Integer)
     end_reason: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+
+
+class ClaudeRequest(BaseEntity):
+    """The main Claude asking for a project's Claude to be opened with some work (D-068): written
+    by its MCP server, answered by the web process, where terminals live."""
+
+    __tablename__ = "claude_request"
+
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("project.id"), nullable=False)
+    task_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("task.id"))
+    work: Mapped[str] = mapped_column(Text, nullable=False)
+    # pending, opening, opened, refused
+    status: Mapped[str] = mapped_column(String(10), default="pending", nullable=False, index=True)
+    session_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("claude_session.id"))
+    error: Mapped[str] = mapped_column(String(300), default="", nullable=False)
