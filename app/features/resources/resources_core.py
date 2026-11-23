@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Mapping
+from pathlib import Path
 from typing import IO, Any
 
 from sqlalchemy import delete as sql_delete
@@ -39,6 +40,7 @@ KIND_LABELS = {
     "tool": "Tool",
     "note": "Note",
     "github": "GitHub",
+    "skill": "Skill",
 }
 KIND_ICONS = {
     "url": "fa-link",
@@ -48,6 +50,7 @@ KIND_ICONS = {
     "tool": "fa-screwdriver-wrench",
     "note": "fa-note-sticky",
     "github": "fa-code-pull-request",
+    "skill": "fa-wand-magic-sparkles",
 }
 KIND_HINTS = {
     "url": "A web page, with its title and preview",
@@ -56,6 +59,7 @@ KIND_HINTS = {
     "tool": "An app or service you use, with its link",
     "note": "A few lines of Markdown",
     "github": "An issue, pull request or repository",
+    "skill": "Know-how Claude can use in the sessions opened from Cairn",
 }
 TARGETS = {"project": Project, "task": Task}
 FIELDS = ("title", "description_md", "url", "body", "language", "path", "icon", "tags")
@@ -76,6 +80,16 @@ def get_resource(resource_id: uuid.UUID, *, deleted: bool = False) -> Resource:
             "This resource does not exist." if not deleted else "This resource is not in the trash."
         )
     return resource
+
+
+def skill_folder(path: str) -> Path:
+    """The folder of a skill on this machine, which must hold a SKILL.md."""
+    folder = Path(path).expanduser()
+    if not folder.is_absolute():
+        raise ResourceError("Give the skill folder's full path.")
+    if not (folder / "SKILL.md").is_file():
+        raise ResourceError(f"There is no SKILL.md in {folder}.")
+    return folder
 
 
 def icon_of(resource: Resource) -> str:
@@ -134,6 +148,8 @@ def _default_title(data: ResourceCreate) -> str:
 def create(data: ResourceCreate, attach_to: LinkCreate | None = None) -> Resource:
     values = data.model_dump(mode="json")
     values["title"] = _default_title(data)
+    if data.kind == "skill" and data.path:
+        skill_folder(data.path)
     with batch():
         if attach_to is not None:
             _live_target(attach_to.target_type, attach_to.target_id)
@@ -227,6 +243,8 @@ def update(resource_id: uuid.UUID, data: ResourceUpdate) -> Resource:
         raise ResourceError(str(exc)) from exc
     if missing and not (resource.kind == "file" and resource.has_file):
         raise ResourceError(MISSING[missing])
+    if resource.kind == "skill" and fields.get("path"):
+        skill_folder(fields["path"])
     diff = {
         key: [getattr(resource, key), value]
         for key, value in fields.items()
@@ -483,6 +501,14 @@ def list_spec() -> ListSpec:
         ),
         views=("cards", "table"),
     )
+
+
+def kind_counts() -> dict[str, int]:
+    """How many live resources of each kind (the library's categories)."""
+    rows = db.session.execute(
+        select(Resource.kind, func.count()).where(Resource.deleted_at.is_(None)).group_by(Resource.kind)
+    )
+    return dict(rows.tuples().all())
 
 
 def list_resources(args: Mapping[str, Any]) -> ListPage:

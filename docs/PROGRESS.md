@@ -91,7 +91,11 @@ Goal: owner approves architecture + design direction.
 - [x] Claude from anywhere: launcher (header, Alt+C, palette, buttons in context), intents (task, pull request, fix, review, new project), owner's rules in every session, resume any conversation in Cairn (D-051)
 - [x] Cairn's MCP server over stdio in every session opened from Cairn: read the plan, create tasks and subtasks, change statuses, link, comment — changes approved in Claude Code, logged and undoable as `claude:<session>` (D-052)
 - [x] What each Claude is doing: its last steps and now line on every card, the editor or terminal an outside session runs in; running instances with their ports and log on the Claude page (D-054)
-- [ ] More MCP tools: projects, resources, schedule, changesets for bulk changes
+- [x] Terminal fixes: every key reaches Claude, closing never hangs on Linux / macOS, a conversation open elsewhere is moved to Cairn instead of doubled (D-055)
+- [x] Free sessions linked to a project at any time, a folder read into a new project (`update_project`), stop any Claude, account usage in the menu and on sessions (D-056)
+- [x] Claude skills in the library, given to the sessions opened from Cairn; context gauge on the window Claude Code reports (D-058)
+- [ ] Claude live graph (owner request 2026-11-23): a panel on the Claude page showing, as a Pivotick graph, what each Claude is doing now: sessions, the agents, shells and background tasks they open, tools and files used, live
+- [ ] More MCP tools: resources, schedule, changesets for bulk changes
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS

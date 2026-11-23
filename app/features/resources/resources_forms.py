@@ -18,6 +18,7 @@ KIND_FIELDS = {
     "snippet": ("body", "language"),
     "file": ("path",),
     "image": (),
+    "skill": ("path", "body"),
 }
 
 
@@ -29,7 +30,7 @@ def values_from_form(form: Mapping[str, str], kind: str) -> dict[str, Any]:
     }
     for field in KIND_FIELDS[kind]:
         values[field] = optional(form, field) if field in ("url", "path") else (form.get(field) or "").strip()
-    if kind == "note":
+    if kind in ("note", "skill"):
         values["body"] = form.get("body", "")
     return values
 

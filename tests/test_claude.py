@@ -1,16 +1,23 @@
 """Claude Code in a terminal (D-050): sessions, the terminal round trip, the overview."""
 
 import json
+import os
+import shutil
+import subprocess
 import sys
+import threading
 import time
 import uuid
 
+import psutil
 import pytest
 
-from app.core.schema.claude import SessionStart
+from app.core.schema.claude import OutsideStop, ResumeStart, SessionLink, SessionStart
 from app.core.schema.planning import ProjectCreate, TaskCreate
-from app.features.claude import terminal_core, transcript_core
+from app.core.schema.resources import LinkCreate, ResourceCreate
+from app.features.claude import limits_core, skills_core, terminal_core, transcript_core
 from app.features.projects import projects_core
+from app.features.resources import resources_core
 from app.features.tasks import tasks_core
 
 # Stands in for `claude`: prints its arguments, echoes one line typed in, then exits.
@@ -24,7 +31,7 @@ def fake_claude(app, monkeypatch, tmp_path):
     monkeypatch.setattr(
         terminal_core,
         "command",
-        lambda exe, sid, first, rules=None, resume=False, mcp=None: [
+        lambda exe, sid, first, rules=None, resume=False, mcp=None, settings=None, skills=None: [
             exe,
             "-c",
             FAKE,
@@ -224,7 +231,7 @@ def test_presets_build_the_first_message_and_title(ctx, tmp_path):
     pr = SessionStart(project_id=project.id, preset="pr", detail="https://github.com/o/r/pull/42")
     assert "https://github.com/o/r/pull/42" in terminal_core._first_message(pr, None)
     assert "wait for my go" in terminal_core._first_message(pr, None)
-    assert terminal_core._title(pr, project, None) == "PR 42"
+    assert terminal_core._title(pr, project.name, None) == "PR 42"
     fix = SessionStart(task_id=task.id, preset="fix", detail="crash on empty file")
     message = terminal_core._first_message(fix, task)
     assert "crash on empty file" in message and "“Parser”" in message
@@ -261,23 +268,27 @@ def test_new_project_and_resume(ctx, tmp_path, fake_claude, monkeypatch):
     assert projects_core.by_folder(str(folder)).name == "Fresh"
     (tmp_path / "busy").mkdir()
     (tmp_path / "busy" / "x.txt").write_text("x")
-    with pytest.raises(terminal_core.TerminalError, match="not empty"):
-        terminal_core.start_new_project(NewProjectStart(name="Busy", folder=str(tmp_path / "busy")))
+    read = terminal_core.start_new_project(NewProjectStart(name="Busy", folder=str(tmp_path / "busy")))
+    assert read.title == "Read Busy"  # a folder with files is read, not set up
+    assert "without changing any file" in _wait_for(read.id, "ARGS")[0].replace("\r\n", "")
+    with pytest.raises(terminal_core.TerminalError, match="already the folder"):
+        terminal_core.start_new_project(NewProjectStart(name="Again", folder=str(tmp_path / "busy")))
     with pytest.raises(terminal_core.TerminalError, match="full path"):
         terminal_core.start_new_project(NewProjectStart(name="Rel", folder="relative/dir"))
 
     monkeypatch.setattr(transcript_core, "projects_root", lambda: tmp_path / "transcripts")
     conversation = uuid.uuid4()
+    request = ResumeStart(cli_session_id=conversation, cwd=str(folder))
     with pytest.raises(terminal_core.TerminalError, match="no conversation"):
-        terminal_core.resume(conversation, str(folder))
+        terminal_core.resume(request)
     stored = tmp_path / "transcripts" / transcript_core.folder_key(str(folder))
     stored.mkdir(parents=True)
     (stored / f"{conversation}.jsonl").write_text("{}", encoding="utf-8")
-    resumed = terminal_core.resume(conversation, str(folder))
+    resumed = terminal_core.resume(request)
     seen, _ = _wait_for(resumed.id, "ARGS")
     assert "--resume" in seen and str(conversation) in seen
     assert resumed.project_id == projects_core.by_folder(str(folder)).id
-    assert terminal_core.resume(conversation, str(folder)).id == resumed.id  # already open: the same one
+    assert terminal_core.resume(request).id == resumed.id  # already open: the same one
 
 
 def test_launcher_api(app, signed_in, tmp_path, fake_claude):
@@ -318,3 +329,233 @@ def test_claude_starts_as_a_fresh_session(monkeypatch):
         )
     }
     assert env["CLAUDE_CODE_USE_BEDROCK"] == "1" and env["TERM"] == "xterm-256color"
+
+
+def test_whitespace_keys_reach_the_terminal(app, signed_in, tmp_path, fake_claude):
+    project = signed_in.post("/api/projects", json={"name": "Keys", "local_path": str(tmp_path)}).json[
+        "project"
+    ]
+    sid = signed_in.post("/api/claude/sessions", json={"project_id": project["id"]}).json["session"]["id"]
+    _wait_for(uuid.UUID(sid), "ARGS")
+    for key in ("a", " ", "b", "\r"):  # each its own request, as typed
+        sent = signed_in.post(f"/api/claude/sessions/{sid}/input", json={"data": key})
+        assert sent.status_code == 200, (key, sent.json)
+    seen, _ = _wait_for(uuid.UUID(sid), "GOT a b")
+    assert "GOT a b" in seen
+
+
+def test_stop_returns_while_the_program_is_silent(ctx, tmp_path, fake_claude):
+    project = projects_core.create(ProjectCreate(name="Silent", local_path=str(tmp_path)))
+    session = terminal_core.start(SessionStart(project_id=project.id))
+    _wait_for(session.id, "ARGS")
+    pid = session.pid
+    stopper = threading.Thread(target=terminal_core.stop, args=(session.id,), daemon=True)
+    with ctx.app_context():
+        stopper.start()
+    stopper.join(10)
+    assert not stopper.is_alive()
+    deadline = time.monotonic() + 10
+    while terminal_core.is_running(session.id) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert not terminal_core.is_running(session.id) and not psutil.pid_exists(pid)
+
+
+@pytest.fixture
+def open_outside(tmp_path, monkeypatch):
+    """A process standing in for a Claude Code outside Cairn, registered with a conversation."""
+    conversation, folder = uuid.uuid4(), tmp_path / "work"
+    folder.mkdir()
+    monkeypatch.setattr(transcript_core, "projects_root", lambda: tmp_path / "transcripts")
+    monkeypatch.setattr(transcript_core, "registry_root", lambda: tmp_path / "registry")
+    stored = tmp_path / "transcripts" / transcript_core.folder_key(str(folder))
+    stored.mkdir(parents=True)
+    (stored / f"{conversation}.jsonl").write_text("{}", encoding="utf-8")
+    (stored / f"{uuid.uuid4()}.jsonl").write_text("{}", encoding="utf-8")  # a newer, other conversation
+    process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"], cwd=folder)
+    (tmp_path / "registry").mkdir()
+    (tmp_path / "registry" / f"{process.pid}.json").write_text(
+        json.dumps({"pid": process.pid, "sessionId": str(conversation), "startedAt": time.time() * 1000}),
+        encoding="utf-8",
+    )
+    name = psutil.Process.name
+    monkeypatch.setattr(  # only this process is a "claude": its parent (these tests) is not
+        psutil.Process, "name", lambda self: "claude" if self.pid == process.pid else name(self)
+    )
+    yield process, conversation, folder
+    process.kill()
+    process.wait()
+
+
+def test_a_conversation_open_elsewhere_is_moved_not_doubled(ctx, fake_claude, open_outside):
+    process, conversation, folder = open_outside
+    assert transcript_core.registered(psutil.Process(process.pid)) == str(conversation)
+    request = ResumeStart(cli_session_id=conversation, cwd=str(folder))
+    with pytest.raises(terminal_core.TerminalError, match="open in another terminal"):
+        terminal_core.resume(request)
+    assert process.poll() is None and not terminal_core.sessions()  # refused: nothing touched
+    session = terminal_core.resume(request.model_copy(update={"take_over": True}))
+    process.wait(5)
+    seen, _ = _wait_for(session.id, "ARGS")
+    assert str(conversation) in seen
+
+
+def test_taking_over_never_closes_what_cairn_runs_in(ctx, fake_claude, open_outside, monkeypatch):
+    _process, conversation, folder = open_outside
+    parent = psutil.Process().ppid()
+    monkeypatch.setattr(transcript_core, "open_elsewhere", lambda *_: [parent])
+    closed = []
+    monkeypatch.setattr(psutil.Process, "terminate", lambda self: closed.append(self.pid))
+    with pytest.raises(terminal_core.TerminalError, match="started from this Claude Code"):
+        terminal_core.resume(ResumeStart(cli_session_id=conversation, cwd=str(folder), take_over=True))
+    assert not closed
+
+
+def test_a_registration_left_by_a_dead_process_is_ignored(open_outside, tmp_path):
+    process, conversation, _ = open_outside
+    path = tmp_path / "registry" / f"{process.pid}.json"
+    path.write_text(json.dumps({"sessionId": str(conversation), "startedAt": 1000}), encoding="utf-8")
+    assert transcript_core.registered(psutil.Process(process.pid)) is None  # the pid was reused
+    path.write_text("not json", encoding="utf-8")
+    assert transcript_core.registered(psutil.Process(process.pid)) is None
+
+
+def test_a_free_session_is_linked_later(ctx, tmp_path, fake_claude):
+    folder = tmp_path / "pandora"
+    folder.mkdir()
+    (folder / "README.md").write_text("Pandora")
+    session = terminal_core.start(SessionStart(folder=str(folder)))
+    assert session.project_id is None and session.title == "pandora"
+    linked, reader = terminal_core.link(session.id, SessionLink(name="Pandora", read=True))
+    project = projects_core.by_folder(str(folder))
+    assert linked.project_id == project.id == reader.project_id and reader.id != session.id
+    with pytest.raises(terminal_core.TerminalError, match="already the folder"):
+        terminal_core.link(session.id, SessionLink(name="Twice"))
+    other = projects_core.create(ProjectCreate(name="Other"))
+    assert terminal_core.link(session.id, SessionLink(project_id=other.id))[0].project_id == other.id
+    assert terminal_core._last_link(session.cli_session_id) == (other, None)  # kept when resumed
+    assert terminal_core.link(session.id, SessionLink())[0].project_id is None
+    with pytest.raises(ValueError):
+        SessionStart(folder=str(folder), project_id=other.id)
+    with pytest.raises(terminal_core.TerminalError, match="full path"):
+        terminal_core.start(SessionStart(folder="pandora"))
+
+
+def test_an_outside_session_can_be_stopped(ctx, open_outside):
+    process, conversation, _ = open_outside
+    found = next(s for s in transcript_core.outside_sessions(set()) if s["pid"] == process.pid)
+    assert found["cli_session_id"] == str(conversation)
+    with pytest.raises(terminal_core.TerminalError, match="no longer running"):  # a reused pid
+        terminal_core.stop_outside(OutsideStop(pid=process.pid, started=found["started"] - 60))
+    assert process.poll() is None
+    terminal_core.stop_outside(OutsideStop(pid=process.pid, started=found["started"]))
+    process.wait(5)
+
+
+def test_usage_left_comes_from_the_status_line(ctx, tmp_path, monkeypatch):
+    monkeypatch.setitem(ctx.config, "CAIRN_DATA_DIR", str(tmp_path))
+    (tmp_path / "claude").mkdir()
+    assert limits_core.limits() == {"at": None, "windows": []}
+    later = time.time() + 3600
+    given = {
+        "rate_limits": {
+            "five_hour": {"used_percentage": 23.5, "resets_at": later},
+            "seven_day": {"used_percentage": 41, "resets_at": time.time() - 5},
+        },
+        "session_id": "private",
+    }
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    (home / ".claude" / "settings.json").write_text(json.dumps({"statusLine": {"command": "echo MINE; cat"}}))
+    done = subprocess.run(  # noqa: S603
+        [sys.executable, limits_core.statusline.__file__, str(limits_core.limits_file())],
+        input=json.dumps(given).encode(),
+        capture_output=True,
+        env={**os.environ, "HOME": str(home), "USERPROFILE": str(home)},
+        check=True,
+    )
+    if shutil.which("bash"):
+        assert b"MINE" in done.stdout and b"rate_limits" in done.stdout  # the owner's own still runs
+    (only,) = limits_core.limits()["windows"]  # the other window was reset since
+    assert (only["key"], only["used"], only["left"]) == ("five_hour", 24, 76)
+    assert "private" not in limits_core.limits_file().read_text()
+
+
+def test_free_pages_and_api(signed_in, tmp_path, fake_claude):
+    made = signed_in.post("/api/claude/sessions", json={"folder": str(tmp_path)})
+    assert made.status_code == 201 and made.json["session"]["project"] is None
+    sid = made.json["session"]["id"]
+    assert b"Free: link to a project" in signed_in.get(f"/claude/sessions/{sid}").data
+    assert b"free, no project" in signed_in.get("/claude").data
+    opened = signed_in.post("/claude/sessions", data={"folder": str(tmp_path)})
+    assert opened.status_code == 302 and "/claude/sessions/" in opened.location
+    linked = signed_in.post(f"/claude/sessions/{sid}/link", data={"name": "Fresh", "folder": str(tmp_path)})
+    assert linked.status_code == 302
+    sessions = {s["id"]: s for s in signed_in.get("/api/claude/sessions").json["sessions"]}
+    assert sessions[sid]["project"]["name"] == "Fresh"
+    gone = signed_in.post(f"/api/claude/sessions/{sid}/link", json={"project_id": str(uuid.uuid4())})
+    assert gone.status_code == 409
+    assert signed_in.post("/api/claude/outside/stop", json={"pid": 2, "started": 0}).status_code == 409
+
+
+def test_library_skills_reach_the_sessions(ctx, tmp_path, fake_claude, monkeypatch):
+    source = tmp_path / "review"
+    source.mkdir()
+    (source / "SKILL.md").write_text("---\nname: review\ndescription: Reviews\n---\nLook closely.")
+    (source / "notes.md").write_text("more")
+    (tmp_path / "secret").write_text("no")
+    if sys.platform != "win32":
+        (source / "link").symlink_to(tmp_path / "secret")
+    mine = projects_core.create(ProjectCreate(name="Mine", local_path=str(tmp_path)))
+    other = projects_core.create(ProjectCreate(name="Other"))
+    create = resources_core.create
+    everywhere = create(ResourceCreate(kind="skill", title="Review: code", path=str(source)))
+    ours = create(
+        ResourceCreate(kind="skill", title="House style", body="Be brief.", description_md="How: we write"),
+        LinkCreate(target_type="project", target_id=mine.id),
+    )
+    create(
+        ResourceCreate(kind="skill", title="Theirs", body="x"),
+        LinkCreate(target_type="project", target_id=other.id),
+    )
+    assert skills_core.for_session(mine, None) == [ours, everywhere]
+    assert skills_core.for_session(None, None) == [everywhere]
+    with pytest.raises(resources_core.ResourceError, match=r"no SKILL\.md"):
+        create(ResourceCreate(kind="skill", title="Bad", path=str(tmp_path)))
+    with pytest.raises(ValueError, match="folder, or write"):
+        ResourceCreate(kind="skill", title="Empty")
+
+    given = []
+    fake = terminal_core.command
+    monkeypatch.setattr(
+        terminal_core, "command", lambda *a, **k: (given.append(k["skills"]), fake(*a, **k))[1]
+    )
+    session = terminal_core.start(SessionStart(project_id=mine.id))
+    (plugin,) = given
+    assert json.loads((plugin / ".claude-plugin" / "plugin.json").read_text())["name"] == "cairn-skills"
+    assert {p.name for p in (plugin / "skills" / "review-code").iterdir()} == {"SKILL.md", "notes.md"}
+    written = (plugin / "skills" / "house-style" / "SKILL.md").read_text()
+    assert (
+        written.startswith('---\nname: house-style\ndescription: "How: we write"\n---')
+        and "Be brief." in written
+    )
+    terminal_core.close_all()
+    assert not plugin.exists() and source.is_dir() and not terminal_core.is_running(session.id)
+    (source / "SKILL.md").unlink()  # gone since: the session opens without it
+    assert not (
+        skills_core.write_plugin(tmp_path / "again", [everywhere]) / "skills" / "review-code"
+    ).exists()
+
+
+def test_context_window_is_the_one_claude_code_reports(ctx, tmp_path, monkeypatch):
+    monkeypatch.setitem(ctx.config, "CAIRN_DATA_DIR", str(tmp_path))
+    (tmp_path / "claude").mkdir()
+    assert transcript_core._window("claude-opus-5-5", 1000) == 200_000
+    statusline = limits_core.statusline
+    size = {"model": {"id": "claude-opus-5-5[1m]"}, "context_window": {"context_window_size": 1_000_000}}
+    statusline.keep({**size, "rate_limits": {"five_hour": {"used_percentage": 5}}}, limits_core.limits_file())
+    statusline.keep(size, limits_core.limits_file())  # no usage yet in a new session: the last one stays
+    assert transcript_core._window("claude-opus-5-5", 1000) == 1_000_000
+    assert limits_core.limits()["windows"][0]["used"] == 5
+    old = {"rate_limits": {"five_hour": {"used_percentage": 3}}}  # an idle session, with older numbers
+    statusline.keep(old, limits_core.limits_file())
+    assert limits_core.limits()["windows"][0]["used"] == 5

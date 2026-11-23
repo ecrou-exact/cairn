@@ -214,6 +214,7 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
   .cn-nav-collapsed .cn-shell { grid-template-columns: 4.25rem 1fr; }
   .cn-nav-collapsed .cn-sidebar { padding-inline: var(--cn-space-2); }
   .cn-nav-collapsed .cn-nav-label,
+  .cn-nav-collapsed .cn-nav-limits,
   .cn-nav-collapsed .cn-sidebar-foot p { display: none; }
   .cn-nav-collapsed .cn-nav-group { height: 0; margin: var(--cn-space-3) var(--cn-space-2); overflow: hidden; border-top: var(--cn-border-width) solid var(--cn-border); }
   .cn-nav-collapsed .cn-nav-group:first-child { margin-top: 0; border-top: 0; }
@@ -586,3 +587,29 @@ body {
 .cn-task-title-cell .cn-claude-go { opacity: 0; transition: opacity var(--cn-duration-fast) var(--cn-easing); vertical-align: middle; }
 tr:hover .cn-claude-go, .cn-claude-go:focus-visible { opacity: 1; }
 .cn-card-head-end { display: inline-flex; align-items: center; gap: var(--cn-space-2); }
+
+/* Claude usage of the account (D-056): rings in the header and on the Claude pages, bars under
+   the menu's Claude entry while a Claude runs */
+.cn-limit { display: inline-flex; align-items: center; gap: var(--cn-space-2); color: var(--cn-success); }
+.cn-limit.is-mid { color: var(--cn-warning); }
+.cn-limit.is-high { color: var(--cn-danger); }
+.cn-limit svg { flex: none; }
+.cn-limit.is-ring svg { width: 2.25rem; height: 2.25rem; }
+.cn-limit.is-ring circle { stroke-width: 3.4; }
+.cn-limit.is-ring .cn-limit-track { stroke: color-mix(in srgb, currentcolor 28%, transparent); }
+.cn-limit.is-ring .cn-limit-fill { stroke: currentcolor; stroke-linecap: round; }
+.cn-limit-value { fill: var(--cn-chrome-text); font-family: var(--cn-font-mono); font-size: 12px; font-weight: var(--cn-weight-strong); }
+.cn-limit-text { display: grid; line-height: 1.25; font-size: var(--cn-text-xs); }
+.cn-limit-text .cn-limit-label { color: var(--cn-chrome-text); font-weight: var(--cn-weight-strong); }
+.cn-limit-text .cn-limit-reset { color: var(--cn-chrome-muted); white-space: nowrap; }
+.cn-header-limits { display: flex; align-items: center; gap: var(--cn-space-4); margin-left: var(--cn-space-3); text-decoration: none; }
+.cn-header-limits[hidden] { display: none; }
+.cn-nav-limits { display: grid; gap: var(--cn-space-1); margin: var(--cn-space-2) var(--cn-space-3); font-size: var(--cn-text-xs); }
+.cn-limit.is-bar { display: grid; grid-template-columns: 1.4rem 1fr 2.2rem 3.2rem; }
+.cn-limit.is-bar svg { width: 100%; height: 0.4rem; border-radius: 1rem; }
+.cn-limit.is-bar .cn-limit-track { fill: color-mix(in srgb, currentcolor 20%, transparent); }
+.cn-limit.is-bar .cn-limit-fill { fill: currentcolor; }
+.cn-limit.is-bar .cn-limit-label, .cn-limit.is-bar .cn-limit-reset { color: var(--cn-text-muted); text-align: left; }
+.cn-limit.is-bar .cn-limit-percent { color: var(--cn-text); font-weight: var(--cn-weight-strong); text-align: right; }
+@media (max-width: 60rem) { .cn-header-limits .cn-limit-text { display: none; } }
+@media (max-width: 30rem) { .cn-header-limits { display: none; } }

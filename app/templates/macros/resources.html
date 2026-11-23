@@ -8,6 +8,7 @@
 {% if resource.kind == "github" and resource.meta.github %}{{ resource.meta.github.item | capitalize }} in {{ resource.meta.github.repo }}
 {%- elif resource.url %}{{ resource.url | host }}
 {%- elif resource.has_file %}{{ resource.size_bytes | filesize }}{% if resource.meta.image %} · {{ resource.meta.image.width }}×{{ resource.meta.image.height }}{% endif %}
+{%- elif resource.kind == "skill" %}{{ resource.path or "written in Cairn" }}
 {%- elif resource.kind == "snippet" %}{{ resource.language or "text" }} · {{ resource.body.count("\n") + 1 }} line{{ "s" if resource.body.count("\n") }}
 {%- elif resource.path %}{{ resource.path }}
 {%- else %}{{ resource.kind | kind_label }}{% endif %}
@@ -73,7 +74,7 @@
           <button class="btn btn-outline-secondary" type="submit">Attach</button>
         </form>
         <p class="cn-resource-new">New:
-          {% for kind, label in [("note", "Note"), ("snippet", "Snippet or command"), ("tool", "Tool"), ("file", "File on disk")] %}
+          {% for kind, label in [("note", "Note"), ("snippet", "Snippet or command"), ("tool", "Tool"), ("file", "File on disk"), ("skill", "Claude skill")] %}
           <a href="{{ url_for('resources.new', kind=kind, attach=attach, next=here) }}">{{ label }}</a>{{ " · " if not loop.last }}
           {% endfor %}
         </p>

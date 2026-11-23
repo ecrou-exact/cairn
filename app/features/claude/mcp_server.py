@@ -20,13 +20,14 @@ from typing import Any, Literal
 from flask import Flask
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from pydantic import ValidationError
 from sqlalchemy import func, select
 
 from app.core.db_class.claude import ClaudeSession
 from app.core.db_class.planning import Project, Task
 from app.core.extensions import db
 from app.core.schema.comments import CommentCreate
-from app.core.schema.planning import DependencyCreate, TaskCreate
+from app.core.schema.planning import DependencyCreate, ProjectUpdate, TaskCreate
 from app.core.utils.actor import acting_as
 from app.features.comments import comments_core
 from app.features.projects import projects_core
@@ -34,7 +35,7 @@ from app.features.tasks import brief_core, dependencies_core, tasks_core, workfl
 
 SERVER_NAME = "cairn"
 READ_TOOLS = ("cairn_overview", "list_tasks", "get_task", "next_tasks")
-WRITE_TOOLS = ("create_task", "set_task_status", "link_tasks", "comment_on_task")
+WRITE_TOOLS = ("update_project", "create_task", "set_task_status", "link_tasks", "comment_on_task")
 
 INSTRUCTIONS = (
     "Cairn is the owner's planning workspace: projects, tasks with dependencies, a score that "
@@ -100,6 +101,7 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
                 return work()
             except (
                 CairnToolError,
+                projects_core.ProjectError,
                 tasks_core.TaskError,
                 tasks_core.TaskNotFound,
                 dependencies_core.DependencyError,
@@ -184,6 +186,43 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
                     limit=max(1, min(limit, 30)), project_id=chosen.id if chosen else None
                 )
             ]
+
+        return run(work)
+
+    @server.tool()
+    def update_project(
+        project: str | None = None,
+        description: str | None = None,
+        stack: list[str] | None = None,
+        tags: list[str] | None = None,
+        github_repo: str | None = None,
+        default_branch: str | None = None,
+    ) -> dict[str, Any]:
+        """Fill or correct a project after reading it (default: this session's project): what it
+        is (Markdown), its stack, tags, GitHub repository (owner/name) and main branch. Only what
+        you give changes."""
+
+        def work():
+            chosen = _project(project) or session_project()
+            if chosen is None:
+                raise CairnToolError(
+                    "This session has no project yet: say which, or ask the owner to link it."
+                )
+            given = {
+                "description_md": description,
+                "stack": stack,
+                "tags": tags,
+                "github_repo": github_repo,
+                "default_branch": default_branch,
+            }
+            try:
+                data = ProjectUpdate(**{key: value for key, value in given.items() if value is not None})
+            except ValidationError as exc:
+                raise CairnToolError(
+                    "; ".join(f"{err['loc'][0] if err['loc'] else ''}: {err['msg']}" for err in exc.errors())
+                ) from exc
+            updated = projects_core.update(chosen.id, data)
+            return {"id": str(updated.id), "name": updated.name, "changed": sorted(data.model_fields_set)}
 
         return run(work)
 

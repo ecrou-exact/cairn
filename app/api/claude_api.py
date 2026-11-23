@@ -8,8 +8,17 @@ import uuid
 from flask import jsonify, request
 
 from app.api import ApiError, api_blueprint, body
-from app.core.schema.claude import NewProjectStart, ResumeStart, SessionStart, TerminalInput, TerminalResize
+from app.core.schema.claude import (
+    NewProjectStart,
+    OutsideStop,
+    ResumeStart,
+    SessionLink,
+    SessionStart,
+    TerminalInput,
+    TerminalResize,
+)
 from app.features.claude import claude_core, terminal_core
+from app.features.projects import projects_core
 
 claude_api = api_blueprint("claude_api")
 
@@ -25,7 +34,7 @@ def _uuid(name: str) -> uuid.UUID | None:
 def _guard(action, *args):
     try:
         return action(*args)
-    except terminal_core.TerminalError as exc:
+    except (terminal_core.TerminalError, projects_core.ProjectError) as exc:
         raise ApiError(str(exc), 409) from exc
 
 
@@ -58,7 +67,7 @@ def new_project():
 def resume():
     """Reopen a Claude Code conversation in Cairn (one started outside, or one that ended)."""
     data = body(ResumeStart)
-    session = _guard(terminal_core.resume, data.cli_session_id, data.cwd, data.cols, data.rows)
+    session = _guard(terminal_core.resume, data)
     return jsonify(session=claude_core.describe(session)), 201
 
 
@@ -78,4 +87,20 @@ def resize(session_id: uuid.UUID):
 @claude_api.post("/claude/sessions/<uuid:session_id>/stop")
 def stop(session_id: uuid.UUID):
     _guard(terminal_core.stop, session_id)
+    return jsonify(ok=True)
+
+
+@claude_api.post("/claude/sessions/<uuid:session_id>/link")
+def link(session_id: uuid.UUID):
+    """Link a session to a project, a new project for a folder, or none."""
+    session, reader = _guard(terminal_core.link, session_id, body(SessionLink))
+    return jsonify(
+        session=claude_core.describe(session), reader=claude_core.describe(reader) if reader else None
+    )
+
+
+@claude_api.post("/claude/outside/stop")
+def stop_outside():
+    """Close a Claude Code running outside Cairn."""
+    _guard(terminal_core.stop_outside, body(OutsideStop))
     return jsonify(ok=True)

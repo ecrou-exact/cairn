@@ -57,6 +57,10 @@
   {% elif kind == "file" and not (resource and resource.has_file) %}
   {{ f.text("path", "Path", values, errors, required=True, hint="Where the file is: an absolute path on this machine, or a path inside a project's repository.", attrs={"maxlength": 500}) }}
   {% endif %}
+  {% if kind == "skill" %}
+  {{ f.text("path", "Folder (optional)", values, errors, hint="Full path of a folder on this machine with a SKILL.md, e.g. /home/me/skills/review. Read again each time Claude opens. Leave empty to write the skill here.", attrs={"maxlength": 500}) }}
+  {{ f.markdown("body", "Instructions (SKILL.md)", values, errors, hint="Used when there is no folder. Without a front matter, its name comes from the title and its description from the notes below.") }}
+  {% endif %}
   {{ f.text("tags", "Tags", values, errors, hint="Separated by commas.") }}
   {{ f.markdown("description_md", "Notes", values, errors, hint="Why it matters, how to use it. Shown with the resource and given to Claude with it.") }}
   <div class="cn-form-actions">

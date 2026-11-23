@@ -11,14 +11,19 @@
 .cn-gauge-fill { stroke: currentcolor; stroke-linecap: round; transition: stroke-dasharray 600ms var(--cn-easing); }
 .cn-gauge-value { position: relative; font-family: var(--cn-font-mono); font-weight: var(--cn-weight-strong); font-size: var(--cn-text-sm); color: var(--cn-text); }
 .cn-gauge-lg .cn-gauge-value { font-size: var(--cn-text-lg); }
+.cn-gauge-label { position: absolute; top: calc(100% + 2px); font-size: var(--cn-text-xs); color: var(--cn-text-muted); }
+.cn-claude-band .cn-gauge-label { color: var(--cn-chrome-muted); }
+.cn-gauge { margin-bottom: 1.1rem; }
 .cn-gauge-value small { font-size: 0.65em; color: var(--cn-text-muted); }
 
 /* Session cards */
 .cn-claude-section + .cn-claude-section { margin-top: var(--cn-space-6); }
-.cn-claude-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); gap: var(--cn-space-3); }
+.cn-claude-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--cn-space-4); }
+@media (max-width: 80rem) { .cn-claude-cards { grid-template-columns: minmax(0, 1fr); } }
 .cn-claude-card {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--cn-space-4);
   padding: var(--cn-space-4);
   background: var(--cn-surface);
@@ -31,7 +36,7 @@
 .cn-claude-card-body { flex: 1; min-width: 0; display: grid; gap: 3px; }
 .cn-claude-card-title { margin: 0; font-weight: var(--cn-weight-strong); letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cn-claude-card-where, .cn-claude-card-facts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cn-space-1) var(--cn-space-3); margin: 0; font-size: var(--cn-text-xs); color: var(--cn-text-muted); min-width: 0; }
-.cn-claude-card-where code { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cn-text-faint); }
+.cn-claude-card-where code { flex-basis: 100%; overflow-wrap: anywhere; color: var(--cn-text-muted); }
 .cn-claude-state { display: inline-flex; align-items: center; gap: 5px; font-weight: var(--cn-weight-medium); color: var(--cn-text); }
 .cn-claude-state::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--cn-text-faint); }
 .is-running .cn-claude-state::before, .cn-claude-band .cn-claude-state::before { background: var(--cn-success); }
@@ -40,7 +45,6 @@
 @keyframes cn-pulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--cn-mark) 0%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .cn-claude-state::before { animation: none !important; } }
 /* What Claude does now, and its last steps */
-.cn-claude-card:has(.cn-claude-steps:not([hidden])) { align-items: flex-start; }
 .cn-claude-now { display: flex; align-items: center; gap: var(--cn-space-2); margin: var(--cn-space-1) 0 0; font-size: var(--cn-text-sm); color: var(--cn-text); min-width: 0; }
 .cn-claude-now span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cn-claude-now i, .cn-claude-steps i { width: 1rem; text-align: center; color: var(--cn-text-faint); flex: none; }
@@ -61,6 +65,16 @@
 .cn-claude-panel .cn-claude-cards { margin-top: var(--cn-space-4); }
 .cn-claude-start { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); margin: 0; }
 .cn-claude-ended { margin-top: var(--cn-space-5); }
+
+.cn-claude-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--cn-space-2); flex: 1 0 100%; align-self: flex-end; padding-top: var(--cn-space-3); border-top: var(--cn-border-width) solid var(--cn-border); font-size: var(--cn-text-xs); }
+.cn-claude-actions:empty { display: none; }
+.cn-claude-actions form { margin: 0; }
+.cn-claude-actions .btn { white-space: nowrap; }
+.cn-claude-limits, .cn-page-header .cn-claude-limits { display: flex; flex-wrap: wrap; gap: var(--cn-space-1) var(--cn-space-4); margin: var(--cn-space-2) 0 0; font-size: var(--cn-text-sm); }
+.cn-claude-link { margin-bottom: var(--cn-space-3); }
+.cn-claude-link-forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--cn-space-5); }
+.cn-claude-link-forms form { display: grid; gap: var(--cn-space-3); align-content: start; margin: 0; }
+.cn-claude-link-forms .btn { justify-self: start; }
 
 /* A session: its band, then the terminal filling the screen */
 .cn-claude-band {
@@ -84,7 +98,7 @@
 
 .cn-claude-terminal {
   display: block;
-  height: calc(100vh - var(--cn-header-height) - 12rem);
+  height: calc(100vh - var(--cn-header-height) - 18rem);
   min-height: 22rem;
   padding: var(--cn-space-3);
   background: var(--cn-chrome-bg);
@@ -92,6 +106,7 @@
   box-shadow: var(--cn-slab-shadow), inset 0 0 0 1px var(--cn-chrome-border);
 }
 .cn-terminal-screen { width: 100%; height: 100%; }
+.cn-terminal-notice { margin: 0; padding: var(--cn-space-2) 0; color: var(--cn-danger); font-size: var(--cn-text-sm); }
 .cn-claude-terminal.is-ended { opacity: 0.85; }
 
 /* Project instances (D-053) */

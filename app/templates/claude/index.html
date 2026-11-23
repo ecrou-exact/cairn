@@ -1,5 +1,5 @@
 {% extends "layout/shell.html" %}
-{% from "macros/claude.html" import session_card, instance_card %}
+{% from "macros/claude.html" import session_card, instance_card, usage_left %}
 {% block title %}Claude{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">{% endblock %}
@@ -13,6 +13,7 @@
     <div class="cn-eyebrow">Claude</div>
     <h1>Claude sessions</h1>
     <p>Every Claude Code on this machine: where it runs, how full its context is.</p>
+    {{ usage_left(overview.limits) }}
   </div>
   <dl class="cn-hero-stats cn-claude-stats">
     <div class="{{ 'is-good' if overview.running }}"><dt>Running</dt><dd data-claude-count>{{ overview.running }}</dd></div>

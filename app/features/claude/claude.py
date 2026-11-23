@@ -22,11 +22,12 @@ from flask import (
     url_for,
 )
 
-from app.core.schema.claude import SessionStart
+from app.core.schema.claude import OutsideStop, ResumeStart, SessionLink, SessionStart
 from app.core.security.headers import csp_terminal
 from app.core.utils.events import latest_event_id
 from app.core.utils.web import FormErrors, local_path, validate
 from app.features.claude import claude_core, terminal_core
+from app.features.projects import projects_core
 
 claude = Blueprint("claude", __name__)
 
@@ -54,6 +55,7 @@ def session(session_id: uuid.UUID):
     page = render_template(
         "claude/session.html",
         session=claude_core.describe(row),
+        targets=claude_core.targets(),
         nonce=nonce,
         events_after=latest_event_id(),
     )
@@ -96,8 +98,8 @@ def stream(session_id: uuid.UUID):
 
 @claude.post("/claude/sessions")
 def start():
-    """Open Claude Code from a project's or a task's Claude tab (form)."""
-    values = {key: request.form.get(key) or None for key in ("project_id", "task_id")}
+    """Open Claude Code from a project's or a task's Claude tab, or free in a folder (form)."""
+    values = {key: request.form.get(key) or None for key in ("project_id", "task_id", "folder")}
     values["with_brief"] = request.form.get("with_brief") == "1"
     back = local_path(request.form.get("next")) or url_for("claude.index")
     try:
@@ -123,16 +125,44 @@ def stop(session_id: uuid.UUID):
 @claude.post("/claude/resume")
 def resume():
     """Open a conversation found on the machine in Cairn's terminal (form)."""
+    values = {key: request.form.get(key) or None for key in ("cli_session_id", "cwd")}
+    values["take_over"] = request.form.get("take_over") == "1"
     try:
-        session = terminal_core.resume(
-            uuid.UUID(request.form.get("cli_session_id", "")), request.form.get("cwd", "")
-        )
-    except (ValueError, terminal_core.TerminalError) as exc:
-        flash(
-            str(exc)
-            if isinstance(exc, terminal_core.TerminalError)
-            else "This conversation id is not valid.",
-            "danger",
-        )
+        session = terminal_core.resume(validate(ResumeStart, values))
+    except FormErrors as exc:
+        flash(" ".join(exc.errors.values()), "danger")
+        return redirect(url_for("claude.index"))
+    except terminal_core.TerminalError as exc:
+        flash(str(exc), "danger")
         return redirect(url_for("claude.index"))
     return redirect(url_for("claude.session", session_id=session.id))
+
+
+@claude.post("/claude/sessions/<uuid:session_id>/link")
+def link(session_id: uuid.UUID):
+    """Link a session to a project, a new one, or none (form)."""
+    back = redirect(url_for("claude.session", session_id=session_id))
+    values = {key: request.form.get(key) or None for key in ("project_id", "name", "folder")}
+    values["read"] = request.form.get("read") == "1"
+    try:
+        _, reader = terminal_core.link(session_id, validate(SessionLink, values))
+    except FormErrors as exc:
+        flash(" ".join(exc.errors.values()), "danger")
+        return back
+    except (terminal_core.TerminalError, projects_core.ProjectError) as exc:
+        flash(str(exc), "danger")
+        return back
+    return redirect(url_for("claude.session", session_id=reader.id)) if reader else back
+
+
+@claude.post("/claude/outside/stop")
+def stop_outside():
+    """Close a Claude Code running outside Cairn (form)."""
+    values = {key: request.form.get(key) for key in ("pid", "started")}
+    try:
+        terminal_core.stop_outside(validate(OutsideStop, values))
+    except FormErrors as exc:
+        flash(" ".join(exc.errors.values()), "danger")
+    except terminal_core.TerminalError as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("claude.index"))

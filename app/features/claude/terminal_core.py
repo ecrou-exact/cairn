@@ -6,15 +6,17 @@ kept in this (web) process while it runs, so leaving the page does not stop it; 
 kept (up to `SCROLLBACK` characters) so a page that comes back, or a dropped stream, resumes
 where it was.
 
-Only the configured Claude Code executable is ever started (argv list, no shell), and only
-in a project's local folder. Every start and end is logged.
+Only the configured Claude Code executable is ever started (argv list, no shell), in a
+folder the owner chose (a project's, or any when free, D-056). Every start and end is logged.
 """
 
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import re
+import shutil
 import sys
 import threading
 import uuid
@@ -23,6 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import psutil
 from flask import current_app
 from sqlalchemy import select
 
@@ -30,19 +33,20 @@ from app.core.db_class.base import utcnow
 from app.core.db_class.claude import ClaudeSession
 from app.core.db_class.planning import Project, Task
 from app.core.extensions import db
-from app.core.schema.claude import NewProjectStart, SessionStart
+from app.core.schema.claude import NewProjectStart, OutsideStop, ResumeStart, SessionLink, SessionStart
 from app.core.schema.planning import ProjectCreate
 from app.core.utils.actor import acting_as
 from app.core.utils.events import publish
 from app.core.utils.history import batch
 from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
-from app.features.claude import mcp_server, transcript_core
+from app.features.claude import limits_core, mcp_server, skills_core, transcript_core
 from app.features.claude.pty_host import Pty
 from app.features.connections import connections_core
 from app.features.projects import projects_core
 from app.features.tasks import brief_core
 
+CLOSE_WAIT = 10.0  # seconds a Claude Code outside Cairn has to close before a take-over gives up
 SCROLLBACK = 2_000_000  # characters of output kept per session for resuming
 BRIEF_LIMIT = 24_000  # a first message stays well under Windows' 32k command line
 # Markers a running Claude Code gives the processes it starts (its session, "child session",
@@ -71,12 +75,13 @@ class TerminalError(ValueError):
 class Terminal:
     session_id: uuid.UUID
     pty: Pty
-    files: tuple[Path, ...] = ()  # removed when the session ends (rules, MCP config)
+    files: tuple[Path, ...] = ()  # removed when the session ends (rules, MCP config, skills)
     kind: str = "claude"
     chunks: deque = field(default_factory=deque)  # (seq, text)
     size: int = 0
     seq: int = 0
     ended: bool = False
+    reader: threading.Thread | None = None
     cond: threading.Condition = field(default_factory=threading.Condition)
 
     def append(self, text: str) -> None:
@@ -114,7 +119,19 @@ def _terminal(session_id: uuid.UUID) -> Terminal:
     return terminal
 
 
+def _existing_folder(text: str) -> Path:
+    folder = Path(text).expanduser()
+    if not folder.is_absolute():
+        raise TerminalError("Give the folder's full path.")
+    if not folder.is_dir():
+        raise TerminalError(f"The folder {folder} does not exist on this machine.")
+    return folder
+
+
 def _where(data: SessionStart) -> tuple[Project | None, Task | None, Path]:
+    if data.folder is not None:
+        folder = _existing_folder(data.folder)
+        return projects_core.by_folder(str(folder)), None, folder
     task = db.session.get(Task, data.task_id) if data.task_id else None
     if data.task_id and (task is None or task.is_deleted):
         raise TerminalError("This task does not exist.")
@@ -209,15 +226,15 @@ def _first_message(data: SessionStart, task: Task | None) -> str | None:
     return (words + about) if words else (about.strip() or None)
 
 
-def _title(data: SessionStart, project: Project, task: Task | None) -> str:
+def _title(data: SessionStart, name: str, task: Task | None) -> str:
     words = " ".join(data.detail.split())
     if data.preset == "pr":
         return f"PR {words.rstrip('/').rsplit('/', 1)[-1]}" if "/pull/" in words else "Pull request"
     if data.preset == "fix":
         return f"Fix: {words[:80]}"
     if data.preset == "review":
-        return f"Review of {project.name}"
-    return task.title if task is not None else project.name
+        return f"Review of {name}"
+    return task.title if task is not None else name
 
 
 def _rules_file(session_id: uuid.UUID, project: Project | None) -> Path:
@@ -263,6 +280,8 @@ def command(
     rules: Path | None = None,
     resume: bool = False,
     mcp: Path | None = None,
+    settings: str | None = None,
+    skills: Path | None = None,
 ) -> list[str]:
     """The argv Claude Code is started with. The first message comes right after the
     executable: `--mcp-config` and `--allowedTools` take several values and would swallow
@@ -274,6 +293,10 @@ def command(
     argv += ["--resume" if resume else "--session-id", str(cli_session_id)]
     if rules is not None:
         argv += ["--append-system-prompt-file", str(rules)]
+    if skills is not None:
+        argv += ["--plugin-dir", str(skills)]
+    if settings is not None:
+        argv += ["--settings", settings]
     if mcp is not None:
         argv += ["--mcp-config", str(mcp)]
         argv += [
@@ -284,19 +307,79 @@ def command(
 
 
 def start(data: SessionStart) -> ClaudeSession:
-    """Open Claude Code in a terminal, in the project's folder, for what `data` asks (D-050)."""
+    """Open Claude Code in a terminal, in the project's or the given folder, for what `data` asks (D-050)."""
     project, task, folder = _where(data)
-    message, title = _first_message(data, task), _title(data, project, task)
+    message = _first_message(data, task)
+    title = _title(data, project.name if project else folder.name or str(folder), task)
     return _launch(project, task, folder, message, title, cols=data.cols, rows=data.rows, preset=data.preset)
 
 
+def _read_message(name: str) -> str:
+    return (
+        f"This folder is now the project “{name}” in Cairn. Read it (README, documentation, "
+        "configuration, main code, git log) without changing any file. Then fill the project with "
+        "Cairn's update_project tool (what it is, its stack, its GitHub repository) and propose the "
+        "tasks you see; create them with create_task once I agree."
+    )
+
+
+def link(session_id: uuid.UUID, data: SessionLink) -> tuple[ClaudeSession, ClaudeSession | None]:
+    """Link a session to a project, a new one, or none (D-056), at any time. Returns the session
+    and, when Claude was asked to read a new project's folder, the session that reads it: a
+    separate one, so nothing is ever typed into a conversation in progress."""
+    session = get(session_id)
+    if session.kind != "claude":
+        raise TerminalError("Only a Claude session can be linked.")
+    with batch():
+        folder = _existing_folder(data.folder or session.cwd)
+        if data.name is not None:
+            known = projects_core.by_folder(str(folder))
+            if known is not None:
+                raise TerminalError(f"{folder} is already the folder of “{known.name}”: link to it.")
+            project = projects_core.create(ProjectCreate(name=data.name, local_path=str(folder)))
+        else:
+            project = projects_core.get_project(data.project_id) if data.project_id else None
+        before, after = session.project_id, project.id if project else None
+        if before != after:
+            session.project_id = after
+            session.task_id = None  # a task belongs to the project left
+            log_action(
+                "claude_session.link",
+                target_type="claude_session",
+                target_id=session.id,
+                diff={"project_id": [str(before) if before else None, str(after) if after else None]},
+            )
+            publish("claude.changed", {"id": str(session.id), "status": session.status})
+    if project is None or data.name is None or not data.read:
+        return session, None
+    reader = _launch(
+        project,
+        None,
+        folder,
+        _read_message(project.name),
+        f"Read {project.name}",
+        cols=120,
+        rows=32,
+        preset="read",
+    )
+    return session, reader
+
+
 def start_new_project(data: NewProjectStart) -> ClaudeSession:
-    """Create the project and its folder (missing, or empty), then Claude Code in it (D-051)."""
+    """Create the project (and its folder when missing), then Claude Code in it (D-051): to set
+    it up, or to read it when it has files (D-056)."""
     folder = Path(data.folder).expanduser()
     if not folder.is_absolute():
         raise TerminalError("Give the folder's full path (for example C:\\Users\\me\\code\\new-app).")
-    if folder.exists() and (not folder.is_dir() or any(folder.iterdir())):
-        raise TerminalError(f"{folder} already exists and is not empty: pick a new folder.")
+    if folder.exists() and not folder.is_dir():
+        raise TerminalError(f"{folder} is not a folder.")
+    known = projects_core.by_folder(str(folder))
+    if known is not None:
+        raise TerminalError(f"{folder} is already the folder of “{known.name}”.")
+    try:
+        has_files = folder.is_dir() and any(folder.iterdir())
+    except OSError as exc:
+        raise TerminalError(f"Cannot read {folder}: {exc}") from exc
     with batch():
         project = projects_core.create(
             ProjectCreate(name=data.name, local_path=str(folder), description_md=data.description)
@@ -306,27 +389,89 @@ def start_new_project(data: NewProjectStart) -> ClaudeSession:
         except OSError as exc:
             raise TerminalError(f"Cannot create {folder}: {exc}") from exc
         about = f"\n\nWhat it is for:\n{data.description.strip()}" if data.description.strip() else ""
-        message = (
-            f"This is a new, empty project: “{data.name}”.{about}\n\n"
-            "Ask me what you need to know, propose a structure and tools, and set it up once I agree."
-        )
+        if has_files:
+            message = _read_message(data.name) + about
+        else:
+            message = (
+                f"This is a new, empty project: “{data.name}”.{about}\n\n"
+                "Ask me what you need to know, propose a structure and tools, and set it up once I agree."
+            )
         return _launch(
             project,
             None,
             folder,
             message,
-            f"Set up {data.name}",
+            f"Read {data.name}" if has_files else f"Set up {data.name}",
             cols=data.cols,
             rows=data.rows,
             preset="setup",
         )
 
 
-def resume(cli_session_id: uuid.UUID, cwd: str, cols: int = 120, rows: int = 32) -> ClaudeSession:
+def stop_outside(data: OutsideStop) -> None:
+    """Close a Claude Code running outside Cairn (D-056)."""
+    for found in transcript_core.outside_sessions(running_pids()):
+        if found["pid"] == data.pid and abs(found["started"] - data.started) < 1:
+            _close_outside([data.pid], found["cli_session_id"], "stop_outside")
+            publish("claude.changed", {"id": f"pid-{data.pid}", "status": "ended"})
+            db.session.commit()
+            return
+    raise TerminalError("This Claude Code is no longer running.")
+
+
+def _close_outside(pids: list[int], conversation: str | None, action: str) -> None:
+    """Close Claude Code processes running outside Cairn. Refused when Cairn itself was started
+    from one of them: closing it would stop Cairn."""
+    if transcript_core.own_ancestors().intersection(pids):
+        raise TerminalError(
+            "Cairn was started from this Claude Code session: closing it would stop Cairn. "
+            "Start Cairn from your own terminal first."
+        )
+    processes = []
+    for pid in pids:
+        try:
+            process = psutil.Process(pid)
+            process.terminate()
+            processes.append(process)
+        except psutil.NoSuchProcess:
+            continue
+        except psutil.AccessDenied as exc:
+            raise TerminalError(f"Cannot close the other Claude Code (pid {pid}).") from exc
+    _, alive = psutil.wait_procs(processes, timeout=CLOSE_WAIT)
+    if alive:
+        raise TerminalError(f"The other Claude Code (pid {alive[0].pid}) did not close: close it yourself.")
+    with batch():  # recorded even if the reopening fails
+        log_action(
+            f"claude_session.{action}",
+            target_type="claude_session",
+            meta={"cli_session_id": conversation, "pids": pids},
+        )
+
+
+def _last_link(cli_session_id: uuid.UUID) -> tuple[Project | None, Task | None] | None:
+    """What this conversation was last linked to in Cairn (None: it never ran here)."""
+    last = db.session.scalar(
+        select(ClaudeSession)
+        .where(ClaudeSession.cli_session_id == cli_session_id, ClaudeSession.kind == "claude")
+        .order_by(ClaudeSession.created_at.desc())
+        .limit(1)
+    )
+    if last is None:
+        return None
+    project = db.session.get(Project, last.project_id) if last.project_id else None
+    task = db.session.get(Task, last.task_id) if last.task_id else None
+    return (
+        project if project and not project.is_deleted else None,
+        task if task and not task.is_deleted else None,
+    )
+
+
+def resume(data: ResumeStart) -> ClaudeSession:
     """Reopen a Claude Code conversation in Cairn (`claude --resume`), in its own folder: one
     started outside Cairn, or one of Cairn's that ended. Its project is the one whose local
-    folder it is, if any."""
-    folder = Path(cwd)
+    folder it is, if any. Two Claude Codes on one conversation do not see each other's turns:
+    one open outside Cairn is closed first (`take_over`), or the request is refused."""
+    cli_session_id, folder = data.cli_session_id, Path(data.cwd)
     if not folder.is_dir():
         raise TerminalError(f"The folder {folder} does not exist on this machine.")
     if not transcript_core.transcript_path(str(folder), str(cli_session_id)).is_file():
@@ -338,11 +483,27 @@ def resume(cli_session_id: uuid.UUID, cwd: str, cols: int = 120, rows: int = 32)
     )
     if running is not None and is_running(running.id):
         return running  # already open in Cairn
-    project = projects_core.by_folder(str(folder))
+    elsewhere = transcript_core.open_elsewhere(str(cli_session_id), running_pids())
+    if elsewhere and not data.take_over:
+        raise TerminalError(
+            f"This conversation is open in another terminal (pid {elsewhere[0]}). Close it there, "
+            "or move it here from its card on the Claude page."
+        )
+    if elsewhere:
+        _close_outside(elsewhere, str(cli_session_id), "take_over")
+    project, task = _last_link(cli_session_id) or (projects_core.by_folder(str(folder)), None)
     usage = transcript_core.session_usage(str(folder), str(cli_session_id))
     title = usage.title or (project.name if project else folder.name)
     return _launch(
-        project, None, folder, None, title, cols=cols, rows=rows, preset="resume", resume=cli_session_id
+        project,
+        task,
+        folder,
+        None,
+        title,
+        cols=data.cols,
+        rows=data.rows,
+        preset="resume",
+        resume=cli_session_id,
     )
 
 
@@ -367,7 +528,20 @@ def _launch(
 
     def build(session: ClaudeSession) -> tuple[list[str], tuple[Path, ...]]:
         rules, mcp = _rules_file(session.id, project), _mcp_config(session.id)
-        return command(executable, cli_session_id, message, rules, resume=bool(resume), mcp=mcp), (rules, mcp)
+        skills = skills_core.write_plugin(
+            rules.with_name(f"{session.id}-skills"), skills_core.for_session(project, task)
+        )
+        argv = command(
+            executable,
+            cli_session_id,
+            message,
+            rules,
+            resume=bool(resume),
+            mcp=mcp,
+            settings=limits_core.settings_json(),
+            skills=skills,
+        )
+        return argv, (rules, mcp, *([skills] if skills else []))
 
     return open_session(
         kind="claude",
@@ -421,7 +595,7 @@ def open_session(
             pty = Pty.spawn(argv, cwd=str(folder), env=env, cols=cols, rows=rows)
         except OSError as exc:
             for path in files:
-                path.unlink(missing_ok=True)
+                _remove(path)
             raise TerminalError(f"{title} could not start: {exc}") from exc
         session.pid = pty.pid
         log_action(
@@ -432,10 +606,13 @@ def open_session(
         )
         publish(f"{kind}.changed", {"id": str(session.id), "status": "running"})
     terminal = Terminal(session.id, pty, tuple(files), kind)
+    app = current_app._get_current_object()
+    terminal.reader = threading.Thread(
+        target=_pump, args=(app, terminal), name=f"{kind}-{session.id}", daemon=True
+    )
     with _lock:
         _terminals[session.id] = terminal
-    app = current_app._get_current_object()
-    threading.Thread(target=_pump, args=(app, terminal), name=f"{kind}-{session.id}", daemon=True).start()
+    terminal.reader.start()
     return session
 
 
@@ -452,8 +629,8 @@ def _pump(app: Any, terminal: Terminal) -> None:
             terminal.append(text)
     terminal.finish()
     code = terminal.pty.exit_code()
-    for path in terminal.files:  # the rules and MCP files only live as long as their session
-        path.unlink(missing_ok=True)
+    for path in terminal.files:  # the rules, MCP file and skills only live as long as their session
+        _remove(path)
     with app.app_context(), acting_as("system"):
         _ended(terminal.session_id, code, "")
     with _lock:
@@ -480,11 +657,18 @@ def _ended(session_id: uuid.UUID, code: int | None, reason: str) -> None:
         publish(f"{session.kind}.changed", {"id": str(session_id), "status": "ended"})
 
 
-def _remove_session_files(session_id: uuid.UUID) -> None:
-    """The rules and MCP files of a session whose reader could not remove them."""
-    folder = Path(current_app.config["CAIRN_DATA_DIR"]) / "claude"
-    for path in (folder / f"{session_id}.md", folder / f"{session_id}.mcp.json"):
+def _remove(path: Path) -> None:
+    if path.is_dir():
+        shutil.rmtree(path, ignore_errors=True)
+    else:
         path.unlink(missing_ok=True)
+
+
+def _remove_session_files(session_id: uuid.UUID) -> None:
+    """The rules, MCP file and skills of a session whose reader could not remove them."""
+    folder = Path(current_app.config["CAIRN_DATA_DIR"]) / "claude"
+    for name in (f"{session_id}.md", f"{session_id}.mcp.json", f"{session_id}-skills"):
+        _remove(folder / name)
 
 
 def write(session_id: uuid.UUID, text: str) -> None:
@@ -501,6 +685,20 @@ def resize(session_id: uuid.UUID, cols: int, rows: int) -> None:
 def stop(session_id: uuid.UUID) -> None:
     """Close the session (like closing its terminal). Its end is recorded by the reader."""
     _terminal(session_id).pty.kill()
+
+
+def close_all(wait: float = 10.0) -> None:
+    """Stop every terminal and let its reader record the end. Run when Cairn exits, too: an
+    interpreter ending while readers still wait for output can hang on their buffers."""
+    with _lock:
+        terminals = list(_terminals.values())
+    for terminal in terminals:  # one at a time: each reader writes its session's end
+        terminal.pty.kill()
+        if terminal.reader is not None:
+            terminal.reader.join(wait)
+
+
+atexit.register(close_all)
 
 
 def output(session_id: uuid.UUID, after: int, wait: float = 0.0) -> tuple[list[tuple[int, str]], bool]:

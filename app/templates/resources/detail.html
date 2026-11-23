@@ -89,13 +89,21 @@
 
     {% if resource.body %}
     <section class="cn-panel" aria-labelledby="content-title">
-      <h2 id="content-title">{{ {"note": "Note", "snippet": "Snippet", "tool": "Command"}.get(resource.kind, "Content") }}</h2>
+      <h2 id="content-title">{{ {"note": "Note", "skill": "Instructions", "snippet": "Snippet", "tool": "Command"}.get(resource.kind, "Content") }}</h2>
       <script type="application/json" id="resource-body">{{ resource.body | tojson }}</script>
-      {% if resource.kind == "note" %}
+      {% if resource.kind in ("note", "skill") %}
       <cn-vitrine kind="markdown" source="resource-body"></cn-vitrine>
       {% else %}
       <cn-vitrine kind="code" source="resource-body" vt-variant="full" vt-language="{{ resource.language or ('shell' if resource.kind == 'tool' else 'plaintext') }}" vt-label="{{ resource.title }}"></cn-vitrine>
       {% endif %}
+    </section>
+    {% endif %}
+
+    {% if resource.kind == "skill" %}
+    <section class="cn-panel" aria-labelledby="skill-title">
+      <h2 id="skill-title">For Claude</h2>
+      {% if resource.path %}<dl class="cn-facts"><div><dt>Folder</dt><dd><code>{{ resource.path }}</code></dd></div></dl>{% endif %}
+      <p class="form-text">{% if usages %}Given to the Claude sessions opened from Cairn on the projects and tasks it is attached to.{% else %}Given to every Claude session opened from Cairn. Attach it to a project or a task to keep it for them.{% endif %} A session already open gets it the next time it is opened.</p>
     </section>
     {% endif %}
 

@@ -1,5 +1,5 @@
 {% extends "layout/shell.html" %}
-{% from "macros/claude.html" import gauge, tokens %}
+{% from "macros/claude.html" import gauge, tokens, usage_left %}
 {% block title %}{{ session.title }} · Claude{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/xterm/xterm.css') }}">
@@ -30,6 +30,7 @@
       {% endif %}
       <code>{{ session.cwd }}</code>
     </p>
+    {% if session.kind == "claude" %}{{ usage_left(targets.limits) }}{% endif %}
   </div>
   {% if session.running %}
   <cn-confirm message="{{ 'Close this Claude session?' if session.kind == 'claude' else 'Stop this instance?' }}" detail="{{ 'Like closing its terminal: Claude stops here. Its conversation stays in Claude Code (claude --resume).' if session.kind == 'claude' else 'Its process and the ones it started are stopped.' }}" confirm-label="{{ 'Close it' if session.kind == 'claude' else 'Stop it' }}" danger>
@@ -40,6 +41,30 @@
   </cn-confirm>
   {% endif %}
 </section>
+
+{% if session.kind == "claude" %}
+<details class="cn-fold cn-claude-link">
+  <summary><i class="fa-solid fa-link" aria-hidden="true"></i> {{ "Change its project" if session.project else "Free: link to a project" }}</summary>
+  <div class="cn-fold-body cn-claude-link-forms">
+    <form method="post" action="{{ url_for('claude.link', session_id=session.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="cn-claude-field" for="link-project"><span>Project</span>
+        <select class="form-select" id="link-project" name="project_id">
+          <option value="">No project (free)</option>
+          {% for p in targets.projects %}<option value="{{ p.id }}" {% if session.project and session.project.id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select></label>
+      <button class="btn btn-outline-secondary" type="submit">Link</button>
+    </form>
+    <form method="post" action="{{ url_for('claude.link', session_id=session.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="cn-claude-field" for="link-name"><span>New project</span><input class="form-control" id="link-name" name="name" required maxlength="120" value="{{ session.cwd.replace('\\', '/').rstrip('/').split('/')[-1] }}"></label>
+      <label class="cn-claude-field" for="link-folder"><span>Folder (full path)</span><input class="form-control" id="link-folder" name="folder" required maxlength="500" value="{{ session.cwd }}"></label>
+      <label class="form-check"><input class="form-check-input" type="checkbox" name="read" value="1" checked> <span class="form-check-label">Claude reads the folder and fills the project (in a new session)</span></label>
+      <button class="btn btn-primary" type="submit">Create and link</button>
+    </form>
+  </div>
+</details>
+{% endif %}
 
 {% if session.running %}
 <cn-terminal class="cn-claude-terminal" session="{{ session.id }}" nonce="{{ nonce }}" aria-label="Claude Code terminal"></cn-terminal>

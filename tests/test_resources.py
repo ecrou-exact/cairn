@@ -380,3 +380,13 @@ def test_resource_api(app, signed_in):
     assert signed_in.delete(f"/api/resource-links/{link.json['link']['id']}").status_code == 200
     assert signed_in.delete(f"/api/resources/{rid}").status_code == 200
     assert signed_in.get(f"/api/resources/{rid}").status_code == 404
+
+
+def test_skills_have_their_category(signed_in):
+    assert b"Instructions (SKILL.md)" in signed_in.get("/resources/new?kind=skill").data
+    made = signed_in.post("/resources/new", data={"kind": "skill", "title": "Style", "body": "Be brief."})
+    assert made.status_code == 302
+    page = signed_in.get("/resources?kind=skill").data
+    assert b"Claude skills" in page and b"Style" in page
+    assert b"Given to every Claude session" in signed_in.get(made.location).data
+    assert signed_in.post("/resources/new", data={"kind": "skill", "title": "Empty"}).status_code == 422

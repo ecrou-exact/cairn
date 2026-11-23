@@ -14,6 +14,8 @@ import { Terminal } from '../../vendor/xterm/xterm.mjs';
 import { FitAddon } from '../../vendor/xterm/addon-fit.mjs';
 import { api } from '../core/api.js';
 
+const MAX_INPUT = 32768; // the API takes up to 65536 characters at once
+
 function allowStylesWith(nonce) {
   if (!nonce || Document.prototype.createElement.cnNonce) return;
   const original = Document.prototype.createElement;
@@ -38,9 +40,22 @@ function theme() {
   };
 }
 
+/** A long paste in pieces the API accepts, never cut inside a surrogate pair. */
+function pieces(text) {
+  const found = [];
+  for (let at = 0; at < text.length; ) {
+    let end = Math.min(at + MAX_INPUT, text.length);
+    if (end < text.length && /[\uD800-\uDBFF]/.test(text[end - 1])) end -= 1;
+    found.push(text.slice(at, end));
+    at = end;
+  }
+  return found;
+}
+
 class CnTerminal extends HTMLElement {
   #term = null;
   #fit = null;
+  #notice = null;
   #source = null;
   #queue = '';
   #sending = Promise.resolve();
@@ -67,8 +82,11 @@ class CnTerminal extends HTMLElement {
     screen.className = 'cn-terminal-screen';
     this.append(screen);
     this.#term.open(screen);
-    this.#fitNow();
-    new ResizeObserver(() => this.#fitNow()).observe(this);
+    this.#notice = document.createElement('p');
+    this.#notice.className = 'cn-terminal-notice';
+    this.#notice.setAttribute('role', 'alert');
+    this.#notice.hidden = true;
+    this.append(this.#notice);
 
     this.#term.onData((data) => this.#type(id, data));
     this.#term.onResize(({ cols, rows }) => {
@@ -77,6 +95,9 @@ class CnTerminal extends HTMLElement {
         if (!this.#ended) api(`/claude/sessions/${id}/resize`, { method: 'POST', body: { cols, rows } }).catch(() => {});
       }, 120);
     });
+    // after the listeners: the program must get this first size too
+    this.#fitNow();
+    new ResizeObserver(() => this.#fitNow()).observe(this);
 
     this.#source = new EventSource(`/claude/sessions/${id}/stream?after=0`);
     this.#source.addEventListener('message', (event) => {
@@ -105,13 +126,24 @@ class CnTerminal extends HTMLElement {
     this.#queue += data;
     clearTimeout(this.#timer);
     this.#timer = setTimeout(() => {
-      const chunk = this.#queue;
+      const typed = this.#queue;
       this.#queue = '';
-      if (!chunk) return;
-      this.#sending = this.#sending
-        .then(() => api(`/claude/sessions/${id}/input`, { method: 'POST', body: { data: chunk } }))
-        .catch((error) => { if (error.status === 409) this.#end(); });
+      for (const chunk of pieces(typed)) this.#sending = this.#sending.then(() => this.#send(id, chunk));
     }, 8);
+  }
+
+  async #send(id, data) {
+    try {
+      await api(`/claude/sessions/${id}/input`, { method: 'POST', body: { data } });
+      this.#notice.hidden = true;
+    } catch (error) {
+      if (error.status === 409) {
+        this.#end();
+        return;
+      }
+      this.#notice.textContent = `Not sent: ${error.message}`;
+      this.#notice.hidden = false;
+    }
   }
 
   #end() {

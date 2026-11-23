@@ -65,6 +65,12 @@ def test_tools_read_and_change_the_plan(app):
         _call(server, "comment_on_task", {"task_id": first_id, "text": "Parser done", "correction": True})
     )
     assert noted["task"] == "Parse rules"
+    filled = _data(
+        _call(server, "update_project", {"project": "rulezet", "description": "Rules", "stack": ["Python"]})
+    )
+    assert filled["changed"] == ["description_md", "stack"]
+    assert _call(server, "update_project", {"description": "x"}).is_error  # no project here
+    assert _call(server, "update_project", {"project": "rulezet", "github_repo": "no"}).is_error
     missing = _call(server, "get_task", {"task_id": "nope"})
     assert missing.is_error and "No task" in missing.content[0].text
     with app.app_context():

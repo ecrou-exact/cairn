@@ -12,7 +12,18 @@ from sqlalchemy import select
 from app.core.db_class.claude import ClaudeSession
 from app.core.db_class.planning import Project, Task
 from app.core.extensions import db
-from app.features.claude import terminal_core, transcript_core
+from app.features.claude import limits_core, terminal_core, transcript_core
+from app.features.projects import projects_core
+
+
+def _project_chip(project: Project) -> dict[str, str]:
+    return {
+        "id": str(project.id),
+        "name": project.name,
+        "slug": project.slug,
+        "color": project.color,
+        "icon": project.icon,
+    }
 
 
 def describe(session: ClaudeSession) -> dict[str, Any]:
@@ -44,9 +55,7 @@ def describe(session: ClaudeSession) -> dict[str, Any]:
         "ended": session.ended_at.isoformat() if session.ended_at else None,
         "exit_code": session.exit_code,
         "end_reason": session.end_reason,
-        "project": {"name": project.name, "slug": project.slug, "color": project.color, "icon": project.icon}
-        if project
-        else None,
+        "project": _project_chip(project) if project else None,
         "task": {"id": str(task.id), "title": task.title} if task else None,
         "usage": usage.as_dict(),
         "log": terminal_core.preview(session.id) if running and session.kind == "instance" else [],
@@ -64,10 +73,14 @@ def overview(*, project_id: uuid.UUID | None = None, task_id: uuid.UUID | None =
         if terminal_core.is_running(row.id)
     ]
     outside = [] if project_id or task_id else transcript_core.outside_sessions(terminal_core.running_pids())
+    for found in outside:
+        project = projects_core.by_folder(found["cwd"])
+        found["project"] = _project_chip(project) if project else None
     return {
         "sessions": mine,
         "outside": outside,
         "instances": instances,
+        "limits": limits_core.limits(),
         "running": sum(1 for s in mine if s["running"]) + len(outside),
     }
 
@@ -81,6 +94,7 @@ def targets() -> dict[str, Any]:
         .order_by(Project.name)
     )
     return {
+        "limits": limits_core.limits(),
         "presets": [{"key": key, **info} for key, info in terminal_core.PRESET_INFO.items()],
         "projects": [
             {

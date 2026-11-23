@@ -13,6 +13,7 @@ import pytest
 from app import create_app
 from app.core.extensions import db
 from app.features.account import account_core
+from app.features.claude import terminal_core
 
 USERNAME = "owner"
 PASSWORD = "correct horse battery staple"
@@ -22,9 +23,12 @@ PASSWORD = "correct horse battery staple"
 def app(tmp_path):
     app = create_app("testing")
     app.config["CAIRN_UPLOAD_DIR"] = tmp_path / "uploads"
+    app.config["CAIRN_DATA_DIR"] = tmp_path / "data"  # never the real data folder
+    app.config["CAIRN_DATA_DIR"].mkdir()
     with app.app_context():
         db.create_all()
     yield app
+    terminal_core.close_all()  # before the database goes: each reader records its session's end
     with app.app_context():
         db.session.remove()
         db.drop_all()

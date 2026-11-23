@@ -6,6 +6,7 @@
  */
 
 import { api } from '../core/api.js';
+import { limitNode } from '../core/claude-limits.js';
 import { subscribe } from '../core/events.js';
 
 const EVERY = 5000;
@@ -119,6 +120,13 @@ function paint(card, usage, running) {
   }
 }
 
+function paintLimits(limits) {
+  if (!limits.windows.length) return;
+  for (const box of document.querySelectorAll('[data-claude-limits]')) {
+    box.replaceChildren(...limits.windows.map((w) => limitNode(w, limits.at)));
+  }
+}
+
 async function refresh() {
   const cards = document.querySelectorAll('[data-claude-card]');
   if (!cards.length && !document.querySelector('[data-instance-card]')) return;
@@ -128,6 +136,7 @@ async function refresh() {
   } catch {
     return;
   }
+  paintLimits(data.limits);
   const seen = new Set();
   for (const s of data.sessions) {
     seen.add(s.id);

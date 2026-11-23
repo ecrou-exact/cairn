@@ -54,6 +54,8 @@ def required_fields(kind: str, *, url: str | None, body: str, path: str | None) 
         return "url"
     if kind == "file" and not path:
         return "path"
+    if kind == "skill" and not path and not body.strip():
+        return "skill"
     return None
 
 
@@ -61,6 +63,7 @@ MISSING = {
     "url": "Give the address.",
     "body": "Write the content.",
     "path": "Give the path of the file, or upload it instead.",
+    "skill": "Give the skill's folder, or write its instructions.",
 }
 
 

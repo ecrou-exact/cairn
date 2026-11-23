@@ -69,6 +69,7 @@ def index():
         page=page,
         uses=resources_core.use_counts([r.id for r in page.items]),
         kinds=_kinds(),
+        counts=resources_core.kind_counts(),
         events_after=after,
         max_mb=get_setting("resources.max_upload_mb"),
     )

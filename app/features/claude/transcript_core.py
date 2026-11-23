@@ -8,8 +8,9 @@ message we know how much of the context window the session fills: input + cache 
 cache read tokens of that turn. Only the end of the file is read (transcripts grow large).
 
 Sessions started outside Cairn (in a terminal, an editor) are found by their process
-(`psutil`: a `claude` executable, its folder, when it started) and matched with the newest
-transcript of that folder.
+(`psutil`: a `claude` executable, its folder, when it started). Their conversation is the one
+Claude Code registers for that process (`~/.claude/sessions/<pid>.json`), or the newest
+transcript of the folder when it registers none.
 """
 
 from __future__ import annotations
@@ -17,12 +18,14 @@ from __future__ import annotations
 import json
 import re
 import time
+import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import psutil
 
 from app.core.utils.settings import get_setting
+from app.features.claude import limits_core
 
 TAIL_BYTES = 768 * 1024  # enough for the last turns; titles come often
 NEXT_WINDOW = 1_000_000  # a session past its configured window is counted against this
@@ -50,6 +53,41 @@ def projects_root() -> Path:
     return Path.home() / ".claude" / "projects"
 
 
+def registry_root() -> Path:
+    return Path.home() / ".claude" / "sessions"
+
+
+def registered(process: psutil.Process) -> str | None:
+    """The conversation Claude Code registered for a process. A file left by a dead process
+    whose pid was reused is told apart by its start time."""
+    try:
+        entry = json.loads((registry_root() / f"{process.pid}.json").read_text(encoding="utf-8"))
+        if process.create_time() > float(entry["startedAt"]) / 1000 + 5:
+            return None
+        return str(uuid.UUID(entry["sessionId"]))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, psutil.Error):
+        return None
+
+
+def own_ancestors() -> set[int]:
+    """The processes Cairn itself runs in: closing one would stop Cairn."""
+    try:
+        return {process.pid for process in psutil.Process().parents()}
+    except psutil.Error:
+        return set()
+
+
+def open_elsewhere(cli_session_id: str, known_pids: set[int]) -> list[int]:
+    """The `claude` processes, other than Cairn's, that have this conversation open."""
+    return [
+        process.pid
+        for process in psutil.process_iter(["name"])
+        if (process.info.get("name") or "").lower() in CLAUDE_NAMES
+        and process.pid not in known_pids
+        and registered(process) == cli_session_id
+    ]
+
+
 def folder_key(cwd: str) -> str:
     """The transcript folder Claude Code uses for a working directory."""
     return re.sub(r"[^A-Za-z0-9]", "-", cwd)
@@ -61,7 +99,7 @@ def transcript_path(cwd: str, cli_session_id: str) -> Path:
 
 def _window(model: str, used: int) -> int:
     windows = get_setting("claude.context_windows")
-    size = windows.get(model) or windows.get("default", 200_000)
+    size = windows.get(model) or limits_core.context_window(model) or windows.get("default", 200_000)
     return max(size, NEXT_WINDOW) if used > size else size
 
 
@@ -266,6 +304,7 @@ def outside_sessions(known_pids: set[int]) -> list[dict]:
     one we may not inspect (another user's) is skipped too.
     """
     found = []
+    ancestors = own_ancestors()
     for process in psutil.process_iter(["pid", "name", "create_time", "ppid"]):
         info = process.info
         if (info.get("name") or "").lower() not in CLAUDE_NAMES or info["pid"] in known_pids:
@@ -282,16 +321,20 @@ def outside_sessions(known_pids: set[int]) -> list[dict]:
         usage, conversation = Usage(), None
         folder = projects_root() / folder_key(cwd)
         started = info.get("create_time") or 0
+        known = registered(process)
         try:
             recent = [p for p in folder.glob("*.jsonl") if p.stat().st_mtime >= started - 5]
         except OSError:
             recent = []
-        if recent:
+        if known:
+            usage, conversation = session_usage(cwd, known), known
+        elif recent:
             newest = max(recent, key=lambda p: p.stat().st_mtime)
             usage, conversation = read_usage(newest, cwd), newest.stem
         found.append(
             {
                 "pid": info["pid"],
+                "hosts_cairn": info["pid"] in ancestors,
                 "cwd": cwd,
                 "cli_session_id": conversation,
                 "host": host_of(info["pid"]),

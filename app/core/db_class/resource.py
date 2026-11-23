@@ -14,7 +14,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db_class.base import BaseEntity
 
-RESOURCE_KINDS = ("url", "file", "image", "snippet", "tool", "note", "github")
+RESOURCE_KINDS = ("url", "file", "image", "snippet", "tool", "note", "github", "skill")
 LINK_TARGETS = ("project", "task")
 
 
@@ -25,7 +25,7 @@ class Resource(BaseEntity):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
     url: Mapped[str | None] = mapped_column(String(2000))  # url, tool, github
-    body: Mapped[str] = mapped_column(Text, default="", nullable=False)  # note, snippet, tool command
+    body: Mapped[str] = mapped_column(Text, default="", nullable=False)  # note, snippet, tool command, skill
     language: Mapped[str] = mapped_column(String(30), default="", nullable=False)  # snippet highlighting
     path: Mapped[str | None] = mapped_column(String(500))  # file reference on disk or in a repository
     icon: Mapped[str] = mapped_column(String(40), default="", nullable=False)

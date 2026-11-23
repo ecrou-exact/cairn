@@ -5,7 +5,7 @@
  *
  * What for: work freely, on a task, answer a pull request, fix a bug, review the changes,
  * or a new project (created with its folder, then Claude sets it up). Where: a project with
- * a local folder. The presets come from the server (`/api/claude/targets`), so the launcher,
+ * a local folder, or any folder (free of a project). The presets come from the server (`/api/claude/targets`), so the launcher,
  * the palette and the buttons say the same thing.
  */
 
@@ -108,7 +108,7 @@ class CnClaudeLaunch extends HTMLElement {
     if (this.#state.preset === 'new') {
       fields.append(
         this.#field('Name', 'name', 'input', { required: true, placeholder: 'my-new-app', maxLength: 120 }),
-        this.#field('Folder (full path, new or empty)', 'folder', 'input', { required: true, placeholder: 'C:\\Users\\me\\code\\my-new-app' }),
+        this.#field('Folder (full path: a new one, or one Claude reads)', 'folder', 'input', { required: true, placeholder: 'C:\\Users\\me\\code\\my-new-app' }),
         this.#field('What it is for', 'description', 'textarea', { rows: 4, placeholder: 'A few lines: Claude starts from them.' }),
       );
     } else {
@@ -116,8 +116,7 @@ class CnClaudeLaunch extends HTMLElement {
       where.append(el('span', '', 'Project'));
       const select = el('select', 'form-select');
       select.name = 'project_id';
-      select.required = !this.#state.task;
-      const first = el('option', '', this.#state.task ? 'The task’s project' : 'Choose a project…');
+      const first = el('option', '', this.#state.task ? 'The task’s project' : 'No project: free, in a folder');
       first.value = '';
       select.append(first);
       for (const project of projects) {
@@ -127,9 +126,20 @@ class CnClaudeLaunch extends HTMLElement {
         option.selected = project.id === this.#state.project;
         select.append(option);
       }
-      select.addEventListener('change', () => { this.#state.project = select.value; });
       where.append(select);
       fields.append(where);
+      if (!this.#state.task) {
+        const free = this.#field('Folder (full path)', 'folder', 'input', { placeholder: '/home/me/code/pandora', maxLength: 500 });
+        const input = free.querySelector('input');
+        const show = () => {
+          free.hidden = Boolean(select.value) || this.#state.preset === 'task';
+          input.required = !free.hidden;
+        };
+        select.addEventListener('change', show);
+        show();
+        fields.append(free);
+      }
+      select.addEventListener('change', () => { this.#state.project = select.value; });
 
       if (this.#state.task) {
         const chosen = el('p', 'cn-claude-task');
@@ -203,7 +213,7 @@ class CnClaudeLaunch extends HTMLElement {
         const project = task ? null : values.project_id || this.#state.project || null;
         result = await api('/claude/sessions', {
           method: 'POST',
-          body: { project_id: project, task_id: task, preset: this.#state.preset, detail: values.detail || '', ...size },
+          body: { project_id: project, task_id: task, folder: task || project ? null : values.folder || null, preset: this.#state.preset, detail: values.detail || '', ...size },
         });
       }
       window.location.assign(result.session.url);
