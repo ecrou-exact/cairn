@@ -464,6 +464,7 @@
 - The same MCP server is set up for every Claude Code of the machine. It finds who started it from the process above: a session Cairn opened keeps its identity, another acts as `claude:<conversation>` and its project is its folder's.
 - `manage.py claude-connect show | on | off | status` puts in, or takes out, the MCP server (by `claude mcp`, user scope), the rules that ask before writing in Cairn in every permission mode, and the `cairn` skill. Shown before; a copy of `settings.json` is kept; it stops before any change if something there is not Cairn's.
 - An outside session does not get the rules that keep Cairn's own files from sessions Cairn opens (D-064): it is the owner's own terminal.
+- One command, `/cairn`, with arguments (`-init`, `-status`, `-next`, `-update`, `-bring`, `-copies`, `-note`) rather than several commands: the skill reads `$ARGUMENTS` (owner's choice).
 
 ## D-081 · 2026-11-23 · accepted — One project whatever its copies; what it already has, brought in
 - Owner request: thirteen clones of a repository, each on its branch, are one project. **Copies** (`/projects/<slug>/copies`): the project's folder, its worktrees and every clone sharing one of its remotes, with branch, what is not committed or pushed, the pull request of that branch (matched on the head repository too, so another fork's branch of the same name does not count), instances and Claudes in it. Starting a project from one of the copies says the others.

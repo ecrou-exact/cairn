@@ -40,6 +40,22 @@ Open the URL, create the owner account, then turn on two-factor sign-in under **
 | `python manage.py test` | Run the test suite |
 | `python manage.py check` | Lint, security scan and tests |
 
+## Cairn from your own Claude Code
+
+`python manage.py claude-connect on` gives every Claude Code of the machine Cairn's tools and a `/cairn` command (`show` lists what it adds first, `off` takes it all out). In any folder:
+
+| Command | What it does |
+|---|---|
+| `/cairn` or `/cairn -status` | The project of this folder (its own folder, a worktree or another clone), its address and next tasks |
+| `/cairn -init [name]` | Start the project of this folder, once you agree; then offers what it can bring in |
+| `/cairn -next` | The next task to take, and why |
+| `/cairn -update` | Comment the task in progress (what was done, the branch, what was checked) and move its status |
+| `/cairn -bring` | To-do lists, GitHub issues and boards, skills and commands not in Cairn yet; you choose on the page |
+| `/cairn -copies` | Every copy of the project with its branch, pull request and what runs in it |
+| `/cairn -note <text>` | Leave a note on the project |
+
+Writing in Cairn is always asked first, whatever the permission mode. Cairn must be running.
+
 ## Configuration
 Environment variables (or `.env`):
 
