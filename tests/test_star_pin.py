@@ -90,6 +90,8 @@ def test_the_projects_graph_leaves_hidden_ones_out(ctx):
     projects_core.update(gone.id, ProjectUpdate(hidden=True))
     labels = {n["data"]["label"]: n["data"] for n in graph_core.project_plan()["nodes"]}
     assert "Gone" not in labels and labels["Shown"]["starred"]
+    every = {n["data"]["label"] for n in graph_core.project_plan(include_hidden=True)["nodes"]}
+    assert "Gone" in every
 
 
 def test_projects_are_grouped_by_owner(app, signed_in):
@@ -105,3 +107,16 @@ def test_projects_are_grouped_by_owner(app, signed_in):
     order = [page.index(f'/projects/{slug}"') for slug in ("beta", "zed", "alpha", "loose")]
     assert order == sorted(order)
     assert page.index("</i> acme</h2>") < page.index("</i> zorg</h2>") < page.index(">No repository</h2>")
+
+
+def test_the_graph_page_offers_the_hidden_ones(app, signed_in):
+    from app.core.schema.planning import ProjectUpdate
+
+    with app.app_context():
+        gone = projects_core.create(ProjectCreate(name="Gone"))
+        projects_core.update(gone.id, ProjectUpdate(hidden=True))
+    assert "show the 1 hidden too" in signed_in.get("/projects?mode=graph").data.decode()
+    page = signed_in.get("/projects?mode=graph&hidden=1").data.decode()
+    assert "view=projects&amp;hidden=1" in page and "only the visible ones" in page
+    assert signed_in.get("/api/graph?view=projects&hidden=1").json["nodes"][0]["data"]["label"] == "Gone"
+    assert signed_in.get("/api/graph?view=projects").json["nodes"] == []

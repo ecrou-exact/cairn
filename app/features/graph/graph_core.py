@@ -537,13 +537,15 @@ def find(
 # -- the plan of projects (D-044) ------------------------------------------------------------
 
 
-def project_plan(include_archived: bool = False) -> dict[str, Any]:
+def project_plan(include_archived: bool = False, include_hidden: bool = False) -> dict[str, Any]:
     """The projects as cards, read left to right: a project stands right of the projects that
     pass before it (project links) and of the projects whose tasks block or come before its
     own tasks (shown as one edge with how many task links it stands for)."""
     query = select(Project).where(Project.deleted_at.is_(None))
-    if not include_archived:  # nor the hidden ones (D-089)
-        query = query.where(Project.status != "archived", Project.hidden.is_(False))
+    if not include_archived:
+        query = query.where(Project.status != "archived")
+    if not include_hidden:  # the hidden ones only when asked (D-089)
+        query = query.where(Project.hidden.is_(False))
     projects = {p.id: p for p in db.session.scalars(query)}
     links = (
         list(

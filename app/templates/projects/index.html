@@ -30,12 +30,13 @@
 <nav class="cn-tabs" aria-label="View">
   <a class="cn-tab" href="{{ url_for('projects.index') }}" {% if not graph_view and not hidden_view %}aria-current="page"{% endif %}><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>Cards</span><span class="cn-tab-count">{{ page.total }}</span></a>
   <a class="cn-tab" href="{{ url_for('projects.index', mode='graph') }}" {% if graph_view %}aria-current="page"{% endif %}><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span>Graph</span></a>
-  {% if hidden_count %}<a class="cn-tab" href="{{ url_for('projects.index', hidden=1) }}" {% if hidden_view %}aria-current="page"{% endif %}><i class="fa-regular fa-eye-slash" aria-hidden="true"></i><span>Hidden</span><span class="cn-tab-count">{{ hidden_count }}</span></a>{% endif %}
+  {% if hidden_count %}<a class="cn-tab" href="{{ url_for('projects.index', hidden=1) }}" {% if hidden_view and not graph_view %}aria-current="page"{% endif %}><i class="fa-regular fa-eye-slash" aria-hidden="true"></i><span>Hidden</span><span class="cn-tab-count">{{ hidden_count }}</span></a>{% endif %}
 </nav>
 
 {% if graph_view %}
 <section class="cn-projects-plan" aria-label="The plan of projects">
-  {{ graph_stage("view=projects", label="The plan of projects", projects=True) }}
+  {% if hidden_count %}<p class="cn-project-sorts">{% if hidden_view %}Showing the hidden projects too · <a href="{{ url_for('projects.index', mode='graph') }}">only the visible ones</a>{% else %}Visible projects · <a href="{{ url_for('projects.index', mode='graph', hidden=1) }}">show the {{ hidden_count }} hidden too</a>{% endif %}</p>{% endif %}
+  {{ graph_stage("view=projects" ~ ("&hidden=1" if hidden_view else ""), label="The plan of projects", projects=True) }}
 </section>
 {% else %}
 {{ toolbar(page, "Search projects") }}
