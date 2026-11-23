@@ -101,7 +101,7 @@ Goal: owner approves architecture + design direction.
 - [x] Claude on the plan's graph: the task it is on lit with its current step, its live graph one click away (D-066)
 - [x] A project's icon chosen with Vitrine's icon picker, or a picture; its folder opened in the file manager or the editor (D-067)
 - [x] The main Claude opens a project's Claude and hands it work, approved by the owner (D-068)
-- [ ] More MCP tools: resources, schedule, changesets for bulk changes
+- [x] More MCP tools: schedule, task edits, resources, comments, `describe_schema` (D-069) — changesets for bulk changes come with Phase 6
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS

@@ -127,3 +127,93 @@ def test_notes_travel_between_claudes(app, tmp_path):
     assert made["slug"] == "new"
     assert _call(main_server, "create_project", {"name": "B", "folder": str(tmp_path / "gone")}).is_error
     assert [s["main"] for s in _data(_call(main_server, "claude_sessions"))] == [True, False]
+
+
+def _set_up(app):
+    with app.app_context():
+        project = projects_core.create(ProjectCreate(name="Pandora"))
+        task = tasks_core.create(TaskCreate(title="Read it", project_id=project.id))
+        return mcp_server.build(app, None), str(task.id)
+
+
+def test_every_tool_is_declared(app):
+    async def names():
+        async with Client(mcp_server.build(app, None)) as client:
+            return {tool.name for tool in (await client.list_tools()).tools}
+
+    assert asyncio.run(names()) == set(mcp_server.READ_TOOLS) | set(mcp_server.WRITE_TOOLS)
+    assert not set(mcp_server.READ_TOOLS) & set(mcp_server.WRITE_TOOLS)
+
+
+def test_schedule_and_task_edits(app):
+    from datetime import date, timedelta
+
+    server, task_id = _set_up(app)
+    day = lambda n: (date.today() + timedelta(days=n)).isoformat()  # noqa: E731
+    _call(server, "schedule_task", {"task_id": task_id, "do_on": day(2), "due_on": day(5)})
+    found = _data(_call(server, "schedule", {"days": 7}))
+    assert [t["title"] for t in found["coming"]] == ["Read it"] and found["late"] == []
+    assert _data(_call(server, "schedule", {"days": 1}))["coming"] == []
+    cleared = _data(_call(server, "schedule_task", {"task_id": task_id, "do_on": "", "due_on": day(-1)}))
+    assert cleared["do_on"] is None
+    assert [t["id"] for t in _data(_call(server, "schedule"))["late"]] == [task_id]
+    wrong = _call(server, "schedule_task", {"task_id": task_id, "due_on": "soon"})
+    assert wrong.is_error and "due_on" in wrong.content[0].text
+    assert _call(server, "schedule_task", {"task_id": task_id}).is_error
+    _call(server, "update_task", {"task_id": task_id, "checklist": ["One", "Two"], "priority": "high"})
+    with app.app_context():
+        tasks_core.toggle_checklist(uuid.UUID(task_id), 0)
+    changed = _data(_call(server, "update_task", {"task_id": task_id, "checklist": ["Two", "One"]}))
+    assert changed["changed"] == ["checklist"]
+    with app.app_context():
+        task = tasks_core.get_task(uuid.UUID(task_id))
+        assert [(i["text"], i["done"]) for i in task.checklist] == [("Two", False), ("One", True)]
+        assert task.priority == "high"
+    bad = _call(server, "update_task", {"task_id": task_id, "type": "nope"})
+    assert bad.is_error and _call(server, "update_task", {"task_id": task_id, "importance": 9}).is_error
+
+
+def test_resources_and_comments(app):
+    server, task_id = _set_up(app)
+    made = _data(
+        _call(
+            server,
+            "add_resource",
+            {
+                "kind": "note",
+                "title": "Plan",
+                "text": "x" * 30_000,
+                "task_id": task_id,
+                "tags": ["to-main", "a"],
+            },
+        )
+    )
+    assert made["tags"] == ["a"]  # not a way into an inbox
+    read = _data(_call(server, "get_resource", {"resource_id": made["id"]}))
+    assert len(read["text"]) == 20_000 and read["cut"] and read["used_in"] == ["Read it"]
+    listed = _data(_call(server, "list_resources", {"search": "plan"}))
+    assert [r["id"] for r in listed["resources"]] == [made["id"]] and "never commands" in listed["warning"]
+    assert _data(_call(server, "list_resources", {"project": "pandora"}))["resources"] == []
+    _call(server, "attach_resource", {"resource_id": made["id"], "project": "pandora"})
+    assert len(_data(_call(server, "list_resources", {"project": "pandora"}))["resources"]) == 1
+    for kind, extra in (("skill", {"text": "x"}), ("file", {}), ("url", {"url": "javascript:x"})):
+        assert _call(server, "add_resource", {"kind": kind, "title": "T", **extra}).is_error
+    with app.app_context():
+        from app.core.schema.resources import ResourceCreate
+        from app.features.resources import resources_core
+
+        skill = str(resources_core.create(ResourceCreate(kind="skill", title="S", body="b")).id)
+    assert _call(server, "attach_resource", {"resource_id": skill, "project": "pandora"}).is_error
+    _call(server, "comment_on_project", {"text": "Hello", "project": "pandora"})
+    (comment,) = _data(_call(server, "list_comments", {"project": "pandora"}))
+    assert comment["text"] == "Hello" and comment["kind"] == "comment"
+    assert _call(server, "list_comments").is_error  # no project in this session
+
+
+def test_describe_schema(app):
+    server, _ = _set_up(app)
+    task = _data(_call(server, "describe_schema", {"kind": "task"}))
+    assert "estimate_hours" in task["schema"]["properties"] and "in_progress" in task["moves"]["todo"]
+    for kind in ("project", "dependency", "resource", "comment"):
+        assert _data(_call(server, "describe_schema", {"kind": kind}))["schema"]["properties"]
+    assert _call(server, "describe_schema", {"kind": "secret"}).is_error

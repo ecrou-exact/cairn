@@ -31,7 +31,7 @@ from app.core.schema.comments import CommentCreate
 from app.core.schema.planning import DependencyCreate, ProjectCreate, ProjectUpdate, TaskCreate
 from app.core.utils.actor import acting_as
 from app.core.utils.history import batch
-from app.features.claude import handover_core, main_core
+from app.features.claude import handover_core, main_core, mcp_plan_tools
 from app.features.comments import comments_core
 from app.features.projects import projects_core
 from app.features.resources import resources_core
@@ -46,6 +46,7 @@ READ_TOOLS = (
     "inbox",
     "claude_sessions",
     "current_page",
+    *mcp_plan_tools.READ_TOOLS,
 )
 WRITE_TOOLS = (
     "open_project_claude",
@@ -57,13 +58,15 @@ WRITE_TOOLS = (
     "set_task_status",
     "link_tasks",
     "comment_on_task",
+    *mcp_plan_tools.WRITE_TOOLS,
 )
 
 INSTRUCTIONS = (
     "Cairn is the owner's planning workspace: projects, tasks with dependencies, a score that "
     "says what to do next. Use these tools to read the plan and to keep it true as you work: "
     "move the task you work on to its new status, create the follow-up tasks you discover, "
-    "link what blocks what, leave a comment with what you did. Ids are UUIDs; a project can "
+    "link what blocks what, leave a comment with what you did, keep useful links and notes as "
+    "resources. Not sure of a field or a value: describe_schema. Ids are UUIDs; a project can "
     "also be named by its name or slug."
 )
 
@@ -136,8 +139,12 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
                 comments_core.CommentError,
                 resources_core.ResourceError,
                 handover_core.HandoverError,
+                mcp_plan_tools.PlanToolError,
             ) as exc:
                 raise ToolError(str(exc)) from exc  # a deliberate refusal: Claude gets the reason
+            except ValidationError as exc:  # what is wrong with each field, never the values
+                wrong = [f"{'.'.join(map(str, e['loc']))}: {e['msg']}".lstrip(": ") for e in exc.errors()]
+                raise ToolError("; ".join(wrong)) from exc
 
     def session_row() -> ClaudeSession | None:
         return db.session.get(ClaudeSession, uuid.UUID(session_id)) if session_id else None
@@ -464,6 +471,7 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
 
         return run(work)
 
+    mcp_plan_tools.register(server, run, _project, _task, session_project)
     return server
 
 

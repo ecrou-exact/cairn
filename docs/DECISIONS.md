@@ -408,3 +408,8 @@
 ## D-068 · 2026-11-23 · accepted — The main Claude opens a project's Claude and hands it work
 - `open_project_claude(project, work, task_id)` (main session only): the MCP server writes a `ClaudeRequest`, the web process opens the session (`handover_core.watch`) and answers; the tool waits 20 s. With a task, its Claude gets the brief and is lit on the plan (D-066). It is told to stay in the project, ask when unclear, and answer with `take_note`.
 - **Guards:** Claude Code asks the owner first in every mode (`ask` rule, D-064); another session is refused; a request older than a minute, or left when Cairn restarts, is never opened; claimed before opening, so never twice; at most `claude.max_open` sessions; a project whose Claude is open is not typed into, a note is left.
+
+## D-069 · 2026-11-23 · accepted — More MCP tools: schedule, resources, comments, describe_schema
+- `mcp_plan_tools` (reading allowed up front: `schedule`, `list_resources`, `get_resource`, `list_comments`, `describe_schema`; asking the owner: `update_task`, `schedule_task`, `add_resource`, `attach_resource`, `comment_on_project`), on the same cores and pydantic schemas as the pages. `describe_schema` gives the schemas themselves, with the task types, statuses and moves from the settings. Invalid input names each wrong field.
+- **Kept from Claude:** creating or attaching a skill (it would speak to later sessions), a file by its path, a project's instructions, the inbox tags. A resource's text is cut at 20 000 characters and marked as data.
+- Left for Phase 6: changesets for bulk changes.
