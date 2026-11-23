@@ -1,4 +1,5 @@
 {% extends "layout/shell.html" %}
+{% from "macros/project.html" import project_tabs %}
 {% block title %}Tasks from GitHub: {{ project.name }}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">{% endblock %}
 {% block content %}
@@ -7,6 +8,7 @@
   <h1>A task per pull request</h1>
   <p>The open pull requests and issues of {{ found.repo or "its repository" }}, and the branches of its copies. Choose: each becomes a task linked to it, so that every Claude on it reads it.</p>
 </header>
+{{ project_tabs(project, "tasks") }}
 {% if not found.repo %}<p class="alert alert-warning">Set the project's GitHub repository (Actions → Edit) to see its pull requests and issues.</p>{% elif not found.github %}<p class="alert alert-warning">GitHub could not be read in full: sign in with <code>gh auth login</code>.</p>{% endif %}
 {% if found["items"] %}
 <form method="post" class="cn-bring"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

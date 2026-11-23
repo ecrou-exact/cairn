@@ -1,4 +1,5 @@
 {% extends "layout/shell.html" %}
+{% from "macros/project.html" import project_tabs %}
 {% block title %}{{ changeset.title }}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/changesets/changesets.css') }}">{% endblock %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
@@ -7,11 +8,12 @@
 {% block content %}
 {% set open = changeset.status == "proposed" %}
 <header class="cn-page-header">
-  <div class="cn-eyebrow"><a href="{{ url_for('changesets.index') }}">Proposals</a></div>
+  <div class="cn-eyebrow">{% if changeset.project %}<a href="{{ url_for('projects.detail', slug=changeset.project.slug) }}">{{ changeset.project.name }}</a> · {% endif %}<a href="{{ url_for('changesets.index') }}">Proposals</a></div>
   <h1>{{ changeset.title }}</h1>
   <p>{{ changeset["items"] | length }} change{{ "s" if changeset["items"] | length != 1 }} proposed by {{ changeset.by }}{% if changeset.project %} for <a href="{{ url_for('projects.detail', slug=changeset.project.slug) }}">{{ changeset.project.name }}</a>{% endif %}.
   {% if open %}Nothing is written before you approve.{% elif changeset.status == "applied" %}{{ changeset.kept }} applied.{% else %}Dismissed.{% endif %}</p>
 </header>
+{% if changeset.project %}{{ project_tabs(changeset.project) }}{% endif %}
 {% if changeset.reason %}
 <section class="cn-panel" aria-label="Why"><script type="application/json" id="changeset-reason">{{ changeset.reason | tojson }}</script>
   <cn-vitrine kind="markdown" source="changeset-reason"></cn-vitrine></section>
