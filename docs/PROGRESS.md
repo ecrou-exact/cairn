@@ -117,12 +117,14 @@ Goal: owner approves architecture + design direction.
 - [x] Claude's tools on a page (D-072); an instance started with the machine (D-073)
 - [ ] Intake: from free text and attachments to a changeset (the main Claude does it by its rules; a guided form is left)
 - [ ] Ask Claude to fill a task from a few words (read-only research run → changeset), owner request 2026-11-21 (D-029)
+- [ ] Owner request (2026-11-23): a project's branches and pull requests in Cairn, a pull request made from a branch, a pull request taken to work on; a task with its branch, worktree and own instance
 - [ ] GitHub accounts, inbox, link/sync, webhooks or polling
 - [x] Instances: definitions per project, start / stop / restart in a terminal (logs with history), port check and next free port as PORT, listening ports shown as links (D-053)
 - [x] Instances running outside Cairn (other clones, worktrees, Docker) in each project, with their ports and their logs in a terminal (D-061)
 - [x] Cairn starts with the session on Linux: `manage.py autostart on` (D-062)
 - [x] Instances survive a restart of Cairn (Linux, macOS), their log kept; stop one found outside Cairn (D-070)
-- [ ] Instances: every project's in one menu entry, whoever started them (owner request 2026-11-23); restart on crash
+- [x] Instances: every project's in one menu entry, whoever started them (D-079)
+- [ ] Instances: restart on crash
 
 ## Phase 9 — Modules  ·  Phase 10 — Calendar & activity  ·  Phase 11 — Hardening & release
 - [ ] Module registry, event automations, task action modules

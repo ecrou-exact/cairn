@@ -5,6 +5,7 @@
 {% from "macros/resources.html" import resources_panel %}
 {% from "macros/comments.html" import comments_panel %}
 {% from "macros/graph.html" import graph_stage, graph_assets, graph_toolbar %}
+{% from "macros/instances.html" import outside_row %}
 {% from "macros/claude.html" import session_card, start_form, proposals_waiting %}
 {% block title %}{{ project.name }}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/changesets/changesets.css') }}">
@@ -203,33 +204,7 @@
   {% if outside %}
   <h3 class="cn-instances-outside">Running outside Cairn <span class="cn-muted">in this folder or another copy of the repository</span></h3>
   <ul class="cn-instances">
-    {% for item in outside %}
-    <li class="cn-instance is-running">
-      <span class="cn-instance-dot" aria-hidden="true"></span>
-      <div class="cn-instance-body">
-        <p class="cn-instance-name">{{ item["copy"] }}{% if item.branch %} <span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ item.branch }}</span>{% endif %} <span class="cn-muted">{{ item.where }}{% if item.since %} · since <time data-instance-since="{{ item.since }}"></time>{% endif %}</span></p>
-        <p class="cn-instance-command"><code>{{ item.label }}</code> <span class="cn-muted">{{ item.folder }}</span></p>
-        <p class="cn-instance-ports">{% for port in item.ports %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> localhost:{{ port }}</a>{% endfor %}</p>
-      </div>
-      <div class="cn-instance-actions">
-        {% for log in item.logs %}
-        <form method="post" action="{{ url_for('instances.open_log') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
-          <input type="hidden" name="project_id" value="{{ project.id }}"><input type="hidden" name="key" value="{{ log.key }}">
-          <button class="btn btn-sm btn-outline-secondary" type="submit" title="{{ log.path or 'docker logs' }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>{{ log.label }}</span></button>
-        </form>
-        {% else %}<span class="cn-muted" title="It writes to its own terminal only, which Cairn cannot read. Started from Cairn, its log is here.">no log file</span>{% endfor %}
-        {% if item.is_cairn %}<span class="cn-badge">this Cairn</span>{% else %}
-        <cn-confirm message="Stop {{ item["copy"] }} ({{ item.label }})?" detail="{{ 'Its container is stopped.' if item.where == 'Docker' else 'Its process and the ones it started are stopped.' }}" confirm-label="Stop it" danger>
-          <form method="post" action="{{ url_for('instances.stop_outside') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
-            <input type="hidden" name="project_id" value="{{ project.id }}"><input type="hidden" name="id" value="{{ item.id }}">
-            <button class="btn btn-sm btn-outline-danger" type="submit"><i class="fa-solid fa-stop" aria-hidden="true"></i><span>Stop</span></button>
-          </form>
-        </cn-confirm>{% endif %}
-      </div>
-    </li>
-    {% endfor %}
+    {% for item in outside %}{{ outside_row(item, project, here) }}{% endfor %}
   </ul>
   {% endif %}
   <div class="cn-live-notice" id="instances-changed" data-project="{{ project.id }}" hidden role="status"><span>Instances started or stopped.</span> <a href="{{ here }}">Reload</a></div>

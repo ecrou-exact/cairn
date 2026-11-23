@@ -1,0 +1,30 @@
+{# What runs outside Cairn (D-061), with what can be done on it when it belongs to a project. #}
+{% macro outside_row(item, project, here) -%}
+    <li class="cn-instance is-running">
+      <span class="cn-instance-dot" aria-hidden="true"></span>
+      <div class="cn-instance-body">
+        <p class="cn-instance-name">{{ item["copy"] }}{% if item.branch %} <span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ item.branch }}</span>{% endif %} <span class="cn-muted">{{ item.where }}{% if item.since %} · since <time data-instance-since="{{ item.since }}"></time>{% endif %}</span></p>
+        <p class="cn-instance-command"><code>{{ item.label }}</code> <span class="cn-muted">{{ item.folder }}</span></p>
+        <p class="cn-instance-ports">{% for port in item.ports %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> localhost:{{ port }}</a>{% endfor %}</p>
+      </div>
+      <div class="cn-instance-actions">
+        {% if project %}
+        {% for log in item.logs %}
+        <form method="post" action="{{ url_for('instances.open_log') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+          <input type="hidden" name="project_id" value="{{ project.id }}"><input type="hidden" name="key" value="{{ log.key }}">
+          <button class="btn btn-sm btn-outline-secondary" type="submit" title="{{ log.path or 'docker logs' }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>{{ log.label }}</span></button>
+        </form>
+        {% else %}<span class="cn-muted" title="It writes to its own terminal only, which Cairn cannot read. Started from Cairn, its log is here.">no log file</span>{% endfor %}
+        {% if item.is_cairn %}<span class="cn-badge">this Cairn</span>{% else %}
+        <cn-confirm message="Stop {{ item["copy"] }} ({{ item.label }})?" detail="{{ 'Its container is stopped.' if item.where == 'Docker' else 'Its process and the ones it started are stopped.' }}" confirm-label="Stop it" danger>
+          <form method="post" action="{{ url_for('instances.stop_outside') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+            <input type="hidden" name="project_id" value="{{ project.id }}"><input type="hidden" name="id" value="{{ item.id }}">
+            <button class="btn btn-sm btn-outline-danger" type="submit"><i class="fa-solid fa-stop" aria-hidden="true"></i><span>Stop</span></button>
+          </form>
+        </cn-confirm>{% endif %}
+        {% elif item.git %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('projects.new', folder=item.folder) }}"><i class="fa-solid fa-plus" aria-hidden="true"></i><span>Make it a project</span></a>{% endif %}
+      </div>
+    </li>
+{%- endmacro %}

@@ -161,3 +161,22 @@ def test_one_outside_can_be_stopped(ctx, tmp_path, serve, monkeypatch):
     found_core.stop(project, item["id"])
     process.wait(5)
     assert found_core.for_project(project) == []
+
+
+def test_every_instance_of_the_machine_on_one_page(app, signed_in, tmp_path, serve):
+    ours = _repo(tmp_path / "flowintel", "https://github.com/flowintel/flowintel.git")
+    other = _repo(tmp_path / "loose-tool", "https://github.com/x/loose-tool.git")
+    with app.app_context():
+        projects_core.create(ProjectCreate(name="Flowintel", local_path=str(ours)))
+    port, loose = serve(ours)[1], serve(other)[1]
+    found = signed_in.get("/api/instances/running").json
+    (group,) = found["groups"]
+    assert group["project"]["name"] == "Flowintel" and group["outside"][0]["ports"] == [port]
+    assert loose in [p for item in found["loose"] for p in item["ports"]]
+    page = signed_in.get("/instances").data.decode()
+    assert "/projects/flowintel" in page and f"localhost:{port}" in page
+    assert "Make it a project" in page and "loose-tool" in page
+    only = signed_in.get("/instances?q=flowintel").data.decode()
+    assert f"localhost:{port}" in only and f"localhost:{loose}" not in only
+    made = signed_in.get(f"/projects/new?folder={other}").data.decode()
+    assert str(other) in made

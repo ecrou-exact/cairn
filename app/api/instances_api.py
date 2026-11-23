@@ -9,7 +9,7 @@ from flask import jsonify, request
 from app.api import ApiError, api_blueprint, body
 from app.core.schema.instances import FoundStop, InstanceAutostart, InstanceCreate, InstanceStart, LogOpen
 from app.features.claude import claude_core, terminal_core
-from app.features.instances import found_core, instances_core
+from app.features.instances import found_core, instances_core, machine_core
 from app.features.projects import projects_core
 
 instances_api = api_blueprint("instances_api")
@@ -35,6 +35,21 @@ def _row(item: dict) -> dict:
         "ports": item["ports"],
         "last_exit_code": last.exit_code if last and not live else None,
     }
+
+
+@instances_api.get("/instances/running")
+def running():
+    """Every instance running on the machine, by project; `loose`: in a folder of no project."""
+    found = machine_core.overview(request.args.get("q", "")[:100])
+    groups = [
+        {
+            "project": {"id": str(g["project"].id), "name": g["project"].name, "slug": g["project"].slug},
+            "instances": [_row(item) for item in g["ours"]],
+            "outside": g["outside"],
+        }
+        for g in found["groups"]
+    ]
+    return jsonify(total=found["total"], groups=groups, loose=found["loose"])
 
 
 @instances_api.get("/instances")

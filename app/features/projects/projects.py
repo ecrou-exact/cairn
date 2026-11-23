@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import PurePath
+
 from flask import Blueprint, abort, flash, make_response, redirect, render_template, request, url_for
 
 from app.core.db_class.planning import PROJECT_COLORS, PROJECT_STATUSES
@@ -79,9 +81,16 @@ def index():
 
 @projects.get("/projects/new")
 def new():
-    return _form(
-        {"status": "active", "color": "slate", "icon": "fa-folder", "default_branch": "main", "weight": "1"}
-    )
+    values = {
+        "status": "active",
+        "color": "slate",
+        "icon": "fa-folder",
+        "default_branch": "main",
+        "weight": "1",
+    }
+    if folder := request.args.get("folder", "")[:500]:
+        values |= {"local_path": folder, "name": PurePath(folder).name}
+    return _form(values)
 
 
 @projects.post("/projects/new")

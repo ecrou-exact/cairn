@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import uuid
 
-from flask import Blueprint, flash, redirect, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from app.core.schema.instances import FoundStop, InstanceCreate, LogOpen
 from app.core.utils.history import batch
 from app.core.utils.web import FormErrors, flash_undo, local_path, validate
 from app.features.claude import terminal_core
-from app.features.instances import found_core, instances_core
+from app.features.instances import found_core, instances_core, machine_core
 from app.features.projects import projects_core
 
 instances = Blueprint("instances", __name__)
@@ -18,6 +18,13 @@ instances = Blueprint("instances", __name__)
 
 def _back() -> str:
     return local_path(request.form.get("next")) or url_for("projects.index")
+
+
+@instances.get("/instances")
+def index():
+    """Every instance running on the machine (D-079)."""
+    q = request.args.get("q", "")[:100]
+    return render_template("instances/index.html", found=machine_core.overview(q), q=q)
 
 
 @instances.post("/instances")

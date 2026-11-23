@@ -16,6 +16,7 @@ import subprocess  # nosec B404 (fixed argument lists only, never a shell)
 import sys
 import time
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +38,7 @@ LOG_SUFFIXES = (".log", ".out", ".err")
 LOG_PLACES = ("*.log", "log/*.log", "logs/*.log", "*/logs/*.log")
 RECENT_LOG = 48 * 3600.0
 LOGS_SHOWN = 6
+TOOLING = {"code", "code.exe", "codium", "cursor", "vscode", ".vscode", ".cursor", ".vscode-server"}
 KEPT = 2.0  # seconds a machine-wide look is reused
 
 
@@ -207,6 +209,38 @@ def for_project(project: Project) -> list[dict[str, Any]]:
     copies = _Copies(project)
     if copies.root is None and not copies.repos:
         return []
+    return _scan(copies.place)
+
+
+def _any_copy(folder: str) -> dict[str, Any] | None:
+    """A git folder, whatever the project."""
+    git = _git(Path(folder))
+    if git is None:
+        return None
+    return {"copy": git[0].name, "folder": str(git[0]), "branch": _branch(git[1]), "git": True}
+
+
+def _is_tooling(process: psutil.Process) -> bool:
+    """An editor, its extensions or a Claude Code: they listen too, and are nobody's instance."""
+    name = (process.name() or "").lower()
+    if name in transcript_core.CLAUDE_NAMES or name.startswith("language_server"):
+        return True
+    try:
+        parts = {part.lower() for part in Path(process.exe()).parts}
+    except (psutil.Error, OSError):
+        return False
+    return bool(parts & TOOLING) or {"claude", "versions"} <= parts
+
+
+def everywhere(projects: list[Project]) -> tuple[dict[uuid.UUID, list[dict[str, Any]]], list[dict[str, Any]]]:
+    """What runs outside Cairn's terminals on the machine (D-079): by project, then what runs in a
+    git folder that is no project's."""
+    found = {project.id: for_project(project) for project in projects}
+    known = {item["id"] for items in found.values() for item in items}
+    return found, [item for item in _scan(_any_copy) if item["id"] not in known]
+
+
+def _scan(place_of: Callable[[str], dict[str, Any] | None]) -> list[dict[str, Any]]:
     listeners: dict[int, set[int]] = _reuse("listeners", _listeners)
     ours = terminal_core.running_pids(kind="instance")
     cairn = {os.getpid(), *transcript_core.own_ancestors()}
@@ -214,14 +248,14 @@ def for_project(project: Project) -> list[dict[str, Any]]:
     for pid, ports in listeners.items():
         try:
             process = psutil.Process(pid)
-            if (process.name() or "").lower() in transcript_core.CLAUDE_NAMES:
+            if _is_tooling(process):
                 continue
             parents = {parent.pid for parent in process.parents()}
             if (parents | {pid}) & ours:
                 continue  # an instance of Cairn's, shown with its definition
             if parents & set(listeners) and _same_ports(parents & set(listeners), ports, listeners):
                 continue  # a worker of one already shown
-            place = copies.place(process.cwd())
+            place = place_of(process.cwd())
             if place is None:
                 continue
             folder = Path(place["folder"])
@@ -244,7 +278,7 @@ def for_project(project: Project) -> list[dict[str, Any]]:
         except (psutil.Error, OSError):
             continue
     for container in _reuse("containers", _containers):
-        place = copies.place(container["folder"])
+        place = place_of(container["folder"])
         if place is not None:
             found.append(
                 {

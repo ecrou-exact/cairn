@@ -1,0 +1,39 @@
+{% extends "layout/shell.html" %}
+{% from "macros/project.html" import project_mark %}
+{% from "macros/instances.html" import outside_row %}
+{% block title %}Instances{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/instances/machine.js') }}"></script>{% endblock %}
+{% block content %}
+{% set here = url_for("instances.index", q=q or none) %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow">Instances</div>
+  <h1>What runs on this machine</h1>
+  <p>The servers of every project, started from Cairn, your terminal, Claude or Docker.</p>
+</header>
+<form class="cn-instances-search" method="get" role="search"><label class="visually-hidden" for="q">Search</label><input class="form-control" type="search" id="q" name="q" value="{{ q }}" maxlength="100" placeholder="Search a project, a port, a branch"><button class="btn btn-outline-secondary" type="submit">Search</button></form>
+<div data-machine>
+{% for g in found.groups %}{% set project = g.project %}
+<section class="cn-panel cn-instances-panel" aria-label="{{ project.name }}">
+  <header class="cn-home-head"><h2><a href="{{ url_for('projects.detail', slug=project.slug) }}">{{ project_mark(project) }} {{ project.name }}</a></h2>
+    <a href="{{ url_for('projects.detail', slug=project.slug, tab='instances') }}">All its instances</a></header>
+  <ul class="cn-instances">
+    {% for item in g.ours %}{% set inst, live = item.instance, item.running %}
+    <li class="cn-instance is-running"><span class="cn-instance-dot" aria-hidden="true"></span>
+      <div class="cn-instance-body"><p class="cn-instance-name">{{ inst.name }} <span class="cn-muted">Cairn</span></p>
+        <p class="cn-instance-command"><code>{{ inst.command }}</code></p>
+        <p class="cn-instance-ports">{% for port in item.ports %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> localhost:{{ port }}</a>{% else %}<span class="cn-muted">not listening yet</span>{% endfor %}</p></div>
+      <div class="cn-instance-actions"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.session', session_id=live.id) }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Logs</span></a>
+        {% for action, icon, label in [("restart", "fa-rotate", "Restart"), ("stop", "fa-stop", "Stop")] %}<form method="post" action="{{ url_for('instances.act', instance_id=inst.id, action=action) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}"><button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-solid {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span></button></form>{% endfor %}</div>
+    </li>{% endfor %}
+    {% for item in g.outside %}{{ outside_row(item, project, here) }}{% endfor %}
+  </ul>
+</section>{% endfor %}
+{% if found.loose %}
+<section class="cn-panel cn-instances-panel" aria-labelledby="loose-title">
+  <header class="cn-home-head"><h2 id="loose-title">Not in a project</h2><span class="cn-muted">Running in a git folder Cairn has no project for</span></header>
+  <ul class="cn-instances">{% for item in found.loose %}{{ outside_row(item, none, here) }}{% endfor %}</ul>
+</section>{% endif %}
+{% if not found.total %}<p class="cn-muted">{{ "Nothing running matches." if q else "Nothing is running." }}</p>{% endif %}
+</div>
+{% endblock %}

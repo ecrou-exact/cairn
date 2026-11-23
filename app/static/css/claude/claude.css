@@ -129,3 +129,4 @@
 .cn-instances-outside { margin: var(--cn-space-5) 0 0; font-size: var(--cn-text-md); }
 .cn-instance-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 24rem; }
 .cn-instance.is-running .cn-instance-dot { background: var(--cn-success); }
+.cn-instances-search { display: flex; gap: var(--cn-space-2); margin-bottom: var(--cn-space-4); }

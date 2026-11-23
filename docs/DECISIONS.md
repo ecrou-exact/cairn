@@ -455,3 +455,6 @@
 - **Entries** are drafts: the day's length shared by half hours of activity. A repository no rule places keeps its share free instead of giving it to another project; `recap.ignored` leaves personal ones out.
 - **Sending** is the owner's click, confirmed: not an MCP tool, refused to any other actor. Never over what Kimai holds, never twice (an entry whose answer was lost is found again). Cairn has no call that changes or deletes in Kimai.
 - **The token** is in `.env` (owner's choice), read at each call, https only, no redirect followed, never in a page, a log, the database or the environment of a program Cairn starts.
+
+## D-079 · 2026-11-23 · accepted — Every instance of the machine, in the menu
+- Owner request: a menu entry with all that runs, by project, whoever started it; each project's name leads to it. What listens in a git folder of no project is listed apart, with a button that makes it a project (nothing else is done on it there). Looked at again every 8 seconds, only while the page is in front. What listens outside any git folder (the system's services) is not shown.
