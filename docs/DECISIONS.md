@@ -489,3 +489,6 @@
 ## D-085 · 2026-11-23 · accepted — A task per pull request; links picked from the project
 - Owner request (Lookyloo: one task per pull request). **A task per pull request or issue** (project's Actions menu) lists the open pull requests and issues of the project's GitHub repository and the branches of its copies, each with the task that has it already; the chosen ones become tasks (an issue a bug), each linked to it and, for a pull request, to its branch. Undoable in one step.
 - A task's Linked work tab offers the same, **Pick from the project**, one click a link. An issue is a kind of link too.
+
+## D-086 · 2026-11-23 · accepted — The search finds a task by what it is linked to
+- Owner request: the palette's search finds a task or a subtask by its title, its description, its id (whole, or its first six characters or more), and by the work linked to it: a pull request or an issue (`#1451`, `1451`, its address), a branch, a commit (its first characters), a folder. A subtask shows its parent.

@@ -111,6 +111,7 @@ Goal: owner approves architecture + design direction.
 - [x] Work linked to a project, a task, a subtask (its own tab): branches, commits, pull requests, conversations, in Claude's brief (D-083)
 - [x] A project exported and imported between two machines, merged both ways (D-084)
 - [x] A task per pull request or issue; pull requests, issues and branches picked from the project (D-085)
+- [x] The search finds a task by its id, a pull request, an issue, a branch or a commit (D-086)
 - [ ] Two-way sync (owner request 2026-11-23): what is done outside Cairn shows up live; Claude Code in the owner's terminal keeps Cairn up to date
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS

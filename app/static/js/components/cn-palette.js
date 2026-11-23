@@ -126,7 +126,7 @@ class CnPalette extends HTMLElement {
         icon: t.open ? 'fa-square' : 'fa-square-check',
         url: t.url,
         group: 'Tasks',
-        meta: [t.project, t.status].filter(Boolean).join(' · '),
+        meta: [t.project, t.parent && `in ${t.parent}`, t.status].filter(Boolean).join(' · '),
       })),
       ...(data.resources || []).map((r) => ({ label: r.title, icon: r.icon, url: r.url, group: 'Resources', meta: r.kind })),
     ];

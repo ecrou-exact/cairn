@@ -322,6 +322,7 @@ def stop_timer():
 @planning_api.get("/search")
 def search():
     found = search_core.search(request.args.get("q", ""), open_only=request.args.get("open") == "1")
+    parents = search_core.parent_titles(found["tasks"])
     return jsonify(
         projects=[
             {"id": str(p.id), "name": p.name, "slug": p.slug, "url": url_for("projects.detail", slug=p.slug)}
@@ -334,6 +335,7 @@ def search():
                 "status": workflow.label_of(t.status),
                 "open": t.is_open,
                 "project": t.project.name if t.project else None,
+                "parent": parents.get(t.parent_id),
                 "url": url_for("tasks.detail", task_id=t.id),
             }
             for t in found["tasks"]
