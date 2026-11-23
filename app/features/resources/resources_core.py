@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import Mapping
 from pathlib import Path
@@ -560,3 +561,62 @@ def deleted_resources() -> list[Resource]:
             select(Resource).where(Resource.deleted_at.is_not(None)).order_by(Resource.deleted_at.desc())
         )
     )
+
+
+# -- taking resources away (D-096) ------------------------------------------------------------------
+
+ZIP_MOST = 200  # resources in one archive
+ZIP_BYTES = 500 * 1024 * 1024
+EXTENSIONS = {
+    "python": "py", "javascript": "js", "typescript": "ts", "bash": "sh", "shell": "sh", "json": "json",
+    "yaml": "yaml", "html": "html", "css": "css", "sql": "sql", "rust": "rs", "go": "go", "markdown": "md",
+}  # fmt: skip
+
+
+def text_of(resource: Resource) -> tuple[str, str] | None:
+    """(file name, text) of a resource that is text: a note, a snippet, a tool, a skill, a link."""
+    title = re.sub(r"[^\w.-]+", "-", resource.title).strip("-")[:80] or "resource"
+    if resource.kind in ("note", "skill"):
+        return f"{title}.md", resource.body
+    if resource.kind in ("snippet", "tool"):
+        return f"{title}.{EXTENSIONS.get(resource.language.lower(), 'txt')}", resource.body
+    if resource.url:
+        return f"{title}.url", f"[InternetShortcut]\nURL={resource.url}\n"
+    return None
+
+
+def zip_of(resource_ids: list[uuid.UUID]) -> bytes:
+    """The chosen resources in one zip: files as they were uploaded, text as text, links as shortcuts."""
+    import io
+    import zipfile
+
+    from app.features.resources import storage_core
+
+    chosen = [get_resource(i) for i in dict.fromkeys(resource_ids)][:ZIP_MOST]
+    if not chosen:
+        raise ResourceError("Choose the resources to take.")
+    out, names, size = io.BytesIO(), set(), 0
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as archive:
+        for resource in chosen:
+            if resource.has_file:
+                path = storage_core.path_of(resource.stored_name)
+                name, data = storage_core.clean_name(resource.original_name), None
+            else:
+                found = text_of(resource)
+                if found is None:
+                    continue
+                name, data, path = found[0], found[1].encode(), None
+            base, n = name, 2
+            while name in names:
+                stem, dot, ext = base.rpartition(".")
+                name = f"{stem or base}-{n}{dot}{ext}" if dot else f"{base}-{n}"
+                n += 1
+            names.add(name)
+            size += path.stat().st_size if path is not None else len(data)
+            if size > ZIP_BYTES:
+                raise ResourceError("Too much at once (500 MB): take fewer.")
+            if path is not None:
+                archive.write(path, name)
+            else:
+                archive.writestr(name, data)
+    return out.getvalue()

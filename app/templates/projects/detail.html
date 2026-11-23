@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
 {{ graph_assets() }}
 {% endblock %}
-{% block scripts %}{% if tab == "git" %}<script type="module" src="{{ url_for('static', filename='js/components/cn-refresh.js') }}"></script><script type="module" src="{{ url_for('static', filename='js/folder/wanted.js') }}"></script>{% endif %}{% if tab == "instances" %}<script type="module" src="{{ url_for('static', filename='js/projects/instances.js') }}"></script>{% endif %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/resources/panel.js') }}"></script>{% if tab == "git" %}<script type="module" src="{{ url_for('static', filename='js/components/cn-refresh.js') }}"></script><script type="module" src="{{ url_for('static', filename='js/folder/wanted.js') }}"></script>{% endif %}{% if tab == "instances" %}<script type="module" src="{{ url_for('static', filename='js/projects/instances.js') }}"></script>{% endif %}
 
 <script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-quick-add.js') }}"></script>

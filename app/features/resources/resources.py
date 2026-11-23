@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
+from urllib.parse import quote
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, Response, abort, flash, redirect, render_template, request, send_file, url_for
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from app.core.schema.resources import CREATABLE_KINDS, ResourceCreate, ResourceUpdate
@@ -195,6 +197,36 @@ def file(resource_id: uuid.UUID):
     )
     response.headers["Content-Security-Policy"] = FILE_CSP
     response.headers["Cache-Control"] = "private, no-cache"
+    return response
+
+
+@resources.get("/resources/<uuid:resource_id>/text")
+def text(resource_id: uuid.UUID):
+    """A note, a snippet or a link as a file to keep (D-096)."""
+    found = resources_core.text_of(_resource_or_404(resource_id))
+    if found is None:
+        abort(404)
+    name, body = found
+    response = Response(body, mimetype="text/plain; charset=utf-8")
+    response.headers["Content-Disposition"] = f"attachment; filename={quote(name)}"
+    response.headers["Content-Security-Policy"] = FILE_CSP
+    return response
+
+
+@resources.post("/resources/zip")
+def zip_download():
+    """The chosen resources in one zip (D-096)."""
+    try:
+        ids = [uuid.UUID(raw) for raw in request.form.getlist("resource_ids")]
+        blob = resources_core.zip_of(ids)
+    except (ValueError, resources_core.ResourceError) as exc:
+        flash(
+            str(exc) if isinstance(exc, resources_core.ResourceError) else "Choose the resources to take.",
+            "warning",
+        )
+        return redirect(back_to(url_for("resources.index")))
+    response = Response(blob, mimetype="application/zip")
+    response.headers["Content-Disposition"] = f"attachment; filename=resources-{date.today().isoformat()}.zip"
     return response
 
 

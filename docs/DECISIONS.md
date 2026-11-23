@@ -531,3 +531,6 @@
 ## D-095 · 2026-11-23 · accepted — Pause a project; its tasks first
 - Owner request: a project can be **paused** (its Actions menu, or several at once on the Projects page): its tasks leave what to do, the home page, the task lists, the counts and the plan of projects, as if it were not there; the project itself stays in its list and page, marked, and **Resume** brings it all back. An archived project is left out the same way. A paused project's tasks are still shown when that project is asked for (its page, a filter on it).
 - A project opens on its **Tasks** tab, first of its tabs; the plan is one click away.
+
+## D-096 · 2026-11-23 · accepted — Resources opened, copied, downloaded, zipped where they are attached
+- Owner request: in a project's, a task's or a subtask's Resources, a note, a snippet, a tool or a skill **opens here** (Vitrine), its content is **copied** or **downloaded** as a file in one click, a link's address copied, an image opened in place. Resources are **chosen** (or all at once) and **downloaded as one zip**: files as uploaded, texts as files, links as shortcuts (at most 200 and 500 MB at a time).

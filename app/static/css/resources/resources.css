@@ -99,3 +99,8 @@
 .cn-resource-usages form { margin: 0 0 0 auto; }
 .cn-stack-form { display: grid; gap: var(--cn-space-2); margin-top: var(--cn-space-3); }
 .cn-resource-form { display: grid; gap: var(--cn-space-3); }
+.cn-resource-zip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cn-space-3); margin-bottom: var(--cn-space-2); font-size: var(--cn-text-sm); }
+.cn-resource-zip label { display: inline-flex; gap: var(--cn-space-2); align-items: center; }
+.cn-resource-open { margin-top: var(--cn-space-1); }
+.cn-resource-open > summary { cursor: pointer; font-size: var(--cn-text-sm); color: var(--cn-text-muted); }
+.cn-resource-full { max-width: 100%; border-radius: var(--cn-radius); margin-top: var(--cn-space-2); }

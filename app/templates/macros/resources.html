@@ -26,17 +26,30 @@
   <h2 id="resources-title">Resources{% if items %} <span class="cn-muted">{{ items | length }}</span>{% endif %}</h2>
   <div class="cn-live-notice" data-live-notice hidden role="status"><span>These resources changed.</span> <a href="{{ here }}#resources">Reload</a></div>
   {% if items %}
+  <form id="zip-{{ target.id }}" method="post" action="{{ url_for('resources.zip_download') }}" class="cn-resource-zip" data-resource-zip>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+    <label><input class="form-check-input" type="checkbox" data-zip-all> Choose all</label>
+    <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-solid fa-file-zipper" aria-hidden="true"></i><span class="ms-1">Download the chosen as a zip</span></button>
+  </form>
   <ul class="cn-resource-list">
     {% for link, resource in items %}
+    {% set text = resource.kind in ("note", "snippet", "tool", "skill") and resource.body %}
     <li>
+      <input class="form-check-input" type="checkbox" name="resource_ids" value="{{ resource.id }}" form="zip-{{ target.id }}" aria-label="Choose {{ resource.title }}">
       {% if resource.kind == "image" %}
       <a class="cn-resource-thumb" href="{{ url_for('resources.detail', resource_id=resource.id) }}"><img src="{{ url_for('resources.file', resource_id=resource.id) }}" alt="" loading="lazy" {% if resource.meta.image %}width="{{ resource.meta.image.width }}" height="{{ resource.meta.image.height }}"{% endif %}></a>
       {% else %}{{ resource_icon(resource) }}{% endif %}
       <div class="cn-resource-text">
         <a href="{{ url_for('resources.detail', resource_id=resource.id) }}">{{ resource.title }}</a>
         <small>{{ resource_summary(resource) }}{% if link.note %} — {{ link.note }}{% endif %}</small>
+        {% if text %}<details class="cn-resource-open"><summary>Open here</summary><script type="application/json" id="body-{{ link.id }}">{{ resource.body | tojson }}</script>
+          <cn-vitrine kind="{{ 'markdown' if resource.kind in ('note', 'skill') else 'code' }}" source="body-{{ link.id }}" {% if resource.language %}vt-language="{{ resource.language }}"{% endif %}></cn-vitrine></details>
+        {% elif resource.kind == "image" %}<details class="cn-resource-open"><summary>Open here</summary><img class="cn-resource-full" src="{{ url_for('resources.file', resource_id=resource.id) }}" alt="{{ resource.title }}" loading="lazy"></details>{% endif %}
       </div>
       {{ open_link(resource) }}
+      {% if text %}<button class="btn btn-sm btn-outline-secondary" type="button" data-copy-source="body-{{ link.id }}" title="Copy its content"><i class="fa-regular fa-copy" aria-hidden="true"></i><span class="visually-hidden">Copy</span></button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('resources.text', resource_id=resource.id) }}" title="Download its content"><i class="fa-solid fa-download" aria-hidden="true"></i><span class="visually-hidden">Download</span></a>
+      {% elif resource.url %}<button class="btn btn-sm btn-outline-secondary" type="button" data-copy-text="{{ resource.url }}" title="Copy the address"><i class="fa-regular fa-copy" aria-hidden="true"></i><span class="visually-hidden">Copy</span></button>{% endif %}
       <form method="post" action="{{ url_for('resources.detach', link_id=link.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
         <button class="btn btn-link btn-sm cn-remove" type="submit" title="Detach (it stays in the library)"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="visually-hidden">Detach {{ resource.title }}</span></button>

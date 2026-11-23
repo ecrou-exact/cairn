@@ -118,6 +118,7 @@ Goal: owner approves architecture + design direction.
 - [x] Fill a project with Claude: docs, skills, logo, links (D-090)
 - [x] Run any version of a project with Claude (D-091)
 - [x] Pause and resume a project; a project opens on its tasks (D-095)
+- [x] Resources opened, copied, downloaded and zipped from a project or a task (D-096)
 - [ ] Two-way sync (owner request 2026-11-23): what is done outside Cairn shows up live; Claude Code in the owner's terminal keeps Cairn up to date
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS
