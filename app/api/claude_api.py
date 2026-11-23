@@ -184,3 +184,9 @@ def stop_outside():
     """Close a Claude Code running outside Cairn."""
     _guard(terminal_core.stop_outside, body(OutsideStop))
     return jsonify(ok=True)
+
+
+@claude_api.post("/claude/clean")
+def clean():
+    """Take the ended sessions off Cairn's pages (undoable); their conversations stay in Claude Code."""
+    return jsonify(cleared=claude_core.clear_ended())

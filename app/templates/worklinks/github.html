@@ -1,7 +1,8 @@
 {% extends "layout/shell.html" %}
 {% from "macros/project.html" import project_tabs %}
 {% block title %}Tasks from GitHub: {{ project.name }}{% endblock %}
-{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">{% endblock %}
 {% block content %}
 <header class="cn-page-header">
   <div class="cn-eyebrow"><a href="{{ url_for('projects.detail', slug=project.slug) }}">{{ project.name }}</a></div>

@@ -16,6 +16,9 @@
     <h1>Claude sessions</h1>
     <p>Every Claude Code on this machine: where it runs, how full its context is.</p>
     {{ usage_left(overview.limits) }}
+    <cn-confirm message="Clear the ended sessions?" detail="They leave Cairn's pages, in one step you can undo. Their conversations stay on this machine: Claude Code keeps them, claude --resume finds them." confirm-label="Clear">
+      <form method="post" action="{{ url_for('claude.clean') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-solid fa-broom" aria-hidden="true"></i><span class="ms-2">Clear ended sessions</span></button></form>
+    </cn-confirm>
   </div>
   <dl class="cn-hero-stats cn-claude-stats">
     <div class="{{ 'is-good' if overview.running }}"><dt>Running</dt><dd data-claude-count>{{ overview.running }}</dd></div>

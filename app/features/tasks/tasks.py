@@ -13,7 +13,7 @@ from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, back_to, flash_undo, local_path, split_list, validate
 from app.features.claude import claude_core
 from app.features.comments import comments_core
-from app.features.folder import git_core
+from app.features.folder import copies_core, git_core
 from app.features.graph.graph import with_graph_csp
 from app.features.projects import projects_core
 from app.features.resources import resources_core
@@ -456,3 +456,34 @@ def stop_timer():
     if seconds:
         flash(f"Timer stopped: {timer_core.format_duration(seconds)} added.", "success")
     return redirect(back_to(url_for("home.index")))
+
+
+RUN_BRANCH = (
+    "The version to run is the branch `{branch}`: it is not out in a folder yet. Fetch, then make a "
+    "git worktree for it next to the project's folder (never switch the branch of the project's "
+    "folder), and run it there."
+)
+
+
+@tasks.post("/tasks/<uuid:task_id>/run")
+def run(task_id: uuid.UUID):
+    """Claude runs the task's version: a branch of it, in a worktree of its own (D-091)."""
+    from app.core.schema.claude import SessionStart
+    from app.features.claude import terminal_core
+
+    branch = request.form.get("branch", "").strip()[:250]
+    folder = request.form.get("folder", "").strip()
+    try:
+        if folder:
+            known = [str(f) for f in copies_core.folders(tasks_core.get_task(task_id).project)]
+            if folder not in known:
+                raise terminal_core.TerminalError("This folder is not a copy of the project.")
+            data = SessionStart(folder=folder, preset="run")
+        else:
+            told = RUN_BRANCH.format(branch=branch) if branch else ""
+            data = SessionStart(task_id=task_id, preset="run", detail=told, worktree=False)
+        session = terminal_core.start(data)
+    except (terminal_core.TerminalError, tasks_core.TaskNotFound, ValueError) as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("tasks.detail", task_id=task_id, tab="git"))
+    return redirect(url_for("claude.session", session_id=session.id))

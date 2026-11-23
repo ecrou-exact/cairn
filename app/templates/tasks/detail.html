@@ -196,7 +196,7 @@
       {{ quick_add("Add a subtask…", project=task.project, parent=task) }}
     </section>
     {% elif tab == "git" and git %}
-    {{ task_git(git, task.project, url_for('tasks.detail', task_id=task.id, tab='git')) }}
+    {{ task_git(git, task.project, url_for('tasks.detail', task_id=task.id, tab='git'), task) }}
     {% elif tab == "linked" %}
     {{ work_panel(work, "task", task.id, choices) }}
     {% elif tab == "plan" %}

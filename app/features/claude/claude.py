@@ -25,7 +25,8 @@ from flask import (
 from app.core.schema.claude import OutsideStop, ResumeStart, SessionLink, SessionStart
 from app.core.security.headers import allow_own_frame, csp_terminal
 from app.core.utils.events import latest_event_id
-from app.core.utils.web import FormErrors, local_path, validate
+from app.core.utils.history import batch
+from app.core.utils.web import FormErrors, flash_undo, local_path, validate
 from app.features.changesets import changesets_core
 from app.features.claude import claude_core, main_core, terminal_core, tools_core, worktrees_core
 from app.features.graph.graph import with_graph_csp
@@ -62,6 +63,21 @@ def remove_worktree(worktree_id: uuid.UUID):
     else:
         flash(f"Removed. The branch {row.branch} and its commits stay.", "success")
     return redirect(local_path(request.form.get("next")) or url_for("claude.index"))
+
+
+@claude.post("/claude/clean")
+def clean():
+    """Ended sessions off the page; their conversations stay in Claude Code (D-092)."""
+    with batch() as batch_id:
+        count = claude_core.clear_ended()
+    if count:
+        flash_undo(
+            f"{count} ended session{'s' if count != 1 else ''} cleared; Claude Code keeps the conversations.",
+            batch_id,
+        )
+    else:
+        flash("No ended session to clear.", "info")
+    return redirect(url_for("claude.index"))
 
 
 @claude.post("/claude/main")

@@ -513,3 +513,8 @@
 ## D-091 · 2026-11-23 · accepted — Run a version with Claude
 - Owner request: on each copy of a project's Git tab, **Run with Claude** opens a Claude in that copy's folder, on its branch, that finds how the project starts, installs what it needs inside the folder only, runs it on a free port and gives its address; it asks before sudo or a change to tracked files, and says what is missing rather than inventing it. The project's Actions menu has **Run it with Claude** for its own folder (its current branch: main, or the branch it was started from).
 - A Claude opened on a folder is attached to the project that folder belongs to, a worktree or a clone included (`place_core`).
+
+## D-092 · 2026-11-23 · accepted — Clear the ended sessions; logs on a dark ground
+- The Claude page has **Clear ended sessions**: the ended Claude sessions and log terminals leave Cairn's pages in one undoable step (soft delete). Their conversations are not touched: Claude Code keeps them and `claude --resume` finds them.
+- Logs shown by Vitrine are always on a dark ground, whatever the page's theme.
+- A task's (and subtask's) Git tab runs its versions too: a copy on its branch, or a branch not out yet, which Claude fetches into a worktree of its own, never switching the project's folder (D-091).

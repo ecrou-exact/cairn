@@ -32,3 +32,4 @@
 .cn-project-pick { margin-right: var(--cn-space-2); }
 .cn-row-actions { white-space: nowrap; }
 .cn-row-actions > * { vertical-align: middle; }
+.cn-copy-run { float: right; margin-left: var(--cn-space-3); }

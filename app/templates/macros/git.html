@@ -33,12 +33,12 @@
 </section>
 {%- endmacro %}
 
-{% macro task_git(found, project, here) -%}
+{% macro task_git(found, project, here, task=none) -%}
 <section class="cn-panel" aria-labelledby="git-title">
   <h2 id="git-title">Git</h2>
   {% if not found.branches %}<p class="cn-muted">No branch is linked to this task yet: link one, or its pull request, in <a href="?tab=linked">Linked work</a>.</p>{% endif %}
   {% if found.copies %}<ul class="cn-copies">{% for c in found.copies %}{{ copy_row(c, project, here) }}{% endfor %}</ul>{% endif %}
-  {% for w in found.elsewhere %}<div class="cn-copy"><p class="cn-copy-name"><span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ w.ref }}</span> <span class="cn-muted">{{ "not out in a copy here" if w.found else "not found on this machine: fetch the project" }}{% if w["from"] %}, from {{ w["from"] }}{% endif %}</span></p>{% for line in w.commits or [] %}<p class="cn-work-commit">{{ line }}</p>{% endfor %}</div>{% endfor %}
+  {% for w in found.elsewhere %}<div class="cn-copy">{% if task %}<form method="post" action="{{ url_for('tasks.run', task_id=task.id) }}" class="cn-copy-run"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="branch" value="{{ w.ref }}"><button class="btn btn-sm btn-primary" type="submit" title="Claude fetches this branch into a worktree of its own and runs it"><i class="fa-solid fa-play" aria-hidden="true"></i><span>Run with Claude</span></button></form>{% endif %}<p class="cn-copy-name"><span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ w.ref }}</span> <span class="cn-muted">{{ "not out in a copy here" if w.found else "not found on this machine: fetch the project" }}{% if w["from"] %}, from {{ w["from"] }}{% endif %}</span></p>{% for line in w.commits or [] %}<p class="cn-work-commit">{{ line }}</p>{% endfor %}</div>{% endfor %}
   {% for w in found.pulls %}<p><i class="fa-solid fa-code-pull-request" aria-hidden="true"></i> {% if w.url %}<a href="{{ w.url }}" target="_blank" rel="noopener noreferrer">{{ w.ref }} {{ w.title }}</a>{% else %}{{ w.ref }}{% endif %}{% if w.state %} <span class="cn-badge cn-pull-{{ w.state }}">{{ w.state }}</span>{% endif %}{% if w.branch %} <span class="cn-muted">{{ w.branch }} into {{ w.base }}</span>{% endif %}</p>{% endfor %}
 </section>
 {%- endmacro %}

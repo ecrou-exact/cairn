@@ -1,7 +1,8 @@
 {% extends "layout/shell.html" %}
 {% from "macros/project.html" import project_tabs %}
 {% block title %}Bring in: {{ project.name }}{% endblock %}
-{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">{% endblock %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>{% endblock %}
 {% macro box(item, text) %}<input class="form-check-input" type="checkbox" name="keys" value="{{ item.key }}" id="k-{{ item.key }}"> <label for="k-{{ item.key }}">{{ text }}</label>{% endmacro %}

@@ -1,7 +1,8 @@
 {% extends "layout/shell.html" %}
 {% from "macros/project.html" import project_tabs %}
 {% block title %}{{ changeset.title }}{% endblock %}
-{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/changesets/changesets.css') }}">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/changesets/changesets.css') }}">{% endblock %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
 {% if changeset.status == "proposed" %}<script type="module" src="{{ url_for('static', filename='js/changesets/review.js') }}"></script>{% endif %}{% endblock %}
 {% macro named(t) %}{% if t %}{% if t.url %}<a href="{{ t.url }}">{{ t.title }}</a>{% else %}<strong>{{ t.title }}</strong>{% if t.new %} <span class="cn-badge">new</span>{% endif %}{% endif %}{% endif %}{% endmacro %}

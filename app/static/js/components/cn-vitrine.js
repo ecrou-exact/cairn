@@ -11,7 +11,8 @@
  * - `source`: id of a <script type="application/json"> holding the text (a JSON string).
  * - A <textarea name> child makes it a form field: the textarea is the no-JS fallback; once
  *   upgraded it is replaced by the editor and a hidden input with the same name.
- * - `vt-*` attributes are passed to the Vitrine element without the prefix.
+ * - `vt-*` attributes are passed to the Vitrine element without the prefix. A log is dark unless
+ *   `vt-theme` says otherwise.
  */
 
 import { configure } from '../../vendor/vitrine/esm/api.js';
@@ -82,6 +83,8 @@ export class CnVitrine extends HTMLElement {
     }
 
     const viewer = document.createElement(`vt-${kind}`);
+    // A log is read on a dark ground, whatever the page's theme: its colours are made for it.
+    if (kind === 'log') viewer.setAttribute('theme', 'dark');
     for (const { name, value } of this.attributes) {
       if (name.startsWith('vt-')) viewer.setAttribute(name.slice(3), value);
     }

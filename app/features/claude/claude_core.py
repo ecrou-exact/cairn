@@ -134,3 +134,49 @@ def targets() -> dict[str, Any]:
             for p in projects
         ],
     }
+
+
+# -- clean up (D-092) -----------------------------------------------------------------------------
+
+
+def clear_ended() -> int:
+    """Take the ended Claude sessions and log terminals off Cairn's pages, in one undoable step.
+    Their conversations stay on the machine: Claude Code keeps them, `claude --resume` finds them."""
+    from app.core.db_class.base import utcnow
+    from app.core.utils.history import batch
+    from app.core.utils.logger import log_action
+
+    rows = list(
+        db.session.scalars(
+            select(ClaudeSession).where(
+                ClaudeSession.deleted_at.is_(None),
+                ClaudeSession.kind.in_(("claude", "log")),
+                ClaudeSession.status == "ended",
+            )
+        )
+    )
+    rows = [row for row in rows if not terminal_core.is_running(row.id)]
+    if not rows:
+        return 0
+    with batch():
+        now = utcnow()
+        for row in rows:
+            row.deleted_at = now
+        log_action("claude.clear_ended", target_type="claude", meta={"sessions": [str(r.id) for r in rows]})
+    return len(rows)
+
+
+def _undo_clear(row) -> None:
+    for raw in (row.meta or {}).get("sessions", []):
+        found = db.session.get(ClaudeSession, uuid.UUID(raw))
+        if found is not None:
+            found.deleted_at = None
+
+
+def _register() -> None:
+    from app.core.utils.history import register_undo
+
+    register_undo("claude.clear_ended", _undo_clear)
+
+
+_register()
