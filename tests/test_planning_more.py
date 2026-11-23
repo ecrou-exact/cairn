@@ -87,8 +87,8 @@ def test_cairn_roadmap_imports_and_reimports(ctx):
     again = import_plan(plan)
     assert again == {"created": 0, "existing": len(plan["tasks"]), "dependencies": 0}
     project = db.session.scalar(select(Project).where(Project.slug == "cairn"))
-    graph = db.session.scalar(select(Task).where(Task.title == "Phase 4 — Graph (Pivotick)"))
-    assert graph.project_id == project.id and graph.blocked_by_count == 1
+    release = db.session.scalar(select(Task).where(Task.title == "Phase 11 — Hardening and release"))
+    assert release.project_id == project.id and release.blocked_by_count == 2
     assert tasks_core.next_actions(limit=50)  # something is actionable right away
 
 
