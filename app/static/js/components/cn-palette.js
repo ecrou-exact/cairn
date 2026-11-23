@@ -99,7 +99,11 @@ class CnPalette extends HTMLElement {
   /** Last, so Enter opens what was found rather than creating a task by accident. */
   #addItem(q) {
     const text = this.#input.value.trim();
-    return q.length > 2 ? [{ label: `Add task: ${text}`, icon: 'fa-plus', group: 'Create', add: text }] : [];
+    if (q.length <= 2) return [];
+    return [
+      { label: `Add task: ${text}`, icon: 'fa-plus', group: 'Create', add: text },
+      { label: `Add in the full form: ${text}`, icon: 'fa-pen-to-square', group: 'Create', url: `/tasks/new?${new URLSearchParams({ text })}` },
+    ];
   }
 
   #refresh(found = []) {

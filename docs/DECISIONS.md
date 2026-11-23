@@ -440,3 +440,6 @@
 - Owner request, besides moving it: see it in Cairn as in its terminal. **View** opens a terminal (`kind` log) that prints the conversation from its transcript as it grows: requests, answers, tool calls with what they changed and the start of their result. Read-only, and the other terminal is not touched. A live mirror is not possible: a terminal Cairn did not open cannot be attached to.
 - What a conversation holds is untrusted: escape sequences and control characters (bidirectional ones too) are removed before anything is printed. The view is found again for the same conversation; the process is checked by pid and start time.
 - **Background sessions** of Claude Code (registered as `bg`, run from a version's own file, so not named `claude`) are found and shown, to read only. A Claude that holds one at work is not moved nor stopped from Cairn: that would cut it. Found on the owner's machine: a conversation sent to the background had left its terminal's card on an old copy.
+
+## D-076 · 2026-11-23 · accepted — From quick add to the full form
+- Owner request: wherever a task is added in one line, a button opens the full form with the same words, already understood (project, dates, type, tags, priority, estimate, repetition) and, for a subtask, its parent. Also in the palette. The words go through `POST /tasks/quick/full`, so no token ends in the address.

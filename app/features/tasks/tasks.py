@@ -10,7 +10,7 @@ from app.core.schema.planning import BulkEdit, ConditionCreate, DependencyCreate
 from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
-from app.core.utils.web import FormErrors, back_to, flash_undo, split_list, validate
+from app.core.utils.web import FormErrors, back_to, flash_undo, local_path, split_list, validate
 from app.features.claude import claude_core
 from app.features.comments import comments_core
 from app.features.graph.graph import with_graph_csp
@@ -28,7 +28,7 @@ from app.features.tasks import (
     timer_core,
     workflow,
 )
-from app.features.tasks.tasks_forms import values_from_form, values_from_task
+from app.features.tasks.tasks_forms import values_from_form, values_from_task, values_from_text
 
 tasks = Blueprint("tasks", __name__)
 
@@ -182,6 +182,14 @@ def quick_add():
     return redirect(back_to(url_for("tasks.index")))
 
 
+@tasks.post("/tasks/quick/full")
+def quick_to_full():
+    """The quick-add field's other button: the same words, in the full form."""
+    given = {key: request.form.get(key) or None for key in ("text", "project_id", "parent_id")}
+    given["next"] = local_path(request.form.get("next")) or None
+    return redirect(url_for("tasks.new", **{key: value for key, value in given.items() if value}))
+
+
 # -- full form -------------------------------------------------------------------------------
 
 
@@ -192,6 +200,14 @@ def new():
         "parent_id": request.args.get("parent_id", ""),
     }
     values |= {"status": workflow.default_status(), "priority": "medium", "importance": 3, "urgency": 3}
+    text = request.args.get("text", "")[:500]
+    if text.strip():
+        try:
+            given = uuid.UUID(values["project_id"]) if values["project_id"] else None
+            found = values_from_text(text, given)
+        except ValueError:  # a date or a value the parser could not make sense of
+            found = {"title": text.strip()[:200]}
+        values |= {key: value for key, value in found.items() if value not in ("", None)}
     return render_template("tasks/form.html", **_form_context(values))
 
 

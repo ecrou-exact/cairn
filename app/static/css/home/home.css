@@ -62,6 +62,8 @@
 }
 .cn-hero-add .form-control::placeholder { color: var(--cn-chrome-muted); }
 .cn-hero-add .form-control:focus { border-color: var(--cn-mark); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cn-mark) 30%, transparent); }
+.cn-hero-add .cn-quick-full { color: var(--cn-chrome-text); background: transparent; border: var(--cn-border-width) solid var(--cn-chrome-border); }
+.cn-hero-add .cn-quick-full:hover { background: color-mix(in srgb, var(--cn-chrome-text) 12%, transparent); }
 .cn-hero-add .btn { height: 3rem; padding-inline: var(--cn-space-5); border-radius: var(--cn-radius-lg); }
 .cn-hero-add cn-quick-add > i { color: var(--cn-mark); }
 

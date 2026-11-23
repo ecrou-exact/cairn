@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import re
+import uuid
 from collections.abc import Mapping
+from types import SimpleNamespace
 from typing import Any
 
 from app.core.db_class.planning import Task
 from app.core.utils.web import optional, split_list
-from app.features.tasks import workflow
+from app.features.tasks import quickadd_core, workflow
 
 _CHECK = re.compile(r"^\s*(?:[-*]\s*)?\[( |x|X)\]\s*(.+)$")
 
@@ -66,6 +68,20 @@ def recurrence_from_form(form: Mapping[str, str]) -> dict[str, Any] | None:
         "unit": unit,
         "anchor": form.get("repeat_anchor") or "due",
     }
+
+
+def values_from_text(text: str, project_id: uuid.UUID | None = None) -> dict[str, Any]:
+    """The form filled from a quick-add text, as it would have been understood; what it says
+    nothing about keeps the form's own defaults."""
+    parsed = quickadd_core.parse(text)
+    if not parsed.title:
+        return {"title": text.strip()[:200]} if text.strip() else {}
+    data = quickadd_core.to_create(parsed, project_id=project_id)
+    given = data.model_dump(exclude_unset=True, mode="python")
+    shown = values_from_task(SimpleNamespace(**{**data.model_dump(), "custom": data.custom}))
+    fields = {"recurrence": ("repeat_unit", "repeat_every", "repeat_anchor")}
+    wanted = {name for key in given for name in fields.get(key, (key,)) if given[key] is not None}
+    return {key: value for key, value in shown.items() if key in wanted}
 
 
 def values_from_task(task: Task) -> dict[str, Any]:

@@ -187,3 +187,27 @@ def test_projects_as_cards_or_as_a_graph(signed_in):
     cards, graph = signed_in.get("/projects").data, signed_in.get("/projects?mode=graph").data
     assert b"cn-project-cards" in cards and b"data-graph-canvas" not in cards
     assert b"data-graph-canvas" in graph and b"cn-project-cards" not in graph
+
+
+def test_quick_add_opens_the_full_form_with_the_same_words(signed_in):
+    project = signed_in.post("/api/projects", json={"name": "Rulezet"}).json["project"]
+    parent = signed_in.post("/api/tasks", json={"title": "Parent", "project_id": project["id"]}).json["task"]
+    pages = ("/", "/tasks", f"/projects/{project['slug']}?tab=tasks", f"/tasks/{parent['id']}")
+    for page in pages:  # wherever a task is added in one line
+        assert "/tasks/quick/full" in signed_in.get(page).data.decode(), page
+    words = {"text": "Fix the login +rulezet #bug !high ~2h", "csrf_token": "secret-token"}
+    went = signed_in.post("/tasks/quick/full", data=words)
+    assert went.status_code == 302 and "secret-token" not in went.location
+    form = signed_in.get(went.location).data.decode()
+    assert 'value="Fix the login"' in form
+    for field, value in (("type", "bug"), ("priority", "high"), ("project_id", project["id"])):
+        select = form.split(f'name="{field}"')[1].split("</select>")[0]
+        chosen = [option for option in select.split("<option") if "selected" in option]
+        assert len(chosen) == 1 and f'value="{value}"' in chosen[0], field
+    assert 'name="estimate_hours"' in form and 'value="2"' in form
+    child = signed_in.post("/tasks/quick/full", data={"text": "", "parent_id": parent["id"]})
+    assert f"parent_id={parent['id']}" in child.location
+    assert signed_in.get(child.location).status_code == 200
+    odd = signed_in.get("/tasks/new?text=%3Cb%3Ex&project_id=nope")
+    assert odd.status_code == 200 and b"&lt;b&gt;x" in odd.data
+    assert len(signed_in.get("/api/tasks").json["items"]) == 1  # nothing was created

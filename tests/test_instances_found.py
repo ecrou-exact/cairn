@@ -151,7 +151,8 @@ def test_one_outside_can_be_stopped(ctx, tmp_path, serve, monkeypatch):
     (item,) = found_core.for_project(project)
     with pytest.raises(instances_core.InstanceError, match="no longer running"):
         found_core.stop(other, item["id"])  # not one of that project
-    monkeypatch.setattr(found_core.transcript_core, "own_ancestors", lambda: {process.pid})
+    listener = int(item["id"].removeprefix("pid-"))  # under a launcher on Windows and macOS
+    monkeypatch.setattr(found_core.transcript_core, "own_ancestors", lambda: {listener})
     with pytest.raises(instances_core.InstanceError, match="Cairn itself"):
         found_core.stop(project, item["id"])
     monkeypatch.undo()

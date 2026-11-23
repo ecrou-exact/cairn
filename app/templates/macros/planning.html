@@ -50,6 +50,7 @@
     <input class="form-control" id="quick-add-{{ parent.id if parent else (project.id if project else 'all') }}" name="text" maxlength="500" autocomplete="off" required placeholder="{{ placeholder }}">
   </cn-quick-add>
   <button class="btn btn-primary" type="submit">Add</button>
+  <button class="btn btn-outline-secondary cn-quick-full" type="submit" formnovalidate formaction="{{ url_for('tasks.quick_to_full') }}" title="The same words in the full form: description, dates, checklist, dependencies…"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span>Full form</span></button>
 </form>
 {%- endmacro %}
 
