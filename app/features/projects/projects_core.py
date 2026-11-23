@@ -12,7 +12,7 @@ import uuid
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 from sqlalchemy import func, select
 
@@ -26,7 +26,7 @@ from app.core.utils.history import batch, register_undo
 from app.core.utils.listing import FilterSpec, ListPage, ListSpec, run_list
 from app.core.utils.logger import log_action
 from app.features.comments import comments_core
-from app.features.resources import resources_core
+from app.features.resources import resources_core, storage_core
 from app.features.tasks import tasks_core
 from app.features.tasks.dependencies_core import refresh_derived
 
@@ -110,6 +110,8 @@ def create(data: ProjectCreate) -> Project:
 def update(project_id: uuid.UUID, data: ProjectUpdate) -> Project:
     project = get_project(project_id)
     fields = data.model_dump(mode="json", exclude_unset=True)
+    if fields.get("slug", "") is None:
+        del fields["slug"]  # left empty in the form: it stays
     slug = fields.get("slug")
     if slug and slug != project.slug and _free_slug(slug, exclude=project.id) != slug:
         raise ProjectError(f"The slug '{fields['slug']}' is already used by another project.")
@@ -189,6 +191,39 @@ def restore(project_id: uuid.UUID) -> int:
     return len(tasks)
 
 
+IMAGE_MAX_BYTES = 10 * 1024 * 1024
+
+
+def set_image(project_id: uuid.UUID, stream: IO[bytes]) -> Project:
+    """The project's picture, a square without metadata; it replaces its icon everywhere."""
+    project = get_project(project_id)
+    name = storage_core.store_square(stream, IMAGE_MAX_BYTES)
+    try:
+        with batch():
+            old, project.image_name = project.image_name, name
+            log_action("project.image", target_type="project", target_id=project.id)
+            _changed(project)
+    except BaseException:
+        storage_core.remove(name)
+        raise
+    if old:
+        storage_core.remove(old)
+    return project
+
+
+def remove_image(project_id: uuid.UUID) -> Project:
+    """Back to the icon."""
+    project = get_project(project_id)
+    old = project.image_name
+    if old:
+        with batch():
+            project.image_name = None
+            log_action("project.image_removed", target_type="project", target_id=project.id)
+            _changed(project)
+        storage_core.remove(old)
+    return project
+
+
 def purge(project_id: uuid.UUID) -> None:
     project = get_project(project_id, deleted=True)
     roots = list(
@@ -209,8 +244,11 @@ def purge(project_id: uuid.UUID) -> None:
     )
     resources_core.forget_targets("project", [project.id])
     comments_core.forget_targets("project", [project.id])
+    image = project.image_name
     db.session.delete(project)
     db.session.commit()
+    if image:
+        storage_core.remove(image)
 
 
 def _undo_create(row) -> None:

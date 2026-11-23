@@ -223,17 +223,6 @@ def remove_avatar():
 
 @account.get("/account/avatar")
 def avatar():
-    from flask import send_file
-
     from app.features.resources import storage_core
 
-    owner = _me()
-    if not owner.avatar_name:
-        abort(404)
-    path = storage_core.path_of(owner.avatar_name)
-    if not path.is_file():
-        abort(404)
-    response = send_file(path, mimetype="image/jpeg", max_age=0, conditional=True)
-    response.headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
-    response.headers["Cache-Control"] = "private, no-cache"
-    return response
+    return storage_core.serve_square(_me().avatar_name) or abort(404)

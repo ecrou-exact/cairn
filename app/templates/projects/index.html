@@ -1,4 +1,5 @@
 {% extends "layout/shell.html" %}
+{% from "macros/project.html" import project_mark %}
 {% from "macros/list.html" import toolbar, sort_header, pagination, empty_state %}
 {% from "macros/graph.html" import graph_stage, graph_assets %}
 {% block title %}Projects{% endblock %}
@@ -38,7 +39,7 @@
     {% for project in page.items %}{% set st = stats[project.id] %}
     <li class="cn-card cn-project-card cn-color-{{ project.color }}">
       <div class="cn-card-head">
-        <a class="cn-project-name" href="{{ url_for('projects.detail', slug=project.slug) }}"><span class="cn-project-tile" aria-hidden="true"><i class="fa-solid {{ project.icon }}"></i></span>{{ project.name }}</a>
+        <a class="cn-project-name" href="{{ url_for('projects.detail', slug=project.slug) }}"><span class="cn-project-tile" aria-hidden="true">{{ project_mark(project) }}</span>{{ project.name }}</a>
         <span class="cn-card-head-end">{% if project.status != "active" %}<span class="cn-badge">{{ project.status }}</span>{% endif %}
         {% if project.local_path %}<button class="cn-icon-button cn-claude-go" type="button" data-claude-launch data-project="{{ project.id }}" title="Claude in {{ project.name }}"><i class="fa-solid fa-claude" aria-hidden="true"></i><span class="visually-hidden">Claude in {{ project.name }}</span></button>{% endif %}</span>
       </div>
@@ -65,7 +66,7 @@
       <tbody>
         {% for project in page.items %}{% set st = stats[project.id] %}
         <tr>
-          <td><a class="cn-color-{{ project.color }}" href="{{ url_for('projects.detail', slug=project.slug) }}"><i class="fa-solid {{ project.icon }} cn-project-icon" aria-hidden="true"></i>{{ project.name }}</a></td>
+          <td><a class="cn-color-{{ project.color }}" href="{{ url_for('projects.detail', slug=project.slug) }}">{{ project_mark(project) }}{{ project.name }}</a></td>
           <td>{{ project.status }}</td><td>{{ st.open }}</td><td>{{ st.closed }}</td>
           <td>{% if st.overdue %}<span class="cn-due-late">{{ st.overdue }}</span>{% else %}0{% endif %}</td>
           <td>{{ st.next_due | relative_day if st.next_due else "—" }}</td>

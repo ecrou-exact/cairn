@@ -355,3 +355,13 @@ body:not(:has(input[form="bulk-form"]:checked)) .cn-bulk { display: none; }
 /* Menus open out of the band: it no longer clips, its contours keep its rounded corners */
 .cn-task-band, .cn-project-hero:has(.cn-menu) { overflow: visible; z-index: 5; }
 .cn-task-band::before, .cn-project-hero:has(.cn-menu)::before { border-radius: inherit; }
+
+/* A project's picture fills its tile */
+.cn-project-tile:has(.cn-project-image), .cn-project-hero-tile:has(.cn-project-image) { background: transparent; overflow: hidden; }
+.cn-project-tile .cn-project-image, .cn-project-hero-tile .cn-project-image { width: 100%; height: 100%; border-radius: inherit; }
+.cn-project-mark-field { display: flex; align-items: center; gap: var(--cn-space-4); flex-wrap: wrap; }
+.cn-project-mark-field .cn-project-image { width: 3.5rem; height: 3.5rem; border-radius: 12px; }
+.cn-project-folder { display: inline-flex; align-items: center; gap: var(--cn-space-1); }
+.cn-project-folder form { margin: 0; }
+.cn-project-folder button { display: inline-flex; align-items: center; gap: var(--cn-space-2); padding: 2px var(--cn-space-2); border: 0; border-radius: var(--cn-radius-md); background: transparent; color: inherit; }
+.cn-project-folder button:hover { background: color-mix(in srgb, var(--cn-chrome-text) 14%, transparent); color: var(--cn-chrome-text); }

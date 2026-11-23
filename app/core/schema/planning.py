@@ -67,11 +67,15 @@ class Recurrence(Strict):
 # -- projects --------------------------------------------------------------------------------
 
 
+# A Font Awesome icon: solid, or a brand (`fa-brands fa-docker`).
+ProjectIcon = Annotated[str, Field(pattern=r"^(fa-brands fa-[a-z0-9-]{1,26}|fa-[a-z0-9-]{1,36})$")]
+
+
 class ProjectFields(Strict):
     description_md: Markdown = ""
     status: Literal[PROJECT_STATUSES] = "active"  # type: ignore[valid-type]
     color: Literal[PROJECT_COLORS] = "slate"  # type: ignore[valid-type]
-    icon: Annotated[str, Field(pattern=r"^fa-[a-z0-9-]{1,36}$")] = "fa-folder"
+    icon: ProjectIcon = "fa-folder"
     github_repo: Annotated[str, Field(pattern=r"^[A-Za-z0-9_.-]{1,39}/[A-Za-z0-9_.-]{1,100}$")] | None = None
     default_branch: Annotated[str, Field(min_length=1, max_length=100, pattern=r"^[^\s~^:?*\[\\]+$")] = "main"
     local_path: Annotated[str, Field(max_length=500)] | None = None
@@ -95,7 +99,7 @@ class ProjectUpdate(Strict):
     description_md: Markdown | None = None
     status: Literal[PROJECT_STATUSES] | None = None  # type: ignore[valid-type]
     color: Literal[PROJECT_COLORS] | None = None  # type: ignore[valid-type]
-    icon: Annotated[str, Field(pattern=r"^fa-[a-z0-9-]{1,36}$")] | None = None
+    icon: ProjectIcon | None = None
     github_repo: Annotated[str, Field(pattern=r"^[A-Za-z0-9_.-]{1,39}/[A-Za-z0-9_.-]{1,100}$")] | None = None
     default_branch: (
         Annotated[str, Field(min_length=1, max_length=100, pattern=r"^[^\s~^:?*\[\\]+$")] | None

@@ -99,6 +99,7 @@ Goal: owner approves architecture + design direction.
 - [x] The main Claude in a panel beside every page (open, fold, stop, relaunch), knowing the page in front, able to work on Cairn itself (D-063)
 - [x] Security review of the main Claude's access: findings fixed or recorded (D-064)
 - [x] Claude on the plan's graph: the task it is on lit with its current step, its live graph one click away (D-066)
+- [x] A project's icon chosen with Vitrine's icon picker, or a picture; its folder opened in the file manager or the editor (D-067)
 - [ ] The main Claude opens a project's Claude itself (MCP → web process)
 - [ ] More MCP tools: resources, schedule, changesets for bulk changes
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
@@ -118,5 +119,6 @@ Goal: owner approves architecture + design direction.
 
 ## Phase 9 — Modules  ·  Phase 10 — Calendar & activity  ·  Phase 11 — Hardening & release
 - [ ] Module registry, event automations, task action modules
+- [ ] Owner ideas (2026-11-23), later: mail connected for Claude; evening summary of what was done with its branches, for a day or a period, then sent to the owner's time-tracking API
 - [ ] Calendar, scheduled runs, Gantt timeline, activity feed, right-now panel, alerts
 - [ ] Security review, E2E (Playwright), docs, logo, packaging, release checklist

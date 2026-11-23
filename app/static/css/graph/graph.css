@@ -421,3 +421,4 @@
 @media (prefers-reduced-motion: reduce) { .cn-gcard.is-claude-working { animation: none; } }
 .cn-gcard-claude { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 4px 8px; border-radius: 8px; font-size: 10.5px; color: var(--cn-on-accent); background: var(--cn-mark); }
 .cn-gcard { grid-template-columns: minmax(0, 1fr); }
+.cn-gcard.has-claude .cn-gcard-meta { display: none; } /* the card keeps its height: Claude's line takes this place */

@@ -1,0 +1,6 @@
+{
+  "label": "Editor",
+  "category": "Projects",
+  "description": "The command that opens a project's folder in your editor (code, cursor, codium, subl\u2026). Only its name: it is found on PATH.",
+  "value": "code"
+}

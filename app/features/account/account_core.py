@@ -210,7 +210,7 @@ def update_profile(owner: Owner, display_name: str, bio: str) -> None:
 def set_avatar(owner: Owner, stream) -> None:
     from app.features.resources import storage_core
 
-    name = storage_core.store_avatar(stream, AVATAR_MAX_BYTES)
+    name = storage_core.store_square(stream, AVATAR_MAX_BYTES)
     old, owner.avatar_name = owner.avatar_name, name
     log_action("account.avatar", target_type="owner", target_id=owner.id)
     db.session.commit()

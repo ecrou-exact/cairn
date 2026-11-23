@@ -1,4 +1,5 @@
 {% extends "layout/shell.html" %}
+{% from "macros/project.html" import project_mark %}
 {% from "macros/planning.html" import claude_button, type_icon, priority, due, project_chip, quick_add %}
 {% block title %}Today{% endblock %}
 {% block styles %}
@@ -131,7 +132,7 @@
     <ul class="cn-pulse">
       {% for row in projects %}{% set p = row.project %}
       <li class="cn-color-{{ p.color }}">
-        <a class="cn-pulse-name" href="{{ url_for('projects.detail', slug=p.slug) }}"><span class="cn-project-tile" aria-hidden="true"><i class="fa-solid {{ p.icon }}"></i></span>{{ p.name }}</a>
+        <a class="cn-pulse-name" href="{{ url_for('projects.detail', slug=p.slug) }}"><span class="cn-project-tile" aria-hidden="true">{{ project_mark(p) }}</span>{{ p.name }}</a>
         <meter class="cn-project-meter" min="0" max="{{ row.total or 1 }}" value="{{ row.closed }}" aria-label="{{ row.closed }} of {{ row.total }} tasks done"></meter>
         <span class="cn-pulse-facts">{{ row.open }} open{% if row.blocked %} · {{ row.blocked }} blocked{% endif %}{% if row.overdue %} · <span class="cn-due-late">{{ row.overdue }} late</span>{% endif %}</span>
         <a class="cn-icon-button" href="{{ url_for('projects.detail', slug=p.slug, tab='plan') }}" title="{{ p.name }}: the plan"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span class="visually-hidden">{{ p.name }}: the plan</span></a>

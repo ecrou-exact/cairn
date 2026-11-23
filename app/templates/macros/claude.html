@@ -1,3 +1,4 @@
+{% from "macros/project.html" import project_mark %}
 {# Claude sessions (D-050): a card with its context gauge, shared by the overview, the
    projects and the tasks. `s` is claude_core.describe() or an outside session. #}
 
@@ -36,7 +37,7 @@
       {% if not outside %}<a href="{{ s.url }}">{{ s.title or s.label }}</a>{% else %}{{ u.title or "Claude Code" }}{% endif %}
     </p>
     <p class="cn-claude-card-where">
-      {% if s.project %}<span class="cn-project-chip cn-color-{{ s.project.color }}"><i class="fa-solid {{ s.project.icon }}" aria-hidden="true"></i> {{ s.project.name }}</span>{% else %}<span class="cn-muted">{{ "every project" if s.main else "free, no project" }}</span>{% endif %}
+      {% if s.project %}<span class="cn-project-chip cn-color-{{ s.project.color }}">{{ project_mark(s.project) }} {{ s.project.name }}</span>{% else %}<span class="cn-muted">{{ "every project" if s.main else "free, no project" }}</span>{% endif %}
       {% if not outside and s.task %}<a href="{{ url_for('tasks.detail', task_id=s.task.id) }}"><i class="fa-solid fa-list-check" aria-hidden="true"></i> {{ s.task.title }}</a>{% endif %}
       <code title="{{ s.cwd }}">{{ s.cwd }}</code>
     </p>
@@ -115,7 +116,7 @@
   <div class="cn-claude-card-body">
     <p class="cn-claude-card-title"><a href="{{ s.url }}">{{ s.label }}</a></p>
     <p class="cn-claude-card-where">
-      {% if s.project %}<a class="cn-project-chip cn-color-{{ s.project.color }}" href="{{ url_for('projects.detail', slug=s.project.slug, tab='instances') }}"><i class="fa-solid {{ s.project.icon }}" aria-hidden="true"></i> {{ s.project.name }}</a>{% endif %}
+      {% if s.project %}<a class="cn-project-chip cn-color-{{ s.project.color }}" href="{{ url_for('projects.detail', slug=s.project.slug, tab='instances') }}">{{ project_mark(s.project) }} {{ s.project.name }}</a>{% endif %}
       <code title="{{ s.cwd }}">{{ s.cwd }}</code>
     </p>
     <p class="cn-instance-ports" data-instance-ports>

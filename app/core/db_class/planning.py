@@ -44,6 +44,7 @@ class Project(BaseEntity):
     status: Mapped[str] = mapped_column(String(12), default="active", nullable=False, index=True)
     color: Mapped[str] = mapped_column(String(20), default="slate", nullable=False)
     icon: Mapped[str] = mapped_column(String(40), default="fa-folder", nullable=False)
+    image_name: Mapped[str | None] = mapped_column(String(64))  # shown instead of the icon (storage_core)
     github_repo: Mapped[str | None] = mapped_column(String(140))
     default_branch: Mapped[str] = mapped_column(String(100), default="main", nullable=False)
     local_path: Mapped[str | None] = mapped_column(String(500))
@@ -52,6 +53,11 @@ class Project(BaseEntity):
     tags: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     claude_instructions_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
     weight: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)  # project weight in the score
+
+    @property
+    def image_url(self) -> str:
+        """Where its picture is served; empty when it has none (its icon is shown)."""
+        return f"/projects/{self.slug}/image?v={self.image_name[:8]}" if self.image_name else ""
 
     tasks: Mapped[list[Task]] = relationship(back_populates="project", lazy="selectin", viewonly=True)
 

@@ -7,6 +7,7 @@
 {% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-form-guard.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/components/cn-icon-field.js') }}"></script>
 {% endblock %}
 {% block content %}
 <header class="cn-page-header">
@@ -14,7 +15,7 @@
   <h1>{{ "Edit project" if project else "New project" }}</h1>
 </header>
 {{ f.form_error(errors) }}
-<form method="post" class="cn-panel cn-project-form" novalidate>
+<form method="post" enctype="multipart/form-data" class="cn-panel cn-project-form" novalidate>
   <cn-form-guard></cn-form-guard>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="cn-form-grid">
@@ -34,7 +35,17 @@
       {% endfor %}
     </div>
   </fieldset>
-  {{ f.text("icon", "Icon", values, errors, hint="A Font Awesome solid icon name, e.g. fa-shield-halved, fa-rocket, fa-book.") }}
+  <cn-icon-field label="Icon">{{ f.text("icon", "Icon", values, errors, hint="A Font Awesome icon, e.g. fa-rocket, or fa-brands fa-docker.") }}</cn-icon-field>
+  <div class="cn-field">
+    <label class="form-label" for="image">Picture (optional, instead of the icon)</label>
+    <div class="cn-project-mark-field">
+      {% if project and project.image_url %}<img class="cn-project-image" src="{{ project.image_url }}" alt="Current picture" width="56" height="56">{% endif %}
+      <input class="form-control{% if errors.get('image') %} is-invalid{% endif %}" id="image" name="image" type="file" accept="image/png,image/jpeg,image/gif,image/webp">
+      {% if project and project.image_url %}<label class="form-check"><input class="form-check-input" type="checkbox" name="remove_image" value="1"> <span class="form-check-label">Remove it: back to the icon</span></label>{% endif %}
+    </div>
+    <div class="form-text">PNG, JPEG, GIF or WebP, 10 MB at most; cropped to a square.</div>
+    {% if errors.get("image") %}<div class="invalid-feedback d-block">{{ errors.image }}</div>{% endif %}
+  </div>
   {{ f.markdown("description_md", "Description", values, errors) }}
   <h2 class="cn-form-section">Code</h2>
   <div class="cn-form-grid">

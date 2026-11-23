@@ -45,9 +45,11 @@
       "languages/*.js",
       "syntax-themes/*",
       "LICENSE",
+      "vendor/icons/fa-solid.js",
+      "vendor/icons/fa-brands.js",
       "THIRD_PARTY_NOTICES.md"
     ],
-    "notes": "Source maps and their sourceMappingURL comments removed. dist/vendor/ (ECharts, Mermaid, icons, maps) not included; see docs/DECISIONS.md D-019."
+    "notes": "Source maps and their sourceMappingURL comments removed. dist/vendor/ not included (ECharts, Mermaid, maps, other icons) except the two Font Awesome sets of the icon picker; see docs/DECISIONS.md D-019."
   },
   "pivotick": {
     "version": "3.0.0",

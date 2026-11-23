@@ -616,3 +616,5 @@ tr:hover .cn-claude-go, .cn-claude-go:focus-visible { opacity: 1; }
 
 /* Claude's mark is a brand icon: drawn from that font wherever an icon is named, whatever its style class */
 i.fa-claude { font-family: "Font Awesome 7 Brands"; font-weight: 400; }
+i.fa-solid.fa-brands { font-family: "Font Awesome 7 Brands"; font-weight: 400; } /* a project's icon may be a brand */
+.cn-project-image { width: 1.15em; height: 1.15em; object-fit: cover; border-radius: 4px; vertical-align: -0.2em; }

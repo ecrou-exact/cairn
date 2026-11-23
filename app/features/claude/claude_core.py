@@ -23,6 +23,7 @@ def _project_chip(project: Project) -> dict[str, str]:
         "slug": project.slug,
         "color": project.color,
         "icon": project.icon,
+        "image_url": project.image_url,
     }
 
 

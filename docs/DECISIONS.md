@@ -399,3 +399,8 @@
 ## D-066 · 2026-11-23 · accepted — Claude on the plan's graph
 - Owner request: in a project's graph, see the task Claude works on, and open what it does inside.
 - The task a running session is on (opened from it, or moved to an active status through Cairn's MCP server, within its project) is lit on the plan with Claude's current step; a case is lit for a task inside it. Click: the panel says what it does, with its graph and terminal; double click on a task without subtasks opens that graph (D-059), which leads back to the plan. Asked every 4 s while in view. A Claude outside Cairn says no task: not shown.
+
+## D-067 · 2026-11-23 · accepted — A project's icon or picture; its folder opened on the machine
+- Owner request. **Icon:** Vitrine's `vt-icon-picker` (two Font Awesome sets vendored from the same commit), wrapped by `<cn-icon-field>` over the text field; brands allowed (`fa-brands fa-docker`). **Picture:** `Project.image_name`, a 256 px square PNG without metadata, shown instead of the icon everywhere (`project_mark`).
+- **Folder:** the path opens the file manager, a button the editor (`projects.editor`, `code`). The project's own folder only, as one argument, no shell; through `systemd-run --user` on Linux so that restarting Cairn does not close it.
+- **Found on the way:** the daily clean-up deleted profile pictures (it knew resources only): it now knows every stored file's owner.

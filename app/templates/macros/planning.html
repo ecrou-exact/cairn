@@ -1,3 +1,4 @@
+{% from "macros/project.html" import project_mark %}
 {# Pieces shared by every page that shows tasks and projects. #}
 
 {% macro type_icon(task, types) -%}
@@ -30,7 +31,7 @@
 {%- endmacro %}
 
 {% macro project_chip(project) -%}
-{% if project %}<a class="cn-project-chip cn-color-{{ project.color }}" href="{{ url_for('projects.detail', slug=project.slug) }}"><i class="fa-solid {{ project.icon }}" aria-hidden="true"></i>{{ project.name }}</a>{% endif %}
+{% if project %}<a class="cn-project-chip cn-color-{{ project.color }}" href="{{ url_for('projects.detail', slug=project.slug) }}">{{ project_mark(project) }}{{ project.name }}</a>{% endif %}
 {%- endmacro %}
 
 {% macro score(task) -%}

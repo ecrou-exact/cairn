@@ -19,6 +19,18 @@ import { CARD_H, CARD_W, applyChanges, chip, el, fact, fitCards, icon, placePeek
 
 const READABLE = 0.6; // below this zoom the cards' text is too small to read
 
+function picture(url) {
+  const image = el('img', 'cn-project-image');
+  Object.assign(image, { src: url, alt: '', width: 20, height: 20 });
+  return image;
+}
+
+function projectChip(d, text) {
+  const span = chip(`cn-project-chip cn-color-${d.projectColor}`, d.projectImage ? '' : `fa-solid ${d.projectIcon}`, text);
+  if (d.projectImage) span.prepend(picture(d.projectImage), document.createTextNode(' '));
+  return span;
+}
+
 // -- the card ---------------------------------------------------------------------------
 
 /** A project on the plan of projects (D-044): its colour, progress, what is open, blocked,
@@ -28,7 +40,7 @@ function projectCard(d) {
   box.classList.toggle('is-closed', d.status !== 'active');
   const top = el('div', 'cn-gcard-top');
   const type = el('span', 'cn-gcard-type');
-  type.append(icon(`fa-solid ${d.projectIcon}`));
+  type.append(d.projectImage ? picture(d.projectImage) : icon(`fa-solid ${d.projectIcon}`));
   top.append(type, el('span', 'cn-gcard-project', d.status === 'active' ? 'Project' : d.status));
   if (d.score) top.append(el('span', 'cn-gcard-score', d.score));
   const meta = el('div', 'cn-gcard-meta');
@@ -131,7 +143,7 @@ function mount(stage) {
     const d = node.getData();
     if (d.kind === 'project') {
       const head = el('div', 'cn-gpeek-head');
-      head.append(chip(`cn-project-chip cn-color-${d.projectColor}`, `fa-solid ${d.projectIcon}`, d.label));
+      head.append(projectChip(d, d.label));
       const facts = el('p', 'cn-gpeek-facts', [`${d.open} open`, `${d.done} done`, d.blockedCount && `${d.blockedCount} blocked`, d.late && `${d.late} late`].filter(Boolean).join(' · '));
       peek.replaceChildren(head, el('p', 'cn-gpeek-title', d.next ? `Next: ${d.next}` : 'Nothing ready to do'), facts, el('p', 'cn-gpeek-hint', 'Double-click to open its plan'));
       peek.hidden = false;
@@ -139,7 +151,7 @@ function mount(stage) {
       return;
     }
     const head = el('div', 'cn-gpeek-head');
-    head.append(chip(`cn-project-chip cn-color-${d.projectColor}`, `fa-solid ${d.projectIcon}`, d.project || 'No project'), el('span', `cn-status cn-status-${d.statusKind}`, d.statusLabel));
+    head.append(projectChip(d, d.project || 'No project'), el('span', `cn-status cn-status-${d.statusKind}`, d.statusLabel));
     const facts = el('p', 'cn-gpeek-facts');
     facts.textContent = [d.typeLabel, d.priority, d.dueText && `due ${d.dueText}`, d.children && `${d.childrenDone}/${d.children} subtasks`].filter(Boolean).join(' · ');
     const hint = el('p', 'cn-gpeek-hint', d.claude && !d.drill ? 'Double-click to see what Claude does' : d.drill ? 'Double-click to open its subtasks' : 'Double-click to open the task');
@@ -168,7 +180,7 @@ function mount(stage) {
     close.title = 'Close';
     close.append(icon('fa-solid fa-xmark'));
     close.addEventListener('click', hidePanel);
-    head.append(chip(`cn-project-chip cn-color-${d.projectColor}`, `fa-solid ${d.projectIcon}`, d.status), close);
+    head.append(projectChip(d, d.status), close);
     const facts = el('dl', 'cn-facts');
     facts.append(fact('Open', d.open), fact('Done', d.done));
     if (d.blockedCount) facts.append(fact('Blocked', d.blockedCount));
@@ -283,7 +295,7 @@ function mount(stage) {
     close.title = 'Close';
     close.append(icon('fa-solid fa-xmark'));
     close.addEventListener('click', hidePanel);
-    head.append(chip(`cn-project-chip cn-color-${d.projectColor}`, `fa-solid ${d.projectIcon}`, d.project || 'No project'), close);
+    head.append(projectChip(d, d.project || 'No project'), close);
 
     const status = el('p', 'cn-gpanel-status');
     status.append(el('span', `cn-status cn-status-${d.statusKind}`, d.statusLabel));

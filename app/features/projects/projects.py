@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, abort, make_response, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, make_response, redirect, render_template, request, url_for
 
 from app.core.db_class.planning import PROJECT_COLORS, PROJECT_STATUSES
 from app.core.schema.planning import ProjectCreate, ProjectUpdate
 from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
-from app.core.utils.web import FormErrors, flash_undo, validate
+from app.core.utils.web import FormErrors, back_to, flash_undo, validate
 from app.features.claude import claude_core
 from app.features.comments import comments_core
 from app.features.graph.graph import graph_view, with_graph_csp
 from app.features.instances import found_core, instances_core
-from app.features.projects import project_links_core, projects_core
+from app.features.projects import open_core, project_links_core, projects_core
 from app.features.projects.projects_forms import values_from_form, values_from_project
-from app.features.resources import resources_core
+from app.features.resources import resources_core, storage_core
+from app.features.resources.storage_core import StorageError
 from app.features.tasks import tasks_core
 from app.features.tasks.tasks import list_context
 
@@ -44,6 +45,18 @@ def _form(values, errors=None, project=None, status=200):
         ),
         status,
     )
+
+
+def _picture(project) -> None:
+    """The picture sent with the form, or its removal; a refused one leaves the rest saved."""
+    picture = request.files.get("image")
+    try:
+        if picture is not None and picture.filename:
+            projects_core.set_image(project.id, picture.stream)
+        elif request.form.get("remove_image") == "1":
+            projects_core.remove_image(project.id)
+    except StorageError as exc:
+        flash(f"The picture was not kept: {exc}", "danger")
 
 
 @projects.get("/projects")
@@ -78,6 +91,7 @@ def create():
     except FormErrors as exc:
         return _form(request.form, exc.errors, status=422)
     flash_undo(f"Created the project “{project.name}”.", batch_id)
+    _picture(project)
     return redirect(url_for("projects.detail", slug=project.slug))
 
 
@@ -105,6 +119,7 @@ def detail(slug: str):
             claude=claude_core.overview(project_id=project.id) if tab == "claude" else None,
             instances=instances_core.for_project(project.id) if tab == "instances" else None,
             outside=outside,
+            editor=get_setting("projects.editor"),
             instances_running=instances_core.running_count(project.id) + len(outside),
             **graph_view(request.args, project=project),
             stats=projects_core.stats([project.id])[project.id],
@@ -136,6 +151,7 @@ def save(slug: str):
     except projects_core.ProjectError as exc:
         return _form(request.form, {"slug": str(exc)}, project, status=422)
     flash_undo("Saved.", batch_id)
+    _picture(project)
     return redirect(url_for("projects.detail", slug=project.slug))
 
 
@@ -148,3 +164,19 @@ def delete(slug: str):
         f"“{project.name}” and its {moved} task{'s' if moved != 1 else ''} moved to the trash.", batch_id
     )
     return redirect(url_for("projects.index"))
+
+
+@projects.get("/projects/<slug>/image")
+def image(slug: str):
+    return storage_core.serve_square(_project_or_404(slug).image_name) or abort(404)
+
+
+@projects.post("/projects/<slug>/open/<any(files, editor):kind>")
+def open_folder(slug: str, kind: str):
+    """Open the project's folder on this machine (D-067)."""
+    project = _project_or_404(slug)
+    try:
+        open_core.open_folder(project, kind)
+    except projects_core.ProjectError as exc:
+        flash(str(exc), "danger")
+    return redirect(back_to(url_for("projects.detail", slug=project.slug)))

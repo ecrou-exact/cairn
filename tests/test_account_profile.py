@@ -42,7 +42,7 @@ def test_profile_name_initials_and_picture(app, signed_in):
     assert b">AL<" in signed_in.get("/").data  # initials in the header
     signed_in.post(
         "/account/profile/avatar",
-        data={"avatar": (_picture("JPEG"), "me.jpg")},
+        data={"avatar": (_picture("PNG"), "me.jpg")},
         content_type="multipart/form-data",
     )
     with app.app_context():
@@ -50,7 +50,7 @@ def test_profile_name_initials_and_picture(app, signed_in):
         with Image.open(storage_core.path_of(name)) as stored:
             assert stored.size == (256, 256) and not stored.getexif()
     with signed_in.get("/account/avatar") as served:
-        assert served.mimetype == "image/jpeg" and "sandbox" in served.headers["Content-Security-Policy"]
+        assert served.mimetype == "image/png" and "sandbox" in served.headers["Content-Security-Policy"]
     bad = signed_in.post(
         "/account/profile/avatar", data={"avatar": (io.BytesIO(b"not an image"), "x.png")},
         content_type="multipart/form-data", follow_redirects=True,

@@ -1,0 +1,4 @@
+{# A project's mark: its picture, or its icon. `p`: a Project, or a session's project chip. #}
+{% macro project_mark(p, class="") -%}
+{% if p.image_url %}<img class="cn-project-image {{ class }}" src="{{ p.image_url }}" alt="" width="20" height="20">{% else %}<i class="fa-solid {{ p.icon }} {{ class }}" aria-hidden="true"></i>{% endif %}
+{%- endmacro %}

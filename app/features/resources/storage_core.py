@@ -152,15 +152,21 @@ def remove(stored_name: str) -> None:
 
 
 def remove_orphan_files(older_than: timedelta = timedelta(days=1)) -> int:
-    """Delete stored files no resource refers to (an upload whose change was rolled back),
+    """Delete stored files nothing refers to (an upload whose change was rolled back),
     once they are old enough not to belong to an upload in progress."""
     from sqlalchemy import select
 
+    from app.core.db_class.owner import Owner
+    from app.core.db_class.planning import Project
     from app.core.db_class.resource import Resource
     from app.core.extensions import db
 
     base = root()
-    known = set(db.session.scalars(select(Resource.stored_name).where(Resource.stored_name.is_not(None))))
+    known = {
+        name
+        for column in (Resource.stored_name, Owner.avatar_name, Project.image_name)
+        for name in db.session.scalars(select(column).where(column.is_not(None)))
+    }
     limit = time.time() - older_than.total_seconds()
     removed = 0
     stored = [path for path in base.glob("*/*") if path.name not in known]
@@ -174,8 +180,9 @@ def remove_orphan_files(older_than: timedelta = timedelta(days=1)) -> int:
 AVATAR_SIZE = 256
 
 
-def store_avatar(stream: IO[bytes], max_bytes: int) -> str:
-    """A profile picture: cropped to a centred square, resized, saved as JPEG without metadata."""
+def store_square(stream: IO[bytes], max_bytes: int) -> str:
+    """A picture cropped to a centred square and resized, saved as PNG without metadata (a logo
+    keeps its transparency)."""
     base = root()
     temp, _size, _sha = _receive(stream, max_bytes, base)
     try:
@@ -186,7 +193,7 @@ def store_avatar(stream: IO[bytes], max_bytes: int) -> str:
                     raise StorageError("This image is too large (more than 40 megapixels).")
                 image.load()
                 square = ImageOps.fit(
-                    ImageOps.exif_transpose(image).convert("RGB"), (AVATAR_SIZE, AVATAR_SIZE)
+                    ImageOps.exif_transpose(image).convert("RGBA"), (AVATAR_SIZE, AVATAR_SIZE)
                 )
         except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
             raise StorageError("Use a PNG, JPEG, GIF or WebP picture.") from exc
@@ -194,8 +201,22 @@ def store_avatar(stream: IO[bytes], max_bytes: int) -> str:
         target = base / name[:2] / name
         target.parent.mkdir(exist_ok=True)
         out = io.BytesIO()
-        square.save(out, format="JPEG", quality=88)
+        square.save(out, format="PNG", optimize=True)
         target.write_bytes(out.getvalue())
         return name
     finally:
         temp.unlink(missing_ok=True)
+
+
+def serve_square(stored_name: str | None):
+    """The response for a picture kept by `store_square`; None when there is none."""
+    from flask import send_file
+
+    path = path_of(stored_name) if stored_name else None
+    if path is None or not path.is_file():
+        return None
+    mime = "image/png" if path.read_bytes()[:4] == b"\x89PNG" else "image/jpeg"  # older ones are JPEG
+    response = send_file(path, mimetype=mime, max_age=0, conditional=True)
+    response.headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
+    response.headers["Cache-Control"] = "private, no-cache"
+    return response
