@@ -74,7 +74,7 @@ def test_pages_api_and_claude(app, signed_in, tmp_path):
         task = tasks_core.create(TaskCreate(title="Tree", project_id=project.id))
         task_id, project_id = str(task.id), str(project.id)
     form = {"target_type": "task", "target_id": task_id, "kind": "branch", "ref": "main"}
-    form["next"] = f"/tasks/{task_id}"
+    form["next"] = f"/tasks/{task_id}?tab=linked"
     page = signed_in.post("/work-links", data=form, follow_redirects=True).data.decode()
     assert "Linked work" in page and "on main" in page
     wrong = signed_in.post("/work-links", data={**form, "ref": "a b"}, follow_redirects=True).data

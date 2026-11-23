@@ -34,7 +34,7 @@ from app.features.worklinks import worklinks_core
 tasks = Blueprint("tasks", __name__)
 
 # The task page in tabs (D-047): what to do, its place in the plan, files, discussion, Claude.
-TASK_TABS = ("work", "plan", "files", "discussion", "claude")
+TASK_TABS = ("work", "plan", "linked", "files", "discussion", "claude")
 
 DEPENDENCY_DIRECTIONS = {
     # form choice -> (kind, this task is the source?)
@@ -274,7 +274,7 @@ def detail(task_id: uuid.UUID):
         timing=current is not None and current[1].id == task.id,
         directions=DEPENDENCY_DIRECTIONS,
         resources=resources_core.for_target("task", task.id),
-        work=worklinks_core.for_target("task", task.id) if tab == "work" else None,
+        work=worklinks_core.for_target("task", task.id, deep=tab == "linked"),
         max_mb=get_setting("resources.max_upload_mb"),
         comments=comments_core.for_target("task", task.id),
         inherited=[

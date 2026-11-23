@@ -26,7 +26,7 @@
   </ul>{% endif %}
   <details class="cn-fold" {% if not rows %}open{% endif %}><summary><i class="fa-solid fa-link" aria-hidden="true"></i> Link work</summary>
     <form class="cn-fold-body cn-work-form" method="post" action="{{ url_for('worklinks.add') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}#work">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
       <input type="hidden" name="target_type" value="{{ target_type }}"><input type="hidden" name="target_id" value="{{ target_id }}">
       <div><label class="form-label" for="work-kind">What</label><select class="form-select" id="work-kind" name="kind">
         <option value="branch">Branch</option><option value="commit">Commit</option><option value="pull">Pull request</option><option value="claude">Claude conversation</option><option value="folder">Folder</option><option value="instance">Instance</option></select></div>

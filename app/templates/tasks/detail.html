@@ -132,6 +132,7 @@
   {% for key, icon, label, count in [
       ("work", "fa-pen-ruler", "Work", (subtasks | length) or None),
       ("plan", "fa-diagram-project", "Plan", n_deps + (conditions | length) or None),
+      ("linked", "fa-link", "Linked work", (work.own + work.known + work.inherited) | length or None),
       ("files", "fa-paperclip", "Files", (resources | length) or None),
       ("discussion", "fa-comments", "Discussion", (comments | length) or None),
       ("claude", "fa-claude", "Claude", None)] %}
@@ -192,6 +193,7 @@
       {% endif %}
       {{ quick_add("Add a subtask…", project=task.project, parent=task) }}
     </section>
+    {% elif tab == "linked" %}
     {{ work_panel(work, "task", task.id) }}
     {% elif tab == "plan" %}
     <section class="cn-panel" id="dependencies" aria-labelledby="deps-title">
