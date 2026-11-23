@@ -37,7 +37,7 @@ Name=Cairn
 GenericName=Planning workspace
 Comment=Open Cairn: projects, tasks, Claude
 Exec="{python}" "{root}/manage.py" open
-Icon=cairn
+Icon={icon}
 Terminal=false
 Categories=Development;ProjectManagement;
 StartupNotify=false
@@ -57,16 +57,22 @@ OLD_AUTOSTART = "autostart/cairn.desktop"
 
 
 def _files(root: Path) -> dict[Path, str]:
-    values = {"root": root, "python": sys.executable, "path": os.environ.get("PATH", os.defpath)}
+    icon = _data() / "icons" / "hicolor" / "scalable" / "apps" / "cairn.svg"
+    values = {
+        "icon": icon,
+        "root": root,
+        "python": sys.executable,
+        "path": os.environ.get("PATH", os.defpath),
+    }
     files = {
         _config() / "systemd" / "user" / f"{name}.service": UNIT.format(command=command, **values)
         for name, command in UNITS.items()
     }
     files[_data() / "applications" / "cairn.desktop"] = DESKTOP.format(**values)
     # The app's own icon (a light mark on a dark tile: the plain mark is drawn in the text colour)
-    files[_data() / "icons" / "hicolor" / "scalable" / "apps" / "cairn.svg"] = (
-        Path(__file__).resolve().parents[2] / "docs" / "brand" / "cairn-app.svg"
-    ).read_text(encoding="utf-8")
+    files[icon] = (Path(__file__).resolve().parents[2] / "docs" / "brand" / "cairn-app.svg").read_text(
+        encoding="utf-8"
+    )
     return files
 
 
