@@ -16,7 +16,7 @@
 {% for g in found.groups %}{% set project = g.project %}
 <section class="cn-panel cn-instances-panel" aria-label="{{ project.name }}">
   <header class="cn-home-head"><h2><a href="{{ url_for('projects.detail', slug=project.slug) }}">{{ project_mark(project) }} {{ project.name }}</a></h2>
-    <a href="{{ url_for('projects.detail', slug=project.slug, tab='instances') }}">All its instances</a></header>
+    <a href="{{ url_for('folder.copies', slug=project.slug) }}">Copies and pull requests</a></header>
   <ul class="cn-instances">
     {% for item in g.ours %}{% set inst, live = item.instance, item.running %}
     <li class="cn-instance is-running"><span class="cn-instance-dot" aria-hidden="true"></span>

@@ -51,7 +51,7 @@ from app.features.claude import (
 )
 from app.features.claude.pty_host import Pty
 from app.features.connections import connections_core
-from app.features.projects import projects_core
+from app.features.projects import place_core, projects_core
 from app.features.tasks import brief_core
 
 CLOSE_WAIT = 10.0  # seconds a Claude Code outside Cairn has to close before a take-over gives up
@@ -479,7 +479,7 @@ def view_outside(data: OutsideStop) -> ClaudeSession:
             (),
         ),
         env=_environment(),
-        project=projects_core.by_folder(found["cwd"]),
+        project=place_core.project_for(found["cwd"]),
         cli_session_id=uuid.UUID(conversation),
         meta={"conversation": conversation, "pid": data.pid},
     )
@@ -569,7 +569,7 @@ def resume(data: ResumeStart) -> ClaudeSession:
         )
     if elsewhere:
         _close_outside(elsewhere, str(cli_session_id), "take_over")
-    project, task = _last_link(cli_session_id) or (projects_core.by_folder(str(folder)), None)
+    project, task = _last_link(cli_session_id) or (place_core.project_for(str(folder)), None)
     usage = transcript_core.session_usage(str(folder), str(cli_session_id))
     title = usage.title or (project.name if project else folder.name)
     return _launch(

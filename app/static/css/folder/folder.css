@@ -1,0 +1,13 @@
+/* Copies of a project, and what Cairn can take from its folder (D-081) */
+.cn-copies, .cn-bring-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cn-space-2); }
+.cn-copy { padding: var(--cn-space-3) var(--cn-space-4); background: var(--cn-surface); border-radius: var(--cn-radius-lg); box-shadow: var(--cn-slab-shadow); border-left: 4px solid transparent; }
+.cn-copy.is-running { border-left-color: var(--cn-success); }
+.cn-copy p { margin: 0 0 var(--cn-space-1); overflow-wrap: anywhere; }
+.cn-copy-name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cn-space-2); }
+.cn-copy-folder { font-family: var(--cn-font-mono); font-size: var(--cn-text-xs); }
+.cn-pull-open { background: var(--cn-success-soft); color: var(--cn-success); }
+.cn-pull-merged { background: var(--cn-accent-soft); color: var(--cn-text); }
+.cn-pull-closed { background: var(--cn-danger-soft); color: var(--cn-danger); }
+.cn-bring { display: grid; gap: var(--cn-space-4); justify-items: start; }
+.cn-bring > section { width: 100%; }
+.cn-bring-list li { overflow-wrap: anywhere; }

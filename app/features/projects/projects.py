@@ -102,6 +102,8 @@ def create():
         return _form(request.form, exc.errors, status=422)
     flash_undo(f"Created the project “{project.name}”.", batch_id)
     _picture(project)
+    if project.local_path or project.github_repo:
+        return redirect(url_for("folder.bring", slug=project.slug))
     return redirect(url_for("projects.detail", slug=project.slug))
 
 

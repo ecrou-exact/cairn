@@ -1,0 +1,30 @@
+{% extends "layout/shell.html" %}
+{% block title %}Copies of {{ project.name }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">{% endblock %}
+{% macro ports(list) %}{% for port in list %}<a class="cn-port" href="http://localhost:{{ port }}/" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> localhost:{{ port }}</a>{% endfor %}{% endmacro %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('projects.detail', slug=project.slug, tab='instances') }}">{{ project.name }}</a></div>
+  <h1>Copies on this machine</h1>
+  <p>One project, {{ found.copies | length }} folder{{ "s" if found.copies | length != 1 }}: its own, its worktrees and its other clones, with their branch and pull request.</p>
+</header>
+{% if not found.github %}<p class="alert alert-warning">Some pull requests could not be read from GitHub: sign in with <code>gh auth login</code>, or try again in a minute.</p>{% endif %}
+{% if found.copies %}<ul class="cn-copies">
+  {% for c in found.copies %}
+  <li class="cn-copy {{ 'is-running' if c.ours or c.outside }}">
+    <div class="cn-copy-body">
+      <p class="cn-copy-name"><strong>{{ c.name }}</strong>{% if c.main %} <span class="cn-badge">project folder</span>{% elif c.worktree %} <span class="cn-badge">worktree</span>{% endif %}
+        {% if c.branch %}<span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ c.branch }}</span>{% endif %}
+        {% if c.changes %}<span class="cn-badge cn-badge-warning">{{ c.changes }} not committed</span>{% endif %}
+        {% if c.ahead %}<span class="cn-badge">{{ c.ahead }} to push</span>{% endif %}{% if c.behind %} <span class="cn-badge">{{ c.behind }} behind</span>{% endif %}</p>
+      {% if c.pull %}<p><i class="fa-solid fa-code-pull-request" aria-hidden="true"></i> <a href="{{ c.pull.url }}" target="_blank" rel="noopener noreferrer">{{ c.pull.repo }}#{{ c.pull.number }} {{ c.pull.title }}</a> <span class="cn-badge cn-pull-{{ c.pull.state }}">{{ c.pull.state }}</span> <span class="cn-muted">into {{ c.pull.base }}</span></p>{% endif %}
+      {% if c.subject %}<p class="cn-muted">{{ c.subject | truncate(140) }}</p>{% endif %}
+      <p class="cn-muted cn-copy-folder">{{ c.folder }}</p>
+      {% for i in c.ours %}<p class="cn-instance-ports"><a href="{{ url_for('claude.session', session_id=i.session) }}">{{ i.name }}</a> {{ ports(i.ports) }}</p>{% endfor %}
+      {% for i in c.outside %}<p class="cn-instance-ports"><span class="cn-muted">{{ i.label }}, {{ i.where }}</span> {{ ports(i.ports) }}</p>{% endfor %}
+      {% if c.claudes %}<p><a href="{{ url_for('claude.index') }}"><i class="fa-solid fa-claude" aria-hidden="true"></i> {{ c.claudes }} Claude working here</a></p>{% endif %}
+    </div>
+  </li>{% endfor %}
+</ul>{% else %}<p class="cn-muted">No git folder of this project was found: <a href="{{ url_for('projects.edit', slug=project.slug) }}">set its local folder</a>.</p>{% endif %}
+{% endblock %}

@@ -36,6 +36,7 @@ def register_api(app: Flask) -> None:
     from app.api.changesets_api import changesets_api
     from app.api.claude_api import claude_api
     from app.api.comments_api import comments_api
+    from app.api.folder_api import folder_api
     from app.api.graph_api import graph_api
     from app.api.instances_api import instances_api
     from app.api.jobs_api import jobs_api
@@ -56,6 +57,7 @@ def register_api(app: Flask) -> None:
         changesets_api,
         about_api,
         recap_api,
+        folder_api,
     ):
         app.register_blueprint(blueprint)
 

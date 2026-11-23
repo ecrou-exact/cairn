@@ -14,7 +14,7 @@ from app.core.db_class.planning import Project, Task
 from app.core.extensions import db
 from app.core.utils.settings import get_setting
 from app.features.claude import limits_core, main_core, terminal_core, transcript_core
-from app.features.projects import projects_core
+from app.features.projects import place_core
 
 
 def _project_chip(project: Project) -> dict[str, str]:
@@ -79,7 +79,7 @@ def outside() -> list[dict[str, Any]]:
     """The Claude Codes running outside Cairn, with the project of their folder."""
     sessions = transcript_core.outside_sessions(terminal_core.running_pids())
     for session in sessions:
-        project = projects_core.by_folder(session["cwd"])
+        project = place_core.project_for(session["cwd"])
         session["project"] = _project_chip(project) if project else None
     return sessions
 

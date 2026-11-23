@@ -33,9 +33,16 @@ from app.core.schema.planning import DependencyCreate, ProjectCreate, ProjectUpd
 from app.core.utils.actor import acting_as
 from app.core.utils.history import batch
 from app.features.changesets import changesets_core
-from app.features.claude import handover_core, main_core, mcp_plan_tools, mcp_time_tools
+from app.features.claude import (
+    caller_core,
+    handover_core,
+    main_core,
+    mcp_place_tools,
+    mcp_plan_tools,
+    mcp_time_tools,
+)
 from app.features.comments import comments_core
-from app.features.projects import projects_core
+from app.features.projects import place_core, projects_core
 from app.features.resources import resources_core
 from app.features.tasks import brief_core, dependencies_core, tasks_core, workflow
 
@@ -50,6 +57,7 @@ READ_TOOLS = (
     "current_page",
     *mcp_plan_tools.READ_TOOLS,
     *mcp_time_tools.READ_TOOLS,
+    *mcp_place_tools.READ_TOOLS,
     "changeset_state",
 )
 # Only records a proposal the owner reviews in Cairn: nothing to ask in the terminal (D-071).
@@ -66,6 +74,7 @@ WRITE_TOOLS = (
     "comment_on_task",
     *mcp_plan_tools.WRITE_TOOLS,
     *mcp_time_tools.WRITE_TOOLS,
+    *mcp_place_tools.WRITE_TOOLS,
 )
 
 INSTRUCTIONS = (
@@ -74,7 +83,8 @@ INSTRUCTIONS = (
     "move the task you work on to its new status, create the follow-up tasks you discover, "
     "link what blocks what, leave a comment with what you did, keep useful links and notes as "
     "resources. Not sure of a field or a value: describe_schema. Ids are UUIDs; a project can "
-    "also be named by its name or slug."
+    "also be named by its name or slug. this_project says the project of this folder; start_project "
+    "makes it when the owner asks to start a project on Cairn."
 )
 
 
@@ -128,10 +138,13 @@ def _task(ref: str) -> Task:
         raise CairnToolError(f"No task with id “{ref}”. Use list_tasks to find it.") from exc
 
 
-def build(app: Flask, session_id: str | None) -> MCPServer:
-    """The MCP server for one Claude session, working inside `app`."""
+def build(
+    app: Flask, session_id: str | None, *, actor: str | None = None, folder: str | None = None
+) -> MCPServer:
+    """The MCP server for one Claude session, working inside `app`. `folder`: where a Claude Code that
+    Cairn did not open works, which says its project."""
     server = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS)
-    actor = f"claude:{session_id}" if session_id else "claude:outside"
+    actor = actor or (f"claude:{session_id}" if session_id else "claude:outside")
 
     def run(work):
         with app.app_context(), acting_as(actor):
@@ -148,6 +161,7 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
                 handover_core.HandoverError,
                 mcp_plan_tools.PlanToolError,
                 *mcp_time_tools.ERRORS,
+                mcp_place_tools.PlaceError,
                 changesets_core.ChangesetError,
             ) as exc:
                 raise ToolError(str(exc)) from exc  # a deliberate refusal: Claude gets the reason
@@ -160,7 +174,9 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
 
     def session_project() -> Project | None:
         row = session_row()
-        return db.session.get(Project, row.project_id) if row and row.project_id else None
+        if row is None:
+            return place_core.project_for(folder) if folder else None
+        return db.session.get(Project, row.project_id) if row.project_id else None
 
     @server.tool()
     def cairn_overview() -> dict[str, Any]:
@@ -516,6 +532,7 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
 
     mcp_plan_tools.register(server, run, _project, _task, session_project)
     mcp_time_tools.register(server, run)
+    mcp_place_tools.register(server, run, folder or os.getcwd(), _project, session_project)
     return server
 
 
@@ -524,4 +541,6 @@ def serve() -> None:
     from app import create_app
 
     app = create_app()
-    build(app, os.environ.get("CAIRN_MCP_SESSION")).run("stdio")
+    with app.app_context():
+        caller = caller_core.identify(os.environ.get("CAIRN_MCP_SESSION"))
+    build(app, caller.session_id, actor=caller.actor, folder=caller.folder).run("stdio")

@@ -8,8 +8,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import shutil
-import subprocess  # nosec B404 (fixed argument lists only, never a shell)
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, time, timedelta
@@ -22,9 +20,9 @@ from app.core.db_class.base import utcnow
 from app.core.db_class.planning import Project, Task, TimeEntry
 from app.core.extensions import db
 from app.core.utils.settings import get_setting
-from app.features.claude import terminal_core, transcript_core
+from app.features.claude import transcript_core
+from app.features.folder import programs
 
-TIMEOUT = 40
 DEPTH = 3
 SLOT = 30  # minutes: how finely activity is counted
 SKIPPED = {"node_modules", "venv", "vendor", "__pycache__"}
@@ -36,36 +34,6 @@ BOTS = ("dependabot/", "renovate/", "pre-commit-ci")
 def bounds(day: date) -> tuple[datetime, datetime]:
     start = datetime.combine(day, time.min).astimezone()
     return start, datetime.combine(day + timedelta(days=1), time.min).astimezone()
-
-
-def _run(argv: list[str]) -> str:
-    """The program's output, "" when it fails: a folder that cannot be read says nothing."""
-    env = {
-        **terminal_core._environment(),
-        "GIT_TERMINAL_PROMPT": "0",
-        "GIT_OPTIONAL_LOCKS": "0",
-        "LC_ALL": "C",
-    }
-    env["GH_PROMPT_DISABLED"] = "1"
-    try:
-        done = subprocess.run(  # noqa: S603  # nosec B603
-            argv,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=TIMEOUT,
-            check=False,
-            env=env,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return ""
-    return done.stdout.strip() if done.returncode == 0 else ""
-
-
-def _git(folder: Path, *args: str) -> str:
-    git = shutil.which("git")
-    return _run([git, "-C", str(folder), *args]) if git else ""
 
 
 def repositories() -> list[Path]:
@@ -107,7 +75,7 @@ def _branch(ref: str) -> str:
 def _branch_of(folder: Path, sha: str, written: int) -> str:
     """The branch a commit was made on, as far as git can tell: of those that hold it, the one whose
     last commit is the nearest after it (the others took it later), on this machine first."""
-    raw = _git(
+    raw = programs.git(
         folder, "for-each-ref", "--contains", sha,
         "--format=%(committerdate:unix) %(refname)", "refs/heads", "refs/remotes",
     )  # fmt: skip
@@ -121,16 +89,20 @@ def _branch_of(folder: Path, sha: str, written: int) -> str:
 
 
 def _read_repository(folder: Path, start: datetime, end: datetime, login: str) -> dict[str, Any]:
-    remote = REMOTE.search(_git(folder, "remote", "get-url", "origin"))
+    remote = REMOTE.search(programs.git(folder, "remote", "get-url", "origin"))
     name = f"{remote[1]}/{remote[2]}" if remote else folder.name
     me = {
         value.lower()
-        for value in (_git(folder, "config", "user.name"), _git(folder, "config", "user.email"), login)
+        for value in (
+            programs.git(folder, "config", "user.name"),
+            programs.git(folder, "config", "user.email"),
+            login,
+        )
         if value
     }
     # Rebased or amended the same day: git keeps the author's date, so it is looked for wider.
     since = (start - timedelta(days=1)).isoformat()
-    raw = _git(
+    raw = programs.git(
         folder,
         "log",
         "--exclude=refs/stash",
@@ -161,22 +133,9 @@ def _read_repository(folder: Path, start: datetime, end: datetime, login: str) -
 # -- GitHub ------------------------------------------------------------------------------------
 
 
-def _gh(path: str, *fields: str) -> Any:
-    gh = shutil.which("gh")
-    if gh is None:
-        return None
-    args = [gh, "api", "--method", "GET", path]
-    for field in fields:
-        args += ["-f", field]
-    try:
-        return json.loads(_run(args) or "null")
-    except ValueError:
-        return None
-
-
 def _github(start: datetime, end: datetime) -> dict[str, Any]:
     """Pull requests, issues and commits, with GitHub's own command line signed in by the owner."""
-    user = _gh("user")
+    user = programs.gh("user")
     if not isinstance(user, dict) or not user.get("login"):
         return {"login": "", "read": False, "items": [], "commits": []}
     login = user["login"]
@@ -191,7 +150,7 @@ def _github(start: datetime, end: datetime) -> dict[str, Any]:
         answers = dict(
             zip(
                 searches,
-                pool.map(lambda s: _gh(s[0], f"q={s[1]}", "per_page=100"), searches.values()),
+                pool.map(lambda s: programs.gh(s[0], f"q={s[1]}", "per_page=100"), searches.values()),
                 strict=True,
             )
         )

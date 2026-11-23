@@ -77,6 +77,24 @@ def cmd_mcp(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_claude_connect(args: argparse.Namespace) -> int:
+    """Cairn's tools in every Claude Code of this machine (D-080)."""
+    from app.features.claude import connect_core
+
+    try:
+        if args.action == "show":
+            print(connect_core.show())
+            return 0
+        if args.action != "status":
+            (connect_core.on if args.action == "on" else connect_core.off)()
+        for name, there in connect_core.status().items():
+            print(f"{name}: {'in place' if there else 'not there'}")
+    except connect_core.ConnectError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    return 0
+
+
 def cmd_start(_: argparse.Namespace) -> int:
     host = os.environ.get("CAIRN_HOST", "127.0.0.1")
     port = os.environ.get("CAIRN_PORT", "7010")
@@ -225,6 +243,9 @@ def main() -> int:
     sub.add_parser("mcp", help="Cairn's MCP server over stdio (started by Claude Code)").set_defaults(
         func=cmd_mcp
     )
+    connect = sub.add_parser("claude-connect", help="Cairn's tools in every Claude Code of this machine")
+    connect.add_argument("action", choices=("show", "on", "off", "status"))
+    connect.set_defaults(func=cmd_claude_connect)
     roadmap = sub.add_parser("roadmap", help="import a plan (default: Cairn's own roadmap)")
     roadmap.add_argument("file", nargs="?", default=str(ROOT / "docs" / "roadmap.json"))
     roadmap.set_defaults(func=cmd_roadmap)

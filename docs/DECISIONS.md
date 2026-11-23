@@ -458,3 +458,13 @@
 
 ## D-079 · 2026-11-23 · accepted — Every instance of the machine, in the menu
 - Owner request: a menu entry with all that runs, by project, whoever started it; each project's name leads to it. What listens in a git folder of no project is listed apart, with a button that makes it a project (nothing else is done on it there). Looked at again every 8 seconds, only while the page is in front. What listens outside any git folder (the system's services) is not shown.
+
+## D-080 · 2026-11-23 · accepted — Cairn from any Claude Code
+- Owner request: in their own terminal, "start a project on Cairn". `this_project` (read) finds the project of the folder: the nearest folder that holds it, a worktree of it, or the only project it is a clone of (`place_core`, also used for the sessions seen outside Cairn). `start_project` makes it, once, only while Cairn runs; nothing is written in the folder; never for the home folder.
+- The same MCP server is set up for every Claude Code of the machine. It finds who started it from the process above: a session Cairn opened keeps its identity, another acts as `claude:<conversation>` and its project is its folder's.
+- `manage.py claude-connect show | on | off | status` puts in, or takes out, the MCP server (by `claude mcp`, user scope), the rules that ask before writing in Cairn in every permission mode, and the `cairn` skill. Shown before; a copy of `settings.json` is kept; it stops before any change if something there is not Cairn's.
+- An outside session does not get the rules that keep Cairn's own files from sessions Cairn opens (D-064): it is the owner's own terminal.
+
+## D-081 · 2026-11-23 · accepted — One project whatever its copies; what it already has, brought in
+- Owner request: thirteen clones of a repository, each on its branch, are one project. **Copies** (`/projects/<slug>/copies`): the project's folder, its worktrees and every clone sharing one of its remotes, with branch, what is not committed or pushed, the pull request of that branch (matched on the head repository too, so another fork's branch of the same name does not count), instances and Claudes in it. Starting a project from one of the copies says the others.
+- **Bring in** (`/projects/<slug>/bring`, shown after a project is made): to-do lists (open boxes, or list items of a TODO / ROADMAP file), GitHub's open issues and boards (`read:project` needed on the owner's `gh`), skills of the folder, commands its files give. What Cairn has already is left out. Tasks become a proposal (D-071); a skill is read in full and taken by the owner only, never by Claude (D-069); a command is added, not started. A link leading out of the folder is not read.

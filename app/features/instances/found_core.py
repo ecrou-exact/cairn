@@ -30,9 +30,8 @@ from app.core.utils.logger import log_action
 from app.features.claude import terminal_core, transcript_core
 from app.features.claude.live_core import program
 from app.features.instances import follow, instances_core
+from app.features.projects import place_core
 
-REMOTE = re.compile(r"^\s*url\s*=\s*(\S+)", re.M)
-REPO = re.compile(r"[/:]([^/:]+/[^/]+?)(?:\.git)?/?$")
 PUBLISHED = re.compile(r":(\d+)->")
 LOG_SUFFIXES = (".log", ".out", ".err")
 LOG_PLACES = ("*.log", "log/*.log", "logs/*.log", "*/logs/*.log")
@@ -42,67 +41,28 @@ TOOLING = {"code", "code.exe", "codium", "cursor", "vscode", ".vscode", ".cursor
 KEPT = 2.0  # seconds a machine-wide look is reused
 
 
-# -- which repository a folder is in ----------------------------------------------------------
-
-
-def _git(folder: Path) -> tuple[Path, Path, Path] | None:
-    """(top folder, its git folder, the repository's common git folder) of a folder, or None."""
-    for top in (folder, *folder.parents):
-        mark = top / ".git"
-        try:
-            if mark.is_dir():
-                return top, mark, mark.resolve()
-            if mark.is_file():
-                own = Path(mark.read_text(encoding="utf-8").partition("gitdir:")[2].strip())
-                own = own if own.is_absolute() else top / own
-                common = own / "commondir"
-                if common.is_file():
-                    return top, own, (own / common.read_text(encoding="utf-8").strip()).resolve()
-                return top, own, own.resolve()
-        except OSError:
-            return None
-    return None
-
-
-def _repositories(common: Path) -> set[str]:
-    """`owner/name` of every remote, in lower case."""
-    try:
-        urls = REMOTE.findall((common / "config").read_text(encoding="utf-8", errors="replace"))
-    except OSError:
-        return set()
-    return {match[1].lower() for match in map(REPO.search, urls) if match}
-
-
-def _branch(own: Path) -> str:
-    try:
-        head = (own / "HEAD").read_text(encoding="utf-8").strip()
-    except OSError:
-        return ""
-    return head.removeprefix("ref: refs/heads/") if head.startswith("ref:") else head[:8]
-
-
-class _Copies:
+class Copies:
     """Whether a folder is the project's, or another copy of its repository."""
 
     def __init__(self, project: Project) -> None:
         self.root = Path(project.local_path).expanduser().resolve() if project.local_path else None
-        git = _git(self.root) if self.root else None
+        git = place_core.git_of(self.root) if self.root else None
         self.common = git[2] if git else None
-        self.repos = _repositories(self.common) if self.common else set()
+        self.repos = place_core.repositories(self.common) if self.common else set()
         if project.github_repo:
             self.repos.add(project.github_repo.lower())
 
     def place(self, folder: str) -> dict[str, str] | None:
         path = Path(folder)
-        git = _git(path)
+        git = place_core.git_of(path)
         inside = self.root is not None and path.is_relative_to(self.root)
         same = git is not None and (
-            git[2] == self.common or bool(self.repos and self.repos & _repositories(git[2]))
+            git[2] == self.common or bool(self.repos and self.repos & place_core.repositories(git[2]))
         )
         if not inside and not same:
             return None
         top = git[0] if git else self.root
-        return {"copy": top.name, "folder": str(top), "branch": _branch(git[1]) if git else ""}
+        return {"copy": top.name, "folder": str(top), "branch": place_core.branch_of(git[1]) if git else ""}
 
 
 # -- what runs on the machine -----------------------------------------------------------------
@@ -206,7 +166,7 @@ def _log_files(process: psutil.Process, folder: Path) -> list[Path]:
 
 def for_project(project: Project) -> list[dict[str, Any]]:
     """What runs for a project outside Cairn's own terminals, by copy then port."""
-    copies = _Copies(project)
+    copies = Copies(project)
     if copies.root is None and not copies.repos:
         return []
     return _scan(copies.place)
@@ -214,10 +174,10 @@ def for_project(project: Project) -> list[dict[str, Any]]:
 
 def _any_copy(folder: str) -> dict[str, Any] | None:
     """A git folder, whatever the project."""
-    git = _git(Path(folder))
+    git = place_core.git_of(Path(folder))
     if git is None:
         return None
-    return {"copy": git[0].name, "folder": str(git[0]), "branch": _branch(git[1]), "git": True}
+    return {"copy": git[0].name, "folder": str(git[0]), "branch": place_core.branch_of(git[1]), "git": True}
 
 
 def _is_tooling(process: psutil.Process) -> bool:

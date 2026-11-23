@@ -94,6 +94,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.features.comments.comments import comments
     from app.features.connections.connections import connections
     from app.features.events.events import events
+    from app.features.folder.folder import folder
     from app.features.graph.graph import graph
     from app.features.history.history import history
     from app.features.home.home import health, home
@@ -118,6 +119,7 @@ def _register_blueprints(app: Flask) -> None:
         graph,
         tasks,
         recap,
+        folder,
         resources,
         comments,
         changesets,
