@@ -1,0 +1,27 @@
+{# Star, pin and hide a project in place (D-089): forms that work alone, done by the API when it can. #}
+{% macro marks(project, hidden_view=False) -%}
+<span class="cn-marks" data-project-marks="{{ project.id }}" data-name="{{ project.name }}" data-url="{{ url_for('projects.detail', slug=project.slug) }}" data-icon="{{ project.icon or 'fa-folder' }}">
+  {% for mark, field, on, off, on_title, off_title in [
+      ("star", "starred", "fa-solid fa-star", "fa-regular fa-star", "Starred: first in the list", "Star: first in the list"),
+      ("pin", "pinned", "fa-solid fa-thumbtack", "fa-solid fa-thumbtack fa-rotate-90", "Pinned in the menu", "Pin in the menu"),
+      ("hide", "hidden", "fa-regular fa-eye", "fa-regular fa-eye-slash", "Show in the list again", "Hide from the list")] %}
+  <form method="post" action="{{ url_for('projects.mark', slug=project.slug, mark=mark) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+    <button class="cn-icon-button cn-mark cn-mark-{{ mark }} {{ 'is-on' if project[field] }}" type="submit" data-field="{{ field }}" data-on="{{ on }}" data-off="{{ off }}" data-on-title="{{ on_title }}" data-off-title="{{ off_title }}" aria-pressed="{{ 'true' if project[field] else 'false' }}" title="{{ on_title if project[field] else off_title }}"><i class="{{ on if project[field] else off }}" aria-hidden="true"></i><span class="visually-hidden">{{ on_title if project[field] else off_title }}</span></button>
+  </form>{% endfor %}
+</span>
+{%- endmacro %}
+
+{% macro select_box(project) -%}
+<input class="form-check-input cn-project-pick" type="checkbox" name="project_ids" value="{{ project.id }}" form="bulk-form" aria-label="Choose {{ project.name }}">
+{%- endmacro %}
+
+{% macro bulk_bar(hidden_view) -%}
+<form id="bulk-form" class="cn-bulk" method="post" action="{{ url_for('projects.bulk') }}" aria-label="Change the chosen projects" data-project-bulk>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+  <span class="cn-bulk-count" data-selected-count aria-live="polite">Choose projects to change them together</span>
+  <div class="cn-bulk-actions">
+    {% for action, icon, label in [("star", "fa-solid fa-star", "Star"), ("unstar", "fa-regular fa-star", "Unstar"), ("pin", "fa-solid fa-thumbtack", "Pin"), ("unpin", "fa-solid fa-thumbtack fa-rotate-90", "Unpin"), ("show" if hidden_view else "hide", "fa-regular fa-eye" if hidden_view else "fa-regular fa-eye-slash", "Show" if hidden_view else "Hide")] %}
+    <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="{{ action }}"><i class="{{ icon }}" aria-hidden="true"></i><span class="ms-1">{{ label }}</span></button>{% endfor %}
+  </div>
+</form>
+{%- endmacro %}

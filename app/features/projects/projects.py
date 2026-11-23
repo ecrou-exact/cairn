@@ -205,6 +205,32 @@ def import_apply(token: str):
     return redirect(url_for("projects.detail", slug=project.slug))
 
 
+BULK = {
+    "star": ("starred", True), "unstar": ("starred", False),
+    "pin": ("pinned", True), "unpin": ("pinned", False),
+    "hide": ("hidden", True), "show": ("hidden", False),
+}  # fmt: skip
+
+
+@projects.post("/projects/bulk")
+def bulk():
+    """Star, pin or hide the chosen projects, and back (D-089). The page does it in place with the API."""
+    field, value = BULK.get(request.form.get("action", ""), (None, None))
+    chosen = request.form.getlist("project_ids")[:500]
+    if field is None or not chosen:
+        flash("Choose projects and what to do.", "warning")
+        return redirect(back_to(url_for("projects.index")))
+    try:
+        ids = [uuid.UUID(raw) for raw in chosen]
+    except ValueError:
+        abort(400)
+    with batch() as batch_id:
+        for project_id in ids:
+            projects_core.update(project_id, ProjectUpdate(**{field: value}))
+    flash_undo(f"{len(ids)} project{'s' if len(ids) != 1 else ''} changed.", batch_id)
+    return redirect(back_to(url_for("projects.index")))
+
+
 @projects.post("/projects/<slug>/<any(star, pin, hide):mark>")
 def mark(slug: str, mark: str):
     """Star (first in the list), pin (in the menu) or hide (out of the list), and back (D-089)."""

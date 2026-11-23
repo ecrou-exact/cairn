@@ -23,7 +23,7 @@ from app.core.schema.planning import ProjectCreate, ProjectUpdate
 from app.core.utils.actor import current_actor
 from app.core.utils.events import publish
 from app.core.utils.history import batch, register_undo
-from app.core.utils.listing import FilterSpec, ListPage, ListSpec, run_list
+from app.core.utils.listing import FilterSpec, ListPage, ListSpec, escape_like, run_list
 from app.core.utils.logger import log_action
 from app.features.comments import comments_core
 from app.features.resources import resources_core, storage_core
@@ -311,7 +311,16 @@ register_undo("project.restore", _undo_restore)
 # -- reading ---------------------------------------------------------------------------------
 
 
+def owners() -> list[str]:
+    """The GitHub owners of the projects (ecrou-exact, rulezet…), for the filter."""
+    repos = db.session.scalars(
+        select(Project.github_repo).where(Project.deleted_at.is_(None), Project.github_repo.is_not(None))
+    )
+    return sorted({repo.split("/")[0] for repo in repos}, key=str.lower)
+
+
 def list_spec() -> ListSpec:
+    found = owners()
     return ListSpec(
         sortable={
             # by owner then name on GitHub (ecrou-exact/…, rulezet/…); those with no repository last
@@ -328,6 +337,27 @@ def list_spec() -> ListSpec:
         filters=(
             FilterSpec(
                 "status", "Status", Project.status, tuple((s, s.capitalize()) for s in PROJECT_STATUSES)
+            ),
+            FilterSpec(
+                "mark",
+                "Marked",
+                None,
+                (("starred", "Starred"), ("pinned", "Pinned"), ("none", "Neither")),
+                conditions={
+                    "starred": Project.starred.is_(True),
+                    "pinned": Project.pinned.is_(True),
+                    "none": Project.starred.is_(False) & Project.pinned.is_(False),
+                },
+            ),
+            FilterSpec(
+                "owner",
+                "Owner",
+                None,
+                (*((o, o) for o in found), ("none", "No repository")),
+                conditions={
+                    **{o: Project.github_repo.ilike(f"{escape_like(o)}/%", escape="\\") for o in found},
+                    "none": Project.github_repo.is_(None),
+                },
             ),
         ),
         views=("cards", "table"),

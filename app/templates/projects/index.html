@@ -1,5 +1,6 @@
 {% extends "layout/shell.html" %}
 {% from "macros/project.html" import project_mark %}
+{% from "macros/project_marks.html" import marks, select_box, bulk_bar %}
 {% from "macros/list.html" import toolbar, sort_header, pagination, empty_state %}
 {% from "macros/graph.html" import graph_stage, graph_assets %}
 {% block title %}Projects{% endblock %}
@@ -9,7 +10,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">
 {{ graph_assets() }}
 {% endblock %}
-{% block scripts %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/projects/list.js') }}"></script>
 {% if graph_view %}<script type="module" src="{{ url_for('static', filename='js/graph/graph.js') }}"></script>{% endif %}
 {% endblock %}
 {% block content %}
@@ -38,6 +39,7 @@
 </section>
 {% else %}
 {{ toolbar(page, "Search projects") }}
+{% if page.items %}{{ bulk_bar(hidden_view) }}{% endif %}
 
 {% if page.items %}
   {% if page.view == "cards" %}
@@ -49,10 +51,9 @@
     {% if loop.changed(owner) %}<li class="cn-project-group"><h2>{% if owner == "Starred" %}<i class="fa-solid fa-star" aria-hidden="true"></i> {% elif project.github_repo %}<i class="fa-brands fa-github" aria-hidden="true"></i> {% endif %}{{ owner }}</h2></li>{% endif %}{% endif %}
     <li class="cn-card cn-project-card cn-color-{{ project.color }}">
       <div class="cn-card-head">
-        <a class="cn-project-name" href="{{ url_for('projects.detail', slug=project.slug) }}"><span class="cn-project-tile" aria-hidden="true">{{ project_mark(project) }}</span>{{ project.name }}</a>
+        {{ select_box(project) }}<a class="cn-project-name" href="{{ url_for('projects.detail', slug=project.slug) }}"><span class="cn-project-tile" aria-hidden="true">{{ project_mark(project) }}</span>{{ project.name }}</a>
         <span class="cn-card-head-end">
-        {% if hidden_view %}<form method="post" action="{{ url_for('projects.mark', slug=project.slug, mark='hide') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="cn-icon-button" type="submit" title="Show in the list again"><i class="fa-regular fa-eye" aria-hidden="true"></i><span class="visually-hidden">Show again</span></button></form>{% endif %}
-        <form method="post" action="{{ url_for('projects.mark', slug=project.slug, mark='star') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="cn-icon-button cn-star {{ 'is-on' if project.starred }}" type="submit" aria-pressed="{{ 'true' if project.starred else 'false' }}" title="{{ 'Starred: first in the list' if project.starred else 'Star: first in the list' }}"><i class="fa-{{ 'solid' if project.starred else 'regular' }} fa-star" aria-hidden="true"></i><span class="visually-hidden">Star</span></button></form>
+        {{ marks(project, hidden_view) }}
         {% if project.status != "active" %}<span class="cn-badge">{{ project.status }}</span>{% endif %}
         {% if project.local_path %}<button class="cn-icon-button cn-claude-go" type="button" data-claude-launch data-project="{{ project.id }}" title="Claude in {{ project.name }}"><i class="fa-solid fa-claude" aria-hidden="true"></i><span class="visually-hidden">Claude in {{ project.name }}</span></button>{% endif %}</span>
       </div>
@@ -75,15 +76,17 @@
   {% else %}
   <div class="cn-table-wrap">
     <table class="table cn-table">
-      <thead><tr>{{ sort_header(page, "name", "Project") }}{{ sort_header(page, "repo", "Repository") }}{{ sort_header(page, "status", "Status") }}<th scope="col">Open</th><th scope="col">Done</th><th scope="col">Late</th><th scope="col">Next due</th>{{ sort_header(page, "updated", "Updated") }}</tr></thead>
+      <thead><tr><th scope="col"><input class="form-check-input" type="checkbox" data-select-all aria-label="Choose every project shown"></th>{{ sort_header(page, "name", "Project") }}{{ sort_header(page, "repo", "Repository") }}{{ sort_header(page, "status", "Status") }}<th scope="col">Open</th><th scope="col">Done</th><th scope="col">Late</th><th scope="col">Next due</th>{{ sort_header(page, "updated", "Updated") }}<th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
       <tbody>
         {% for project in page.items %}{% set st = stats[project.id] %}
         <tr>
+          <td>{{ select_box(project) }}</td>
           <td><a class="cn-color-{{ project.color }}" href="{{ url_for('projects.detail', slug=project.slug) }}">{{ project_mark(project) }}{{ project.name }}</a></td>
           <td>{{ project.github_repo or "—" }}</td><td>{{ project.status }}</td><td>{{ st.open }}</td><td>{{ st.closed }}</td>
           <td>{% if st.overdue %}<span class="cn-due-late">{{ st.overdue }}</span>{% else %}0{% endif %}</td>
           <td>{{ st.next_due | relative_day if st.next_due else "—" }}</td>
           <td><time datetime="{{ project.updated_at.isoformat() }}">{{ project.updated_at.strftime("%d %b") }}</time></td>
+          <td class="cn-row-actions">{{ marks(project, hidden_view) }}{% if project.local_path %}<button class="cn-icon-button" type="button" data-claude-launch data-project="{{ project.id }}" title="Claude in {{ project.name }}"><i class="fa-solid fa-claude" aria-hidden="true"></i><span class="visually-hidden">Claude</span></button>{% endif %}<a class="cn-icon-button" href="{{ url_for('projects.edit', slug=project.slug) }}" title="Edit"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="visually-hidden">Edit</span></a></td>
         </tr>
         {% endfor %}
       </tbody>
