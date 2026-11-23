@@ -10,6 +10,7 @@ from flask import jsonify, request
 from app.api import ApiError, api_blueprint, body
 from app.core.schema.claude import (
     CurrentPage,
+    FromGithub,
     NewProjectStart,
     OutsideStop,
     ResumeStart,
@@ -190,3 +191,10 @@ def stop_outside():
 def clean():
     """Take the ended sessions off Cairn's pages (undoable); their conversations stay in Claude Code."""
     return jsonify(cleared=claude_core.clear_ended())
+
+
+@claude_api.post("/claude/from-github")
+def from_github():
+    """A Claude that clones the repository of a GitHub address and starts its project."""
+    session = _guard(terminal_core.start_from_github, body(FromGithub).url)
+    return jsonify(session=claude_core.describe(session)), 201

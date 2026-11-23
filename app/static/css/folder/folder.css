@@ -33,3 +33,5 @@
 .cn-row-actions { white-space: nowrap; }
 .cn-row-actions > * { vertical-align: middle; }
 .cn-copy-run { float: right; margin-left: var(--cn-space-3); }
+.cn-bring-all { display: inline-flex; gap: var(--cn-space-2); align-items: center; margin-bottom: var(--cn-space-2); font-size: var(--cn-text-sm); }
+.cn-bring-go { display: flex; gap: var(--cn-space-3); align-items: center; position: sticky; bottom: var(--cn-space-3); }

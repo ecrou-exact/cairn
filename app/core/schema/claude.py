@@ -111,3 +111,9 @@ class ResumeStart(Strict):
     take_over: bool = False
     cols: Annotated[int, Field(ge=20, le=500)] = 120
     rows: Annotated[int, Field(ge=5, le=200)] = 32
+
+
+class FromGithub(Strict):
+    """A GitHub address (a repository, a pull request, an issue, a branch) to start a project from."""
+
+    url: Annotated[str, Field(min_length=10, max_length=500, pattern=r"github\.com/")]

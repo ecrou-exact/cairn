@@ -16,7 +16,7 @@ Key = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]{0,39}$")]
 Ref = Annotated[str, Field(min_length=1, max_length=60)]  # a task's id, or an item's key
 Reason = Annotated[str, Field(max_length=500)]
 Line = Annotated[str, Field(min_length=1, max_length=300)]
-MAX_ITEMS = 60
+MAX_ITEMS = 100
 
 
 class TaskFields(Strict):

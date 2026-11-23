@@ -16,6 +16,18 @@ from app.core.utils.listing import escape_like
 
 PULL = re.compile(r"(?:github\.com/[\w.-]+/[\w.-]+/(?:pull|issues)/|#)(\d{1,7})\b|^(\d{1,7})$")
 HEX = re.compile(r"^[0-9a-f]{6,32}$")
+GITHUB = re.compile(
+    r"github\.com/([\w.-]+/[\w.-]+?)(?:\.git)?(?:/(pull|issues|tree|commit)/([^\s?#]+))?/?(?:[?#].*)?$"
+)
+
+
+def github_place(query: str) -> tuple[str, str, str] | None:
+    """(owner/name, kind, what) of a GitHub address: a repository, a pull request, an issue, a branch
+    (tree) or a commit; None for anything else (D-086)."""
+    found = GITHUB.search(query.strip())
+    if found is None:
+        return None
+    return found[1], found[2] or "", (found[3] or "").rstrip("/")
 
 
 def _task_matches(query: str, pattern: str) -> list[Any]:
@@ -32,7 +44,25 @@ def _task_matches(query: str, pattern: str) -> list[Any]:
         else:
             found.append(func.replace(cast(Task.id, String), "-", "").like(f"{raw}%"))
     linked = [WorkLink.ref.ilike(pattern, escape="\\")]
-    if number := PULL.search(query.strip()):
+    place = github_place(query)
+    if place and place[1] in ("pull", "issues") and place[2].isdigit():
+        # The pull request of that repository: linked with its repository, or as #n by a task of its project
+        repo, number = place[0], place[2]
+        kind = "pull" if place[1] == "pull" else "issue"
+        mine = (
+            select(Task.id)
+            .join(Project, Task.project_id == Project.id)
+            .where(func.lower(Project.github_repo) == repo.lower())
+        )
+        linked = [
+            (WorkLink.kind == kind) & (func.lower(WorkLink.ref) == f"{repo.lower()}#{number}"),
+            (WorkLink.kind == kind) & (WorkLink.ref == f"#{number}") & WorkLink.target_id.in_(mine),
+        ]
+        found = []
+    elif place and place[1] in ("tree", "commit"):
+        linked = [WorkLink.ref.ilike(f"{escape_like(place[2])}%", escape="\\")]
+        found = []
+    elif number := PULL.search(query.strip()):
         linked.append(WorkLink.ref.like(f"%#{number[1] or number[2]}"))
     if HEX.match(raw):
         linked.append(WorkLink.ref.like(f"{raw}%"))
@@ -58,7 +88,16 @@ def search(query: str, *, limit: int = 8, open_only: bool = False) -> dict[str, 
             select(Project)
             .where(
                 Project.deleted_at.is_(None),
-                or_(Project.name.ilike(pattern, escape="\\"), Project.slug.ilike(pattern, escape="\\")),
+                or_(
+                    Project.name.ilike(pattern, escape="\\"),
+                    Project.slug.ilike(pattern, escape="\\"),
+                    Project.github_repo.ilike(pattern, escape="\\"),
+                    *(
+                        [func.lower(Project.github_repo) == place[0].lower()]
+                        if (place := github_place(query))
+                        else []
+                    ),
+                ),
             )
             .order_by(func.lower(Project.name))
             .limit(limit)

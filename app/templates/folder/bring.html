@@ -4,7 +4,8 @@
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">{% endblock %}
-{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/folder/bring.js') }}"></script>{% endblock %}
 {% macro box(item, text) %}<input class="form-check-input" type="checkbox" name="keys" value="{{ item.key }}" id="k-{{ item.key }}"> <label for="k-{{ item.key }}">{{ text }}</label>{% endmacro %}
 {% block content %}
 <header class="cn-page-header">
@@ -19,7 +20,8 @@
 {% if total %}
 <form method="post" action="{{ url_for('folder.take', slug=project.slug) }}" class="cn-bring"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% for title, items in [("To-do lists", found.todos), ("GitHub issues", found.issues), ("GitHub boards", found.cards)] if items %}
-  <section class="cn-panel" aria-label="{{ title }}"><h2>{{ title }} <span class="cn-muted">{{ items | length }}</span></h2><ul class="cn-bring-list">
+  <section class="cn-panel" aria-label="{{ title }}" data-bring-group><h2>{{ title }} <span class="cn-muted">{{ items | length }}</span></h2>
+    <label class="cn-bring-all"><input class="form-check-input" type="checkbox" data-bring-all> Choose all{% if items | length > 100 %} (the first 100){% endif %}</label><ul class="cn-bring-list">
     {% for i in items %}<li>{{ box(i, i.title) }} <span class="cn-muted">{% if i.number %}<a href="{{ i.url }}" target="_blank" rel="noopener noreferrer">#{{ i.number }}</a>{% if i.mine %} assigned{% endif %} {{ i.labels | join(", ") }}{% else %}{{ i.file }}{% if i.under %} {{ i.under }}{% endif %}{% endif %}</span></li>{% endfor %}
   </ul></section>{% endfor %}
   {% if found.skills %}<section class="cn-panel" aria-label="Skills"><h2>Skills</h2><p class="cn-muted">A skill is given to the Claudes opened on this project: read it before you take it.</p><ul class="cn-bring-list">
@@ -28,7 +30,7 @@
   {% if found.commands %}<section class="cn-panel" aria-label="Commands"><h2>Commands that run it</h2><p class="cn-muted">Added to its instances, not started.</p><ul class="cn-bring-list">
     {% for c in found.commands %}<li>{{ box(c, c.name) }} <code>{{ c.command }}</code> <span class="cn-muted">{{ c.file }}</span></li>{% endfor %}
   </ul></section>{% endif %}
-  <button class="btn btn-primary" type="submit">Bring in what is chosen</button>
+  <div class="cn-bring-go"><button class="btn btn-primary" type="submit">Bring in what is chosen</button> <span class="cn-muted" data-bring-count aria-live="polite"></span></div>
 </form>
 {% else %}<p class="cn-muted">Nothing new was found.</p>{% endif %}
 {% if found.notes %}<p class="cn-muted">Claude reads {{ found.notes | join(" and ") }} of this folder by itself: nothing to bring in.</p>{% endif %}

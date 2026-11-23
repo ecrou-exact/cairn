@@ -323,11 +323,17 @@ def stop_timer():
 def search():
     found = search_core.search(request.args.get("q", ""), open_only=request.args.get("open") == "1")
     parents = search_core.parent_titles(found["tasks"])
+    place = search_core.github_place(request.args.get("q", ""))
     return jsonify(
         projects=[
             {"id": str(p.id), "name": p.name, "slug": p.slug, "url": url_for("projects.detail", slug=p.slug)}
             for p in found["projects"]
         ],
+        github=(
+            {"repo": place[0], "kind": place[1], "what": place[2], "known": bool(found["projects"])}
+            if place
+            else None
+        ),
         tasks=[
             {
                 "id": str(t.id),

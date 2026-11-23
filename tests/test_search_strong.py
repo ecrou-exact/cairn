@@ -35,3 +35,46 @@ def test_the_palette_shows_a_subtasks_parent(app, signed_in):
         ref = sub.id.hex[:8]
     (found,) = signed_in.get(f"/api/search?q={ref}").json["tasks"]
     assert (found["title"], found["parent"]) == ("Leaves", "Tree")
+
+
+def test_a_github_address_finds_its_project_and_task(ctx):
+    loo = projects_core.create(ProjectCreate(name="Lookyloo", github_repo="Lookyloo/lookyloo"))
+    other = projects_core.create(ProjectCreate(name="Other", github_repo="else/other"))
+    mine = tasks_core.create(TaskCreate(title="Explore pages", project_id=loo.id))
+    same_number = tasks_core.create(TaskCreate(title="Other 1446", project_id=other.id))
+    short = tasks_core.create(TaskCreate(title="By number", project_id=loo.id))
+    worklinks_core.add(
+        WorkLinkCreate(target_type="task", target_id=mine.id, kind="pull", ref="Lookyloo/lookyloo#1446")
+    )
+    worklinks_core.add(WorkLinkCreate(target_type="task", target_id=same_number.id, kind="pull", ref="#1446"))
+    worklinks_core.add(WorkLinkCreate(target_type="task", target_id=short.id, kind="issue", ref="#9"))
+    worklinks_core.add(WorkLinkCreate(target_type="task", target_id=short.id, kind="branch", ref="web-tree"))
+    found = search_core.search("https://github.com/Lookyloo/lookyloo/pull/1446")
+    assert [p.name for p in found["projects"]] == ["Lookyloo"]
+    assert [t.title for t in found["tasks"]] == ["Explore pages"]
+    assert _titles("https://github.com/Lookyloo/lookyloo/issues/9") == ["By number"]
+    assert _titles("https://github.com/Lookyloo/lookyloo/tree/web-tree") == ["By number"]
+    assert [p.name for p in search_core.search("github.com/else/other")["projects"]] == ["Other"]
+
+
+def test_an_address_of_no_project_offers_to_start_it(app, signed_in, monkeypatch):
+    from app.features.claude import terminal_core
+
+    with app.app_context():
+        projects_core.create(ProjectCreate(name="Lookyloo", github_repo="Lookyloo/lookyloo"))
+    found = signed_in.get("/api/search?q=https://github.com/Lookyloo/lookyloo/pull/1446").json
+    assert found["github"] == {"repo": "Lookyloo/lookyloo", "kind": "pull", "what": "1446", "known": True}
+    new = signed_in.get("/api/search?q=https://github.com/acme/tool/pull/7").json["github"]
+    assert new["known"] is False
+    launched = []
+    monkeypatch.setattr(terminal_core, "_launch", lambda *a, **k: launched.append(a) or None)
+    with app.app_context():
+        terminal_core.start_from_github("https://github.com/acme/tool/pull/7")
+        message = launched[0][3]
+        assert "git clone" in message and "gh pr checkout 7" in message and "start_project" in message
+        try:
+            terminal_core.start_from_github("https://github.com/Lookyloo/lookyloo")
+        except terminal_core.TerminalError as exc:
+            assert "already" in str(exc)
+        else:
+            raise AssertionError("a known repository is not started twice")

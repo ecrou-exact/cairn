@@ -941,3 +941,42 @@ def sessions(
 def running_pids(kind: str | None = None) -> set[int]:
     with _lock:
         return {t.pty.pid for t in _terminals.values() if kind is None or t.kind == kind}
+
+
+FROM_GITHUB = (
+    "Start a new project on Cairn from {url}. Clone {repo} into `{target}` (git clone; if that folder "
+    "is already a clone of it, use it). {checkout}Then use Cairn's tools as for `/cairn -init`: "
+    "this_project, then start_project with that folder once I agree, and fill it (README, docs, links). "
+    "{task}Do not run anything from the repository before I say so."
+)
+
+
+def start_from_github(url: str) -> ClaudeSession:
+    """A Claude that clones a repository nobody started in Cairn, then starts its project (D-086)."""
+    from app.features.search.search_core import github_place
+
+    place = github_place(url)
+    if place is None:
+        raise TerminalError("Give a GitHub address.")
+    repo, kind, what = place
+    if any((p.github_repo or "").lower() == repo.lower() for p in projects_core.options()):
+        raise TerminalError(f"{repo} is a project of Cairn already.")
+    roots = [Path(r).expanduser() for r in get_setting("recap.folders")]
+    root = next((r for r in roots if r.is_dir()), Path.home())
+    name = repo.rsplit("/", 1)[-1]
+    checkout = {
+        "pull": f"Check out its pull request #{what} (gh pr checkout {what}). ",
+        "tree": f"Check out its branch `{what}`. ",
+        "commit": f"Look at the commit {what[:12]}. ",
+    }.get(kind, "")
+    task = (
+        f"Once the project is made, propose the task for pull request #{what} with propose_changeset, "
+        "and link it with link_work. "
+        if kind == "pull"
+        else f"Once the project is made, propose the task for issue #{what}. "
+        if kind == "issues"
+        else ""
+    )
+    message = FROM_GITHUB.format(url=url, repo=repo, target=root / name, checkout=checkout, task=task)
+    title = f"From {repo}" + (f" #{what}" if kind in ("pull", "issues") else "")
+    return _launch(None, None, root, message, title[:200])

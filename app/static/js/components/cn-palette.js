@@ -130,7 +130,23 @@ class CnPalette extends HTMLElement {
       })),
       ...(data.resources || []).map((r) => ({ label: r.title, icon: r.icon, url: r.url, group: 'Resources', meta: r.kind })),
     ];
+    if (data.github && !data.github.known) found.push(this.#fromGithub(q, data.github));
     this.#refresh(found);
+  }
+
+  /** A GitHub address of no project: a Claude clones it and starts the project (D-086). */
+  #fromGithub(url, place) {
+    const what = place.kind === 'pull' ? ` from pull request #${place.what}` : place.kind === 'issues' ? ` from issue #${place.what}` : '';
+    return {
+      label: `Start ${place.repo} with Claude${what}`,
+      icon: 'fa-claude',
+      group: 'Not in Cairn yet',
+      meta: 'Claude clones it, then starts the project once you agree',
+      run: async () => {
+        const answer = await api('/claude/from-github', { method: 'POST', body: { url } }).catch(() => null);
+        if (answer) window.location.assign(answer.session.url);
+      },
+    };
   }
 
   #render() {
