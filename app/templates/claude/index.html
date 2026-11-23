@@ -33,7 +33,7 @@
   {% else %}
   <form class="cn-claude-start" method="post" action="{{ url_for('claude.open_main') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button class="btn btn-primary" type="submit"><i class="fa-solid fa-mountain-sun" aria-hidden="true"></i><span>Open Cairn's Claude</span></button>
+    <button class="btn btn-primary" type="submit"><i class="fa-solid fa-claude" aria-hidden="true"></i><span>Open Cairn's Claude</span></button>
   </form>
   {% endif %}
 </section>
@@ -43,7 +43,7 @@
   {% if running %}
   <ul class="cn-claude-cards">{% for s in running %}{{ session_card(s) }}{% endfor %}</ul>
   {% else %}
-  <div class="cn-empty"><i class="fa-solid fa-terminal" aria-hidden="true"></i><h2>No project has its Claude open</h2><p>A project's or a task's Claude tab opens your Claude Code in its folder.</p></div>
+  <div class="cn-empty"><i class="fa-solid fa-claude" aria-hidden="true"></i><h2>No project has its Claude open</h2><p>A project's or a task's Claude tab opens your Claude Code in its folder.</p></div>
   {% endif %}
 </section>
 

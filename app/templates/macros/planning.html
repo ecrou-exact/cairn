@@ -109,7 +109,7 @@
 {% macro claude_button(task, text=False) -%}
 {% if task.is_open and task.project and task.project.local_path %}
 <button class="{{ 'btn btn-sm btn-outline-secondary' if text else 'cn-icon-button cn-claude-go' }}" type="button" data-claude-launch data-task="{{ task.id }}" data-task-title="{{ task.title }}" data-preset="task" title="Claude on this task">
-  <i class="fa-solid fa-terminal" aria-hidden="true"></i>{% if text %}<span>Claude</span>{% else %}<span class="visually-hidden">Claude on {{ task.title }}</span>{% endif %}
+  <i class="fa-solid fa-claude" aria-hidden="true"></i>{% if text %}<span>Claude</span>{% else %}<span class="visually-hidden">Claude on {{ task.title }}</span>{% endif %}
 </button>
 {% endif %}
 {%- endmacro %}

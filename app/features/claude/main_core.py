@@ -27,6 +27,8 @@ from app.core.extensions import db
 from app.core.schema.claude import CurrentPage
 from app.core.schema.resources import LinkCreate, ResourceCreate, ResourceUpdate
 from app.core.utils.actor import acting_as
+from app.core.utils.events import publish
+from app.core.utils.logger import log_action
 from app.core.utils.settings import get_setting
 from app.features.account import account_core
 from app.features.claude import transcript_core
@@ -218,6 +220,20 @@ def open_with_cairn(app: Flask) -> None:
 
 
 # -- notes -------------------------------------------------------------------------------------
+
+
+def on_task(session: ClaudeSession, task: Task) -> None:
+    """A session started this task: it is the one it is on now. Only within its project."""
+    if session.project_id is not None and session.project_id != task.project_id:
+        return
+    before, session.task_id = session.task_id, task.id
+    log_action(
+        "claude_session.task",
+        target_type="claude_session",
+        target_id=session.id,
+        diff={"task_id": [str(before) if before else None, str(task.id)]},
+    )
+    publish("claude.changed", {"id": str(session.id), "status": session.status})
 
 
 def take_note(text: str, title: str, about: Project | None, for_project: Project | None) -> Resource:

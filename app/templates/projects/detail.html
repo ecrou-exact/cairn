@@ -58,7 +58,7 @@
       <span class="cn-project-next-title">{{ next_up[0].title }}</span>
     </a>
     {% endif %}
-    {% if project.local_path %}<button class="btn btn-outline-light" type="button" data-claude-launch data-project="{{ project.id }}" title="Open Claude in this project: a fix, a PR, a review…"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Claude</span></button>{% endif %}
+    {% if project.local_path %}<button class="btn btn-outline-light" type="button" data-claude-launch data-project="{{ project.id }}" title="Open Claude in this project: a fix, a PR, a review…"><i class="fa-solid fa-claude" aria-hidden="true"></i><span>Claude</span></button>{% endif %}
     <a class="btn btn-outline-light" href="{{ url_for('projects.edit', slug=project.slug) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="ms-2">Edit</span></a>
     <cn-confirm message="Move “{{ project.name }}” to the trash?" detail="Its {{ total }} task{{ 's' if total != 1 }} go with it. You can undo, or restore it from the trash." confirm-label="Move to trash" danger>
       <form method="post" action="{{ url_for('projects.delete', slug=project.slug) }}">
@@ -74,7 +74,7 @@
   {% for key, icon, label, count in [
       ("plan", "fa-diagram-project", "Plan", None),
       ("tasks", "fa-list-check", "Tasks", stats.open),
-      ("claude", "fa-terminal", "Claude", None),
+      ("claude", "fa-claude", "Claude", None),
       ("instances", "fa-server", "Instances", instances_running),
       ("about", "fa-circle-info", "About", (resources | length) + (comments | length))] %}
   <a class="cn-tab" href="{{ url_for('projects.detail', slug=project.slug, tab=key) }}" {% if tab == key %}aria-current="page"{% endif %}>

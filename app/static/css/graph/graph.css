@@ -413,3 +413,11 @@
 .cn-graph.cn-graph-projects { height: clamp(22rem, 48vh, 34rem); min-height: 0; }
 .cn-projects-plan { margin-bottom: var(--cn-space-5); }
 .cn-project-plan .cn-graph { height: clamp(26rem, 72vh, 52rem); }
+
+/* A task a Claude is on (D-066) */
+.cn-gcard.has-claude { box-shadow: inset 0 0 0 2px var(--cn-mark); }
+.cn-gcard.is-claude-working { animation: cn-claude-on 1.8s ease-in-out infinite; }
+@keyframes cn-claude-on { 50% { box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--cn-mark) 65%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .cn-gcard.is-claude-working { animation: none; } }
+.cn-gcard-claude { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 4px 8px; border-radius: 8px; font-size: 10.5px; color: var(--cn-on-accent); background: var(--cn-mark); }
+.cn-gcard { grid-template-columns: minmax(0, 1fr); }

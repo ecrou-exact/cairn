@@ -69,7 +69,7 @@ class CnClaudeDock extends HTMLElement {
     this.#tab.type = 'button';
     this.#tab.title = 'Cairn’s Claude (Alt+J)';
     this.#tab.setAttribute('aria-controls', 'claude-dock');
-    const mark = el('i', 'fa-solid fa-mountain-sun');
+    const mark = el('i', 'fa-solid fa-claude');
     mark.setAttribute('aria-hidden', 'true');
     this.#tab.append(mark, el('span', '', 'Claude'));
     this.#tab.addEventListener('click', () => this.toggle(true));

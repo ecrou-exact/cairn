@@ -30,6 +30,7 @@ from app.core.extensions import db
 from app.core.schema.comments import CommentCreate
 from app.core.schema.planning import DependencyCreate, ProjectCreate, ProjectUpdate, TaskCreate
 from app.core.utils.actor import acting_as
+from app.core.utils.history import batch
 from app.features.claude import main_core
 from app.features.comments import comments_core
 from app.features.projects import projects_core
@@ -398,7 +399,17 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
     def set_task_status(task_id: str, status: str) -> dict[str, Any]:
         """Move a task to another status (see cairn_overview for the statuses; the workflow
         decides which moves are allowed): e.g. in_progress when you start, done when finished."""
-        return run(lambda: _task_line(tasks_core.set_status(_task(task_id).id, status)))
+
+        def work():
+            with batch():
+                task = tasks_core.set_status(_task(task_id).id, status)
+                row = session_row()
+                started = workflow.kind_of(task.status) == "active"
+                if started and row is not None and not main_core.is_main(row) and row.task_id != task.id:
+                    main_core.on_task(row, task)  # lit on the plan (D-066)
+            return _task_line(task)
+
+        return run(work)
 
     @server.tool()
     def link_tasks(

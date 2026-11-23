@@ -9,8 +9,8 @@
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/claude/live-graph.js') }}"></script>{% endblock %}
 {% block content %}
 <header class="cn-page-header">
-  <div class="cn-eyebrow">{% if session %}<a href="{{ url_for('claude.live') }}">Claude, live</a>{% else %}Claude{% endif %}</div>
-  <h1>{{ "One session, live" if session else "What Claude is doing" }}</h1>
+  <div class="cn-eyebrow">{% if shown and shown.project %}<a href="{{ url_for('projects.detail', slug=shown.project.slug, tab='plan') }}">{{ shown.project.name }}, plan</a>{% elif session %}<a href="{{ url_for('claude.live') }}">Claude, live</a>{% else %}Claude{% endif %}</div>
+  <h1>{{ shown.task.title if shown and shown.task else ("One session, live" if session else "What Claude is doing") }}</h1>
   <p>{{ "Everything it did since your last request, and what still runs." if session else "Each session with the agents, commands and processes alive under it." }}</p>
 </header>
 {{ views("live") }}
@@ -29,7 +29,7 @@
     <span><i class="cn-lg" aria-hidden="true"></i>done</span>
     <span class="cn-muted">read <time data-live-at></time></span>
   </div>
-  <div class="cn-graph-empty" data-graph-empty hidden><i class="fa-solid fa-terminal" aria-hidden="true"></i>
+  <div class="cn-graph-empty" data-graph-empty hidden><i class="fa-solid fa-claude" aria-hidden="true"></i>
     <h2>{{ "This session has ended" if session else "No Claude is running" }}</h2><p>{{ "Its conversation can be resumed from the Claude page." if session else "Open one with the Claude button: it appears here." }}</p></div>
   <div class="cn-graph-error" data-graph-error hidden role="alert"><strong>The graph could not be drawn.</strong> <span data-error></span></div>
   <p class="cn-graph-wait" role="status">Drawing the graph…</p>

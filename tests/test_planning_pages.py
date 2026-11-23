@@ -180,3 +180,10 @@ def test_planning_api(app, signed_in):
     assert listing["total"] == 1
     assert signed_in.post(f"/api/tasks/{task['id']}/status", json={"status": "in_review"}).status_code == 422
     assert signed_in.delete(f"/api/tasks/{uuid.uuid4()}").status_code == 404
+
+
+def test_projects_as_cards_or_as_a_graph(signed_in):
+    signed_in.post("/api/projects", json={"name": "Pandora"})
+    cards, graph = signed_in.get("/projects").data, signed_in.get("/projects?mode=graph").data
+    assert b"cn-project-cards" in cards and b"data-graph-canvas" not in cards
+    assert b"data-graph-canvas" in graph and b"cn-project-cards" not in graph

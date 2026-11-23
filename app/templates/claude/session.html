@@ -69,7 +69,7 @@
 {% if session.running %}
 <cn-terminal class="cn-claude-terminal" session="{{ session.id }}" nonce="{{ nonce }}" aria-label="Claude Code terminal"></cn-terminal>
 {% else %}
-<div class="cn-empty"><i class="fa-solid fa-terminal" aria-hidden="true"></i><h2>This session has ended</h2>
+<div class="cn-empty"><i class="fa-solid fa-claude" aria-hidden="true"></i><h2>This session has ended</h2>
   <p>{{ session.end_reason or "Claude Code was closed." }} Its conversation stays in Claude Code: <code>claude --resume</code> in <code>{{ session.cwd }}</code>.</p></div>
 {% endif %}
 {% endblock %}

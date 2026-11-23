@@ -114,6 +114,7 @@ def machine(tmp_path, monkeypatch):
         "usage": transcript_core.Usage(last_activity=time.time(), model="claude-opus-5-5").as_dict(),
         "started": time.time() - 7200,
         "open": "/claude/sessions/x",
+        "task": None,
     }
     monkeypatch.setattr(live_core, "_running", lambda: [session])
     return session
@@ -170,3 +171,38 @@ def test_page_and_api(signed_in, machine):
     data = signed_in.get("/api/claude/live?session=k").json
     assert data["sessions"] == 1 and data["nodes"]
     assert b"Live graph" in signed_in.get("/claude").data
+
+
+def test_tasks_claude_is_on(app, ctx, tmp_path, monkeypatch):
+    from app.core.db_class.claude import ClaudeSession
+    from app.core.extensions import db
+    from app.core.schema.planning import ProjectCreate, TaskCreate
+    from app.features.claude import terminal_core
+    from app.features.projects import projects_core
+    from app.features.tasks import tasks_core
+
+    project = projects_core.create(ProjectCreate(name="P", local_path=str(tmp_path)))
+    case = tasks_core.create(TaskCreate(title="Case", project_id=project.id))
+    inside = tasks_core.create(TaskCreate(title="Inside", project_id=project.id, parent_id=case.id))
+    row = ClaudeSession(
+        kind="claude", cwd=str(tmp_path), cli_session_id=uuid.uuid4(), project_id=project.id, pid=None
+    )
+    db.session.add(row)
+    db.session.commit()
+    monkeypatch.setattr(terminal_core, "is_running", lambda session_id: True)
+    assert live_core.at_work() == []  # on no task yet
+    from app.features.claude import mcp_server
+    from tests.test_claude_mcp import _call
+
+    server = mcp_server.build(app, str(row.id))
+    assert not _call(server, "set_task_status", {"task_id": str(inside.id), "status": "in_progress"}).is_error
+    db.session.expire_all()
+    (one,) = live_core.at_work()
+    assert (one["task"], one["holders"], one["state"]) == (str(inside.id), [str(case.id)], "waiting")
+    other = tasks_core.create(TaskCreate(title="Elsewhere"))
+    _call(server, "set_task_status", {"task_id": str(other.id), "status": "in_progress"})
+    db.session.expire_all()
+    assert live_core.at_work()[0]["task"] == str(inside.id)  # another project's task does not move it
+    inside_id = inside.id
+    tasks_core.delete(inside_id)
+    assert live_core.at_work() == []

@@ -193,7 +193,7 @@ def test_graph_lives_in_the_projects(app, signed_in):
     assert signed_in.get("/graph").headers["Location"].endswith("/projects")
     to_project = signed_in.get(f"/graph?project={project['id']}").headers["Location"]
     assert to_project.endswith(f"/projects/{project['slug']}?tab=plan")
-    shell = signed_in.get("/projects").data
+    shell = signed_in.get("/projects?mode=graph").data
     assert b'href="/graph"' not in shell and b"data-graph-canvas" in shell and b"view=projects" in shell
     plan = signed_in.get(f"/projects/{project['slug']}")
     assert b'aria-current="page"' in plan.data and b"cn-graph-toolbar" in plan.data

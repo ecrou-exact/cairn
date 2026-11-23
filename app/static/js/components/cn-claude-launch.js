@@ -80,7 +80,7 @@ class CnClaudeLaunch extends HTMLElement {
     const form = el('form', 'cn-claude-launch-form');
     form.method = 'dialog';
     const head = el('header', 'cn-claude-launch-head');
-    head.append(icon('fa-terminal'), el('h2', 'cn-dialog-title', 'Open Claude'));
+    head.append(icon('fa-claude'), el('h2', 'cn-dialog-title', 'Open Claude'));
 
     // What for
     const kinds = el('div', 'cn-claude-presets');

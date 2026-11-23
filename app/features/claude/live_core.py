@@ -21,6 +21,8 @@ from typing import Any
 
 import psutil
 
+from app.core.db_class.planning import Task
+from app.core.extensions import db
 from app.features.claude import claude_core, terminal_core, transcript_core
 from app.features.claude.transcript_core import describe_tool
 
@@ -313,6 +315,7 @@ def _running() -> list[dict[str, Any]]:
                 "usage": facts["usage"],
                 "started": row.created_at.timestamp(),
                 "open": facts["url"],
+                "task": facts["task"],
             }
         )
     for facts in claude_core.outside():
@@ -328,6 +331,7 @@ def _running() -> list[dict[str, Any]]:
                 "usage": facts["usage"],
                 "started": facts["started"],
                 "open": None,
+                "task": None,
             }
         )
     return found
@@ -381,7 +385,7 @@ def _session(build: _Builder, session: dict[str, Any], full: bool) -> None:
         None,
         "session",
         session["title"],
-        "fa-terminal",
+        "fa-claude",
         live=working,
         state=state,
         cwd=cwd,
@@ -396,6 +400,7 @@ def _session(build: _Builder, session: dict[str, Any], full: bool) -> None:
         calls=len(talk.calls),
         items=_items(talk.calls),
         url=session["open"],
+        task=session["task"],
         drill=None if full else f"/claude/live?session={key}",
     )
 
@@ -429,7 +434,7 @@ def _session(build: _Builder, session: dict[str, Any], full: bool) -> None:
             parent if parent != node else key,
             "agent",
             agent["label"],
-            "fa-user-astronaut",
+            "fa-claude",
             live=agent["working"],
             state="working" if agent["working"] else "finished",
             agent=agent["type"],
@@ -560,3 +565,35 @@ def graph(session: str | None = None) -> dict[str, Any]:
         "live": sum(1 for n in build.nodes if n["data"]["live"]),
         "at": time.time(),
     }
+
+
+def at_work() -> list[dict[str, Any]]:
+    """The tasks a running session is on, for the plan's graph: each with the tasks that hold it
+    (a case is lit for its subtasks), whether Claude works now, and on what."""
+    found = []
+    for row in terminal_core.sessions():
+        if row.task_id is None or not terminal_core.is_running(row.id):
+            continue
+        task = db.session.get(Task, row.task_id)
+        if task is None or task.is_deleted:
+            continue
+        holders, parent = [], task.parent_id
+        while parent is not None and str(parent) not in holders and len(holders) < 20:
+            holders.append(str(parent))
+            above = db.session.get(Task, parent)
+            parent = above.parent_id if above is not None else None
+        usage = transcript_core.session_usage(row.cwd, str(row.cli_session_id))
+        state = _state({"pid": row.pid, "usage": usage.as_dict()})
+        found.append(
+            {
+                "session": str(row.id),
+                "task": str(task.id),
+                "title": task.title,
+                "holders": holders,
+                "state": state,
+                "now": usage.now if state == "working" else "",
+                "graph": f"/claude/live?session={row.id}",
+                "terminal": f"/claude/sessions/{row.id}",
+            }
+        )
+    return found

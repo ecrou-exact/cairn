@@ -165,7 +165,7 @@ def _environment() -> dict[str, str]:
 PRESET_INFO = {
     "free": {
         "label": "Work freely",
-        "icon": "fa-terminal",
+        "icon": "fa-claude",
         "asks": "",
         "hint": "Anything to start with (optional)",
     },

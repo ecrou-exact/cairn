@@ -60,11 +60,17 @@ def open_main():
 @claude.get("/claude/live")
 def live():
     """What every Claude is doing, as a graph (D-059); `session`: one of them, in full."""
+    key = request.args.get("session", "")[:64]
+    try:
+        shown = claude_core.describe(terminal_core.get(uuid.UUID(key)))
+    except (ValueError, terminal_core.TerminalError):  # one outside Cairn, or all of them
+        shown = None
     return with_graph_csp(
         make_response(
             render_template(
                 "claude/live.html",
-                session=request.args.get("session", "")[:64],
+                session=key,
+                shown=shown,
                 events_after=latest_event_id(),
             )
         )

@@ -613,3 +613,6 @@ tr:hover .cn-claude-go, .cn-claude-go:focus-visible { opacity: 1; }
 .cn-limit.is-bar .cn-limit-percent { color: var(--cn-text); font-weight: var(--cn-weight-strong); text-align: right; }
 @media (max-width: 60rem) { .cn-header-limits .cn-limit-text { display: none; } }
 @media (max-width: 30rem) { .cn-header-limits { display: none; } }
+
+/* Claude's mark is a brand icon: drawn from that font wherever an icon is named, whatever its style class */
+i.fa-claude { font-family: "Font Awesome 7 Brands"; font-weight: 400; }

@@ -8,7 +8,7 @@
     ("tasks.index", "fa-list-check", "Tasks"),
     ("projects.index", "fa-folder-tree", "Projects"),
     ("resources.index", "fa-paperclip", "Resources"),
-    ("claude.index", "fa-terminal", "Claude"),
+    ("claude.index", "fa-claude", "Claude"),
   ]),
   ("System", [
     ("connections.index", "fa-plug", "Accounts"),
@@ -31,7 +31,7 @@
       <kbd>Ctrl K</kbd>
     </button>
     <a class="cn-claude-header" href="{{ url_for('claude.index') }}" data-claude-launch title="Open Claude (Alt+C): on a task, a project, a pull request, a fix, a new project">
-      <i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Claude</span>
+      <i class="fa-solid fa-claude" aria-hidden="true"></i><span>Claude</span>
     </a>
     <a class="cn-header-limits" href="{{ url_for('claude.index') }}" data-claude-header-limits aria-label="Claude usage of your account" hidden></a>
     <div class="cn-header-actions">

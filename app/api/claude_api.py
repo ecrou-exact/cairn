@@ -89,6 +89,12 @@ def open_main():
     return jsonify(session=claude_core.describe(_guard(main_core.open_main)))
 
 
+@claude_api.get("/claude/tasks")
+def tasks_at_work():
+    """The tasks a running Claude is on (the plan's graph lights them)."""
+    return jsonify(tasks=live_core.at_work())
+
+
 @claude_api.get("/claude/targets")
 def targets():
     """What the launcher offers: presets and projects."""

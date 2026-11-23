@@ -50,8 +50,7 @@ def _form(values, errors=None, project=None, status=200):
 def index():
     after = latest_event_id()
     page = projects_core.list_projects(request.args)
-    # Two views (D-065): the graph, or the list as soon as it is asked for or filtered.
-    graph_view = not request.args
+    graph_view = request.args.get("mode") == "graph"  # two views (D-065): cards first, or the graph
     response = make_response(
         render_template(
             "projects/index.html",

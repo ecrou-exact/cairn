@@ -72,6 +72,12 @@ function card(node) {
   else if (d.unblocks) meta.append(chip('cn-gcard-unlocks', 'fa-solid fa-unlock', String(d.unblocks)));
 
   box.append(top, el('p', 'cn-gcard-title', d.label), meta);
+  if (d.claude) {
+    box.classList.add('has-claude', `is-claude-${d.claude.state}`);
+    const line = el('div', 'cn-gcard-claude');
+    line.append(icon('fa-solid fa-claude'), el('span', 'cn-gcard-next', d.claude.now || (d.claude.state === 'working' ? 'Claude is working' : 'Claude waits for you')));
+    box.append(line);
+  }
   if (d.children) {
     const progress = el('div', 'cn-gcard-children');
     const bar = el('span', 'cn-gcard-bar');
@@ -136,7 +142,7 @@ function mount(stage) {
     head.append(chip(`cn-project-chip cn-color-${d.projectColor}`, `fa-solid ${d.projectIcon}`, d.project || 'No project'), el('span', `cn-status cn-status-${d.statusKind}`, d.statusLabel));
     const facts = el('p', 'cn-gpeek-facts');
     facts.textContent = [d.typeLabel, d.priority, d.dueText && `due ${d.dueText}`, d.children && `${d.childrenDone}/${d.children} subtasks`].filter(Boolean).join(' · ');
-    const hint = el('p', 'cn-gpeek-hint', d.drill ? 'Double-click to open its subtasks' : 'Double-click to open the task');
+    const hint = el('p', 'cn-gpeek-hint', d.claude && !d.drill ? 'Double-click to see what Claude does' : d.drill ? 'Double-click to open its subtasks' : 'Double-click to open the task');
     peek.replaceChildren(head, el('p', 'cn-gpeek-title', d.label), facts, hint);
     peek.hidden = false;
     movePeek(event);
@@ -147,6 +153,10 @@ function mount(stage) {
   const hidePeek = () => { peek.hidden = true; };
 
   function open(d) {
+    if (d.claude && !d.drill) { // a task Claude is on: what it does there
+      window.location.assign(d.claude.graph);
+      return;
+    }
     window.location.assign(d.drill && !d.isRoot ? d.drill : d.url);
   }
 
@@ -310,6 +320,20 @@ function mount(stage) {
     }
 
     const editing = editTools(d, id);
+    if (d.claude) {
+      const box = el('div', 'cn-gpanel-links');
+      const say = d.claude.now || (d.claude.state === 'working' ? 'Working' : 'Waiting for you');
+      const where = d.claude.task === id ? say : `${say} (on “${d.claude.title}”)`;
+      const row = el('div', 'cn-gpanel-actions');
+      const inside = el('a', 'btn btn-primary');
+      inside.href = d.claude.graph;
+      inside.append(icon('fa-solid fa-diagram-project'), document.createTextNode(' What Claude does'));
+      const terminal = el('a', 'btn btn-outline-secondary', 'Its terminal');
+      terminal.href = d.claude.terminal;
+      row.append(inside, terminal);
+      box.append(el('h3', '', 'Claude'), el('p', 'cn-gpanel-note', where), row);
+      links.prepend(box);
+    }
 
     const actions = el('div', 'cn-gpanel-actions');
     if (d.drill && !d.isRoot) {
@@ -460,7 +484,7 @@ function mount(stage) {
     item('fa-arrow-up-right-from-square', 'Open the task', () => window.location.assign(d.url));
     if (d.drill && !d.isRoot) item('fa-layer-group', `Open its ${d.children} subtasks`, () => window.location.assign(d.drill));
     item('fa-link', 'Link from here…', () => { setLinking(true); pickForLink(node); });
-    item('fa-terminal', 'Claude on this task…', () => document.querySelector('cn-claude-launch')?.open({ task: node.id, taskTitle: d.label, preset: 'task' }));
+    item('fa-claude', 'Claude on this task…', () => document.querySelector('cn-claude-launch')?.open({ task: node.id, taskTitle: d.label, preset: 'task' }));
     item('fa-circle-info', 'Details', () => showPanel(d, node.id));
     const moves = (d.next || []).map((status) => item('fa-circle', `Move to ${status.label}`, async () => {
       try {
@@ -841,8 +865,33 @@ function mount(stage) {
     }
   }, 300);
 
+  // -- Claude on the tasks (D-066) --------------------------------------------------------
+
+  let atWork = [];
+
+  async function lookAtWork() {
+    if (projectsView()) return false;
+    const { tasks } = await api('/claude/tasks');
+    const changed = JSON.stringify(tasks) !== JSON.stringify(atWork);
+    atWork = tasks;
+    return changed;
+  }
+
+  /** The plan, each card with the Claude on it or on a task inside it (one at work first). */
+  async function fetchGraph() {
+    const [plan] = await Promise.all([api(`/graph?${query()}`), lookAtWork().catch(() => false)]);
+    const shown = new Set(plan.nodes.map((n) => n.id));
+    const found = new Map();
+    for (const one of atWork) {
+      const card = [one.task, ...one.holders].find((id) => shown.has(id));
+      if (card && found.get(card)?.state !== 'working') found.set(card, one);
+    }
+    for (const node of plan.nodes) if (found.has(node.id)) node.data.claude = found.get(node.id);
+    return plan;
+  }
+
   async function load() {
-    current = await api(`/graph?${query()}`);
+    current = await fetchGraph();
     summary();
     graph = new Pivotick(canvas, { nodes: current.nodes, edges: current.edges }, options());
     // Cairn frames the view itself (from the pinned places). Pivotick's own first fit waits for
@@ -867,7 +916,7 @@ function mount(stage) {
 
   /** Apply what changed since the last load without rebuilding the graph. */
   async function refresh() {
-    const next = await api(`/graph?${query()}`);
+    const next = await fetchGraph();
     applyChanges(graph, current, next);
     current = next;
     summary();
@@ -917,6 +966,10 @@ function mount(stage) {
   const later = debounce(() => refresh().catch(() => window.location.reload()), 400);
   subscribe('task.changed', later);
   subscribe('project.changed', later);
+  subscribe('claude.changed', later);
+  setInterval(() => { // a transcript sends no event
+    if (graph && !document.hidden && !linking) lookAtWork().then((changed) => { if (changed) later(); }).catch(() => {});
+  }, 4000);
 
   load().catch((error) => {
     stage.classList.remove('cn-graph-loading');

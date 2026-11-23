@@ -80,7 +80,7 @@
     <details class="cn-menu">
       <summary class="btn btn-outline-light cn-menu-more" title="More"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i><span class="visually-hidden">More actions</span></summary>
       <div class="cn-menu-panel" role="menu" aria-label="More actions">
-        <a class="cn-menu-item" role="menuitem" href="{{ url_for('tasks.detail', task_id=task.id, tab='claude') }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Claude on this task</span></a>
+        <a class="cn-menu-item" role="menuitem" href="{{ url_for('tasks.detail', task_id=task.id, tab='claude') }}"><i class="fa-solid fa-claude" aria-hidden="true"></i><span>Claude on this task</span></a>
         <a class="cn-menu-item" role="menuitem" href="{{ url_for('tasks.edit', task_id=task.id) }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span>Edit</span></a>
         <a class="cn-menu-item" role="menuitem" href="{{ url_for('tasks.brief', task_id=task.id) }}"><i class="fa-solid fa-download" aria-hidden="true"></i><span>Brief for Claude (.md)</span></a>
         <hr class="cn-menu-sep">
@@ -132,7 +132,7 @@
       ("plan", "fa-diagram-project", "Plan", n_deps + (conditions | length) or None),
       ("files", "fa-paperclip", "Files", (resources | length) or None),
       ("discussion", "fa-comments", "Discussion", (comments | length) or None),
-      ("claude", "fa-robot", "Claude", None)] %}
+      ("claude", "fa-claude", "Claude", None)] %}
   <a class="cn-tab" href="{{ url_for('tasks.detail', task_id=task.id, tab=key) }}" {% if tab == key %}aria-current="page"{% endif %}>
     <i class="fa-solid {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>{% if count %}<span class="cn-tab-count">{{ count }}</span>{% endif %}
   </a>
@@ -295,7 +295,7 @@
     {{ comments_panel("task", task, comments, inherited) }}
     {% else %}
     <section class="cn-panel cn-claude-panel" aria-labelledby="claude-run-title">
-      <h2 id="claude-run-title"><i class="fa-solid fa-terminal" aria-hidden="true"></i> Claude on this task</h2>
+      <h2 id="claude-run-title"><i class="fa-solid fa-claude" aria-hidden="true"></i> Claude on this task</h2>
       {% if task.project and task.project.local_path %}{{ start_form(task=task) }}
       {% elif task.project %}<p class="cn-muted">Claude Code opens in the project's folder: <a href="{{ url_for('projects.edit', slug=task.project.slug) }}">set the local folder of {{ task.project.name }}</a> first.</p>
       {% else %}<p class="cn-muted">Claude Code opens in a project's folder: put this task in a project first.</p>{% endif %}
@@ -309,7 +309,7 @@
     </section>
     {% endif %}
     <section class="cn-panel" id="brief" aria-labelledby="brief-title">
-      <h2 id="brief-title"><i class="fa-solid fa-robot" aria-hidden="true"></i> Brief for Claude</h2>
+      <h2 id="brief-title"><i class="fa-solid fa-claude" aria-hidden="true"></i> Brief for Claude</h2>
       <p class="cn-panel-lead">What a Claude run on this task receives: the task, its criteria, the instructions and corrections from the project and parent tasks, dependencies and resources. Fix it here before a run, not after.</p>
       <details>
         <summary>Show the brief</summary>

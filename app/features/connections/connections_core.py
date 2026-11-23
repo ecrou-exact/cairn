@@ -56,7 +56,7 @@ PROVIDERS = {
     "claude_code": Provider(
         "claude_code",
         "Claude Code (this machine)",
-        "fa-solid fa-terminal",
+        "fa-solid fa-claude",
         "",
         "Uses the Claude Code installed on this machine, signed in with your own account (subscription or "
         "console). Nothing to paste: Cairn finds the `claude` command, or uses the path you give, and checks "
@@ -75,7 +75,7 @@ PROVIDERS = {
     "anthropic": Provider(
         "anthropic",
         "Claude (Anthropic API)",
-        "fa-solid fa-robot",
+        "fa-solid fa-claude",
         "API key",
         "Create a key in the Claude Console (platform.claude.com → API keys). "
         "Each run will use the default key; usage is billed to its workspace.",

@@ -73,7 +73,7 @@
   {% else %}
   <form method="post" action="{{ url_for('claude.start') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="folder" value="{{ s.cwd }}">
-    <button class="btn btn-sm btn-outline-secondary" type="submit" title="Nothing was said there yet: a new Claude in the same folder"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Open here</span></button>
+    <button class="btn btn-sm btn-outline-secondary" type="submit" title="Nothing was said there yet: a new Claude in the same folder"><i class="fa-solid fa-claude" aria-hidden="true"></i><span>Open here</span></button>
   </form>
   {% endif %}
   <cn-confirm message="Stop this Claude?" detail="The Claude Code running in {{ s.host }} is closed and what it is doing stops. Its conversation stays in Claude Code and can be resumed." confirm-label="Stop it" danger>
@@ -101,9 +101,9 @@
   {% if task %}<input type="hidden" name="task_id" value="{{ task.id }}">{% else %}<input type="hidden" name="project_id" value="{{ project.id }}">{% endif %}
   {% if task %}
   <button class="btn btn-primary" type="submit" name="with_brief" value="1"><i class="fa-solid fa-play" aria-hidden="true"></i><span>Start Claude on this task</span></button>
-  <button class="btn btn-outline-secondary" type="submit" name="with_brief" value="0"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Open Claude in its folder</span></button>
+  <button class="btn btn-outline-secondary" type="submit" name="with_brief" value="0"><i class="fa-solid fa-claude" aria-hidden="true"></i><span>Open Claude in its folder</span></button>
   {% else %}
-  <button class="btn btn-primary" type="submit"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>{{ label }}</span></button>
+  <button class="btn btn-primary" type="submit"><i class="fa-solid fa-claude" aria-hidden="true"></i><span>{{ label }}</span></button>
   {% endif %}
 </form>
 {%- endmacro %}

@@ -394,4 +394,8 @@
 - **Accepted:** same-user isolation needs a sandbox (Phase 5, permissions); a project's Claude can write notes as any session of this user could.
 
 ## D-065 · 2026-11-23 · accepted — Projects: graph or cards
-- Owner request: not both on one page. Two tabs: the graph (default), and the list (cards or table), which a search, a filter or a page also opens.
+- Owner request: not both on one page. Two tabs: the list (cards or table) first, the graph second (`?mode=graph`).
+
+## D-066 · 2026-11-23 · accepted — Claude on the plan's graph
+- Owner request: in a project's graph, see the task Claude works on, and open what it does inside.
+- The task a running session is on (opened from it, or moved to an active status through Cairn's MCP server, within its project) is lit on the plan with Claude's current step; a case is lit for a task inside it. Click: the panel says what it does, with its graph and terminal; double click on a task without subtasks opens that graph (D-059), which leads back to the plan. Asked every 4 s while in view. A Claude outside Cairn says no task: not shown.

@@ -98,6 +98,7 @@ Goal: owner approves architecture + design direction.
 - [x] Cairn's own Claude, opened with the app; notes between it and the projects' Claudes (`take_note`, `inbox`, `note_done`), `create_project`, `claude_sessions` (D-060)
 - [x] The main Claude in a panel beside every page (open, fold, stop, relaunch), knowing the page in front, able to work on Cairn itself (D-063)
 - [x] Security review of the main Claude's access: findings fixed or recorded (D-064)
+- [x] Claude on the plan's graph: the task it is on lit with its current step, its live graph one click away (D-066)
 - [ ] The main Claude opens a project's Claude itself (MCP → web process)
 - [ ] More MCP tools: resources, schedule, changesets for bulk changes
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code

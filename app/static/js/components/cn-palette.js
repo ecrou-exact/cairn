@@ -11,7 +11,7 @@ import { api, debounce } from '../core/api.js';
 import { showHelp } from '../core/shortcuts.js';
 
 const ACTIONS = [
-  { label: 'Open Claude… (a task, a PR, a fix, a new project)', icon: 'fa-terminal', run: () => document.querySelector('cn-claude-launch')?.open() },
+  { label: 'Open Claude… (a task, a PR, a fix, a new project)', icon: 'fa-claude', run: () => document.querySelector('cn-claude-launch')?.open() },
   { label: 'Claude sessions', icon: 'fa-gauge-high', url: '/claude' },
   { label: 'New task (full form)', icon: 'fa-pen-to-square', url: '/tasks/new' },
   { label: 'New project', icon: 'fa-folder-plus', url: '/projects/new' },
