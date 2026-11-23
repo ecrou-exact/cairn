@@ -6,12 +6,14 @@ import subprocess
 import sys
 import time
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from app.features.claude import live_core, transcript_core
 
-AT = "2026-11-23T10:00:0{}Z"
+# Ten minutes ago: the "cut" agent, an hour old, must stay before the last request whatever the hour.
+AT = (datetime.now(UTC) - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:{:02d}Z")
 
 
 def _use(call_id, name, n=1, **data):
