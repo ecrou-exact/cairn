@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.core.db_class.claude import ClaudeSession
 from app.core.db_class.planning import Project, Task
 from app.core.extensions import db
+from app.core.utils.settings import get_setting
 from app.features.claude import limits_core, main_core, terminal_core, transcript_core
 from app.features.projects import projects_core
 
@@ -114,6 +115,7 @@ def targets() -> dict[str, Any]:
     )
     return {
         "limits": limits_core.limits(),
+        "worktrees": bool(get_setting("claude.worktrees")),
         "presets": [{"key": key, **info} for key, info in terminal_core.PRESET_INFO.items()],
         "projects": [
             {

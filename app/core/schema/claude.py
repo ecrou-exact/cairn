@@ -25,11 +25,14 @@ class SessionStart(Strict):
     preset: Literal[PRESETS] = "free"  # type: ignore[valid-type]
     detail: Annotated[str, Field(max_length=8000)] = ""
     with_brief: bool = False
+    worktree: bool | None = None  # its own folder and branch; None: as the settings say (tasks)
     cols: Annotated[int, Field(ge=20, le=500)] = 120
     rows: Annotated[int, Field(ge=5, le=200)] = 32
 
     @model_validator(mode="after")
     def _where(self) -> SessionStart:
+        if self.worktree and self.folder is not None:
+            raise ValueError("a worktree is made for a project or a task")
         if sum(x is not None for x in (self.project_id, self.task_id, self.folder)) != 1:
             raise ValueError("give a project, a task or a folder")
         if self.with_brief:

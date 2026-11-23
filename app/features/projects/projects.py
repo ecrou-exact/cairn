@@ -11,7 +11,7 @@ from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, back_to, flash_undo, validate
 from app.features.changesets import changesets_core
-from app.features.claude import claude_core
+from app.features.claude import claude_core, worktrees_core
 from app.features.comments import comments_core
 from app.features.graph.graph import graph_view, with_graph_csp
 from app.features.instances import found_core, instances_core
@@ -118,6 +118,7 @@ def detail(slug: str):
             tab=tab,
             links=project_links_core.for_project(project.id),
             claude=claude_core.overview(project_id=project.id) if tab == "claude" else None,
+            worktrees=worktrees_core.for_project(project.id) if tab == "claude" else None,
             instances=instances_core.for_project(project.id) if tab == "instances" else None,
             outside=outside,
             proposals=changesets_core.waiting(project.id),

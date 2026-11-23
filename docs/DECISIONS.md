@@ -443,3 +443,8 @@
 
 ## D-076 · 2026-11-23 · accepted — From quick add to the full form
 - Owner request: wherever a task is added in one line, a button opens the full form with the same words, already understood (project, dates, type, tags, priority, estimate, repetition) and, for a subtask, its parent. Also in the palette. The words go through `POST /tasks/quick/full`, so no token ends in the address.
+
+## D-077 · 2026-11-23 · accepted — A git worktree per Claude
+- A Claude opened on a task works in a worktree of its own (`<data>/worktrees/<project>/<branch>`), on `<type>/<task>` from the project's main branch; the same task finds it again. A setting (`claude.worktrees`, on) and a box in the launcher decide; a folder that is not a git repository is used as it is. The same when the main Claude hands over a task. Its rules say to stay in it.
+- The project's Claude tab lists them: branch, task, commits, what is not committed, the Claude in them. **Removing** one takes the folder only: never `--force`, never with changes not committed, never with a Claude open in it, and the branch always stays.
+- Not in a worktree: what git ignores (a virtual environment, `.env`). Claude Code may ask to trust each new folder.

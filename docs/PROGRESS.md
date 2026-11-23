@@ -107,7 +107,8 @@ Goal: owner approves architecture + design direction.
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS
-- [ ] Git worktree per run, context files, hard rules via system prompt append
+- [x] A git worktree per Claude on a task (D-077); hard rules via system prompt append (D-051)
+- [ ] Context files per project
 - [ ] Chat (global/scoped), accounts/models, usage dashboard, skills library
 
 ## Phase 6 — Planning intake  ·  Phase 7 — GitHub  ·  Phase 8 — Instances & ports

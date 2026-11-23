@@ -27,7 +27,7 @@ from app.core.security.headers import allow_own_frame, csp_terminal
 from app.core.utils.events import latest_event_id
 from app.core.utils.web import FormErrors, local_path, validate
 from app.features.changesets import changesets_core
-from app.features.claude import claude_core, main_core, terminal_core, tools_core
+from app.features.claude import claude_core, main_core, terminal_core, tools_core, worktrees_core
 from app.features.graph.graph import with_graph_csp
 from app.features.projects import projects_core
 
@@ -50,6 +50,18 @@ def index():
         proposals=changesets_core.waiting(),
         events_after=after,
     )
+
+
+@claude.post("/claude/worktrees/<uuid:worktree_id>/remove")
+def remove_worktree(worktree_id: uuid.UUID):
+    """Remove a worktree's folder (its branch stays)."""
+    try:
+        row = worktrees_core.remove(worktree_id)
+    except worktrees_core.WorktreeError as exc:
+        flash(str(exc), "danger")
+    else:
+        flash(f"Removed. The branch {row.branch} and its commits stay.", "success")
+    return redirect(local_path(request.form.get("next")) or url_for("claude.index"))
 
 
 @claude.post("/claude/main")
@@ -161,6 +173,8 @@ def start():
     """Open Claude Code from a project's or a task's Claude tab, or free in a folder (form)."""
     values = {key: request.form.get(key) or None for key in ("project_id", "task_id", "folder")}
     values["with_brief"] = request.form.get("with_brief") == "1"
+    if request.form.get("worktree") in ("0", "1"):
+        values["worktree"] = request.form["worktree"] == "1"
     back = local_path(request.form.get("next")) or url_for("claude.index")
     try:
         session = terminal_core.start(validate(SessionStart, values))

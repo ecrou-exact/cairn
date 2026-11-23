@@ -168,6 +168,15 @@ class CnClaudeLaunch extends HTMLElement {
       }
     }
 
+    if (this.#state.preset !== 'new') {
+      const own = el('label', 'form-check');
+      const box = el('input', 'form-check-input');
+      Object.assign(box, { type: 'checkbox', name: 'worktree', value: '1' });
+      box.checked = Boolean(this.#targets.worktrees && (this.#state.task || this.#state.preset === 'task'));
+      own.append(box, document.createTextNode(' '), el('span', 'form-check-label', 'In its own worktree: a folder and a branch apart (git projects)'));
+      fields.append(own);
+    }
+
     const actions = el('div', 'cn-dialog-actions');
     const cancel = el('button', 'btn btn-outline-secondary', 'Cancel');
     cancel.type = 'button';
@@ -213,7 +222,7 @@ class CnClaudeLaunch extends HTMLElement {
         const project = task ? null : values.project_id || this.#state.project || null;
         result = await api('/claude/sessions', {
           method: 'POST',
-          body: { project_id: project, task_id: task, folder: task || project ? null : values.folder || null, preset: this.#state.preset, detail: values.detail || '', ...size },
+          body: { project_id: project, task_id: task, folder: task || project ? null : values.folder || null, worktree: task || project ? values.worktree === '1' : null, preset: this.#state.preset, detail: values.detail || '', ...size },
         });
       }
       window.location.assign(result.session.url);

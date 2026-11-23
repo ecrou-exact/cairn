@@ -18,7 +18,7 @@ from app.core.schema.claude import (
     TerminalInput,
     TerminalResize,
 )
-from app.features.claude import claude_core, live_core, main_core, terminal_core, tools_core
+from app.features.claude import claude_core, live_core, main_core, terminal_core, tools_core, worktrees_core
 from app.features.projects import projects_core
 
 claude_api = api_blueprint("claude_api")
@@ -102,6 +102,25 @@ def tools():
     if kind and kind not in tools_core.KINDS:
         raise ApiError("'kind' must be one of: " + ", ".join(tools_core.KINDS), 422)
     return jsonify(tools_core.overview(request.args.get("q", "")[:100], kind))
+
+
+@claude_api.get("/claude/worktrees")
+def list_worktrees():
+    """A project's worktrees (`project`): branch, task, changes, commits, the Claudes in them."""
+    project = _uuid("project")
+    if project is None:
+        raise ApiError("'project' must be an id.", 422)
+    return jsonify(worktrees=worktrees_core.for_project(project))
+
+
+@claude_api.delete("/claude/worktrees/<uuid:worktree_id>")
+def remove_worktree(worktree_id: uuid.UUID):
+    """Remove a worktree's folder (its branch stays)."""
+    try:
+        worktrees_core.remove(worktree_id)
+    except worktrees_core.WorktreeError as exc:
+        raise ApiError(str(exc), 409) from exc
+    return jsonify(ok=True)
 
 
 @claude_api.get("/claude/targets")

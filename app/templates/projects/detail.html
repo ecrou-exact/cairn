@@ -127,6 +127,29 @@
   {% if project.local_path %}{{ start_form(project=project, label="Open Claude in this project") }}
   {% else %}<p class="cn-muted">Claude Code opens in the project's folder: <a href="{{ url_for('projects.edit', slug=project.slug) }}">set its local folder</a> first.</p>{% endif %}
   {% if claude.sessions %}<ul class="cn-claude-cards">{% for s in claude.sessions %}{{ session_card(s) }}{% endfor %}</ul>{% endif %}
+  {% if worktrees %}
+  <h3 class="cn-instances-outside">Worktrees <span class="cn-muted">a folder and a branch of their own</span></h3>
+  <ul class="cn-instances">
+    {% for w in worktrees %}
+    <li class="cn-instance {{ 'is-running' if w.running }}">
+      <span class="cn-instance-dot" aria-hidden="true"></span>
+      <div class="cn-instance-body">
+        <p class="cn-instance-name"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ w.branch }}{% if w.task %} <a href="{{ url_for('tasks.detail', task_id=w.task.id) }}">{{ w.task.title }}</a>{% endif %}</p>
+        <p class="cn-instance-command"><span class="cn-muted">{{ w.path }}</span></p>
+        <p class="cn-instance-ports">{% if not w.here %}<span class="cn-badge cn-badge-warning">folder gone</span>{% else %}{% if w.changes %}<span class="cn-badge cn-badge-warning">{{ w.changes }} not committed</span>{% endif %}<span class="cn-muted">{{ w.commits }} commit{{ "s" if w.commits != 1 }}{% if w.behind %}, {{ w.behind }} behind {{ w.base }}{% endif %}</span>{% endif %}</p>
+      </div>
+      <div class="cn-instance-actions">
+        {% for s in w.running %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.session', session_id=s.id) }}"><i class="fa-solid fa-claude" aria-hidden="true"></i><span>Open</span></a>{% endfor %}
+        {% if not w.running %}
+        <cn-confirm message="Remove this worktree?" detail="Its folder is removed. The branch {{ w.branch }} and its commits stay; changes not committed are refused." confirm-label="Remove the folder" danger>
+          <form method="post" action="{{ url_for('claude.remove_worktree', worktree_id=w.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
+            <button class="btn btn-sm btn-outline-danger" type="submit"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span>Remove</span></button></form>
+        </cn-confirm>{% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </section>
 
 {% elif tab == "instances" %}

@@ -47,6 +47,7 @@ from app.features.claude import (
     session_settings,
     skills_core,
     transcript_core,
+    worktrees_core,
 )
 from app.features.claude.pty_host import Pty
 from app.features.connections import connections_core
@@ -260,7 +261,7 @@ def _rules_file(session_id: uuid.UUID, project: Project | None, cwd: str) -> Pat
         text += (
             f"\n\nInstructions for the project “{project.name}”:\n{project.claude_instructions_md.strip()}"
         )
-    text += main_core.rules(cwd)
+    text += main_core.rules(cwd) + worktrees_core.rules(cwd)
     path = folder / f"{session_id}.md"
     path.write_text(text + "\n", encoding="utf-8")
     return path
@@ -331,6 +332,14 @@ def command(
 def start(data: SessionStart) -> ClaudeSession:
     """Open Claude Code in a terminal, in the project's or the given folder, for what `data` asks (D-050)."""
     project, task, folder = _where(data)
+    wanted = data.worktree
+    if wanted is None:  # on a task, unless the settings say otherwise or it is not a git folder
+        wanted = task is not None and get_setting("claude.worktrees") and worktrees_core.is_repository(folder)
+    if wanted and project is not None:
+        try:
+            folder = Path(worktrees_core.open_for(project, task, folder).path)
+        except worktrees_core.WorktreeError as exc:
+            raise TerminalError(str(exc)) from exc
     message = _first_message(data, task)
     title = _title(data, project.name if project else folder.name or str(folder), task)
     return _launch(project, task, folder, message, title, cols=data.cols, rows=data.rows, preset=data.preset)

@@ -1,0 +1,6 @@
+{
+  "label": "A worktree for each task",
+  "category": "Claude",
+  "description": "Open Claude on a task in a git worktree of its own (its own folder and branch), so that several work on one project without getting in each other's way. The launcher can choose otherwise each time.",
+  "value": true
+}
