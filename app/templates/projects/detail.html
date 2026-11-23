@@ -7,6 +7,7 @@
 {% from "macros/graph.html" import graph_stage, graph_assets, graph_toolbar %}
 {% from "macros/instances.html" import outside_row %}
 {% from "macros/worklinks.html" import work_panel %}
+{% from "macros/git.html" import project_git %}
 {% from "macros/claude.html" import session_card, start_form, proposals_waiting %}
 {% block title %}{{ project.name }}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/changesets/changesets.css') }}">
@@ -20,7 +21,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
 {{ graph_assets() }}
 {% endblock %}
-{% block scripts %}{% if tab == "instances" %}<script type="module" src="{{ url_for('static', filename='js/projects/instances.js') }}"></script>{% endif %}
+{% block scripts %}{% if tab == "git" %}<script type="module" src="{{ url_for('static', filename='js/components/cn-refresh.js') }}"></script>{% endif %}{% if tab == "instances" %}<script type="module" src="{{ url_for('static', filename='js/projects/instances.js') }}"></script>{% endif %}
 
 <script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-quick-add.js') }}"></script>
@@ -94,6 +95,7 @@
   {% for key, icon, label, count in [
       ("plan", "fa-diagram-project", "Plan", None),
       ("tasks", "fa-list-check", "Tasks", stats.open),
+      ("git", "fa-code-branch", "Git", None),
       ("claude", "fa-claude", "Claude", None),
       ("instances", "fa-server", "Instances", instances_running),
       ("about", "fa-circle-info", "About", (resources | length) + (comments | length))] %}
@@ -134,6 +136,9 @@
     {{ empty_state(page, "No tasks in this project", "Add the first one above.") }}
   {% endif %}
 </section>
+
+{% elif tab == "git" %}
+{{ project_git(git, project, url_for('projects.detail', slug=project.slug, tab='git')) }}
 
 {% elif tab == "claude" %}
 <section class="cn-panel cn-claude-panel" aria-labelledby="claude-title">

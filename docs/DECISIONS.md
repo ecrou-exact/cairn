@@ -492,3 +492,7 @@
 
 ## D-086 · 2026-11-23 · accepted — The search finds a task by what it is linked to
 - Owner request: the palette's search finds a task or a subtask by its title, its description, its id (whole, or its first six characters or more), and by the work linked to it: a pull request or an issue (`#1451`, `1451`, its address), a branch, a commit (its first characters), a folder. A subtask shows its parent.
+
+## D-087 · 2026-11-23 · accepted — A Git tab on a project, a task and a subtask
+- Owner request: where the work stands, at each level. A project's **Git** tab: each copy with its branch, what is ahead and behind its remote, what is not committed, its pull request, its last commit; refreshed by itself. A task's (and a subtask's) **Git** tab: the copies on its linked branches (its own, its parents', its project's, and its pull requests' branches), its branches that no copy has out, its pull requests.
+- From there, only what brings work in: **fetch**, and **pull** when it fast-forwards (confirmed; refused when it would need a merge or overwrite changes not committed). Commit, push, merge, switch and delete stay the owner's, in the folder or with Claude. Only a copy of the project is touched; each action is logged.

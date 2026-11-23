@@ -1,0 +1,41 @@
+{# Git for a project or a task (D-087). `rows`: copies_core rows. #}
+{% macro copy_row(c, project, here) -%}
+<li class="cn-copy {{ 'is-running' if c.ours or c.outside }}">
+  <div class="cn-copy-body">
+    <p class="cn-copy-name"><strong>{{ c.name }}</strong>{% if c.main %} <span class="cn-badge">project folder</span>{% elif c.worktree %} <span class="cn-badge">worktree</span>{% endif %}
+      {% if c.branch %}<span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ c.branch }}</span>{% endif %}
+      {% if c.changes %}<span class="cn-badge cn-badge-warning">{{ c.changes }} not committed</span>{% endif %}
+      {% if c.ahead %}<span class="cn-badge">{{ c.ahead }} to push</span>{% endif %}
+      {% if c.behind %}<span class="cn-badge cn-badge-warning">{{ c.behind }} to pull</span>{% endif %}
+      {% if c.ahead == 0 and c.behind == 0 %}<span class="cn-muted">up to date with its remote</span>{% elif c.ahead is none %}<span class="cn-muted">no remote branch</span>{% endif %}</p>
+    {% if c.pull %}<p><i class="fa-solid fa-code-pull-request" aria-hidden="true"></i> <a href="{{ c.pull.url }}" target="_blank" rel="noopener noreferrer">{{ c.pull.repo }}#{{ c.pull.number }} {{ c.pull.title }}</a> <span class="cn-badge cn-pull-{{ c.pull.state }}">{{ c.pull.state }}</span> <span class="cn-muted">into {{ c.pull.base }}</span></p>{% endif %}
+    {% if c.subject %}<p class="cn-muted">{{ c.subject | truncate(140) }}{% if c.committed %} · <time data-since="{{ c.committed }}"></time>{% endif %}</p>{% endif %}
+    <p class="cn-muted cn-copy-folder">{{ c.folder }}</p>
+  </div>
+  <div class="cn-instance-actions">
+    {% for action, icon, label, title in [("fetch", "fa-cloud-arrow-down", "Fetch", "Get what is new on the remotes; nothing changes in the folder"), ("pull", "fa-download", "Pull", "Bring the remote branch in, only when it fast-forwards")] %}
+    {% set form %}<form method="post" action="{{ url_for('folder.git_action', slug=project.slug, action=action) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}"><input type="hidden" name="folder" value="{{ c.folder }}"><button class="btn btn-sm btn-outline-secondary" type="submit" title="{{ title }}"><i class="fa-solid {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span></button></form>{% endset %}
+    {% if action == "pull" %}<cn-confirm message="Pull {{ c.branch }} in {{ c.name }}?" detail="Only when it fast-forwards: if it would need a merge, or overwrite changes not committed, nothing is done." confirm-label="Pull">{{ form }}</cn-confirm>{% else %}{{ form }}{% endif %}
+    {% endfor %}
+  </div>
+</li>
+{%- endmacro %}
+
+{% macro project_git(found, project, here) -%}
+<section class="cn-panel" aria-labelledby="git-title">
+  <header class="cn-home-head"><h2 id="git-title">Git</h2>{% if found.repo %}<a href="https://github.com/{{ found.repo }}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github" aria-hidden="true"></i> {{ found.repo }}</a>{% endif %}</header>
+  <p class="cn-muted">Each copy of the project on this machine. Fetch and pull bring work in; commit, push and merge stay yours, in the folder or with Claude.</p>
+  {% if not found.github %}<p class="alert alert-warning">Pull requests could not be read: sign in with <code>gh auth login</code>.</p>{% endif %}
+  <cn-refresh id="git-copies" every="20000">{% if found.copies %}<ul class="cn-copies">{% for c in found.copies %}{{ copy_row(c, project, here) }}{% endfor %}</ul>{% else %}<p class="cn-muted">No git folder of this project here: <a href="{{ url_for('projects.edit', slug=project.slug) }}">set its local folder</a>.</p>{% endif %}</cn-refresh>
+</section>
+{%- endmacro %}
+
+{% macro task_git(found, project, here) -%}
+<section class="cn-panel" aria-labelledby="git-title">
+  <h2 id="git-title">Git</h2>
+  {% if not found.branches %}<p class="cn-muted">No branch is linked to this task yet: link one, or its pull request, in <a href="?tab=linked">Linked work</a>.</p>{% endif %}
+  {% if found.copies %}<ul class="cn-copies">{% for c in found.copies %}{{ copy_row(c, project, here) }}{% endfor %}</ul>{% endif %}
+  {% for w in found.elsewhere %}<div class="cn-copy"><p class="cn-copy-name"><span class="cn-badge"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> {{ w.ref }}</span> <span class="cn-muted">{{ "not out in a copy here" if w.found else "not found on this machine: fetch the project" }}{% if w["from"] %}, from {{ w["from"] }}{% endif %}</span></p>{% for line in w.commits or [] %}<p class="cn-work-commit">{{ line }}</p>{% endfor %}</div>{% endfor %}
+  {% for w in found.pulls %}<p><i class="fa-solid fa-code-pull-request" aria-hidden="true"></i> {% if w.url %}<a href="{{ w.url }}" target="_blank" rel="noopener noreferrer">{{ w.ref }} {{ w.title }}</a>{% else %}{{ w.ref }}{% endif %}{% if w.state %} <span class="cn-badge cn-pull-{{ w.state }}">{{ w.state }}</span>{% endif %}{% if w.branch %} <span class="cn-muted">{{ w.branch }} into {{ w.base }}</span>{% endif %}</p>{% endfor %}
+</section>
+{%- endmacro %}

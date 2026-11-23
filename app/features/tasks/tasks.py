@@ -13,6 +13,7 @@ from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, back_to, flash_undo, local_path, split_list, validate
 from app.features.claude import claude_core
 from app.features.comments import comments_core
+from app.features.folder import git_core
 from app.features.graph.graph import with_graph_csp
 from app.features.projects import projects_core
 from app.features.resources import resources_core
@@ -34,7 +35,7 @@ from app.features.worklinks import github_work_core, worklinks_core
 tasks = Blueprint("tasks", __name__)
 
 # The task page in tabs (D-047): what to do, its place in the plan, files, discussion, Claude.
-TASK_TABS = ("work", "plan", "linked", "files", "discussion", "claude")
+TASK_TABS = ("work", "plan", "linked", "git", "files", "discussion", "claude")
 
 DEPENDENCY_DIRECTIONS = {
     # form choice -> (kind, this task is the source?)
@@ -276,6 +277,7 @@ def detail(task_id: uuid.UUID):
         resources=resources_core.for_target("task", task.id),
         work=worklinks_core.for_target("task", task.id, deep=tab == "linked"),
         choices=github_work_core.choices(task.project) if tab == "linked" and task.project else None,
+        git=git_core.for_task(task) if tab == "git" and task.project else None,
         max_mb=get_setting("resources.max_upload_mb"),
         comments=comments_core.for_target("task", task.id),
         inherited=[

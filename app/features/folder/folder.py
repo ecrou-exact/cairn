@@ -5,9 +5,9 @@ from __future__ import annotations
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
 from app.core.schema.folder import BringInput
-from app.core.utils.web import FormErrors, validate
+from app.core.utils.web import FormErrors, local_path, validate
 from app.features.changesets.changesets_core import ChangesetError
-from app.features.folder import copies_core, scan_core
+from app.features.folder import copies_core, git_core, scan_core
 from app.features.instances.instances_core import InstanceError
 from app.features.projects import projects_core
 from app.features.resources.resources_core import ResourceError
@@ -55,3 +55,16 @@ def take(slug: str):
     if taken["changeset"] is not None:
         return redirect(url_for("changesets.detail", changeset_id=taken["changeset"].id))
     return redirect(url_for("folder.bring", slug=slug))
+
+
+@folder.post("/projects/<slug>/git/<any(fetch, pull):action>")
+def git_action(slug: str, action: str):
+    project = _project(slug)
+    back = local_path(request.form.get("next")) or url_for("projects.detail", slug=slug, tab="git")
+    try:
+        said = git_core.act(project, request.form.get("folder", ""), action)
+    except git_core.GitError as exc:
+        flash(str(exc), "danger")
+    else:
+        flash(f"{action.capitalize()}: {said.splitlines()[-1][:200]}", "success")
+    return redirect(back)

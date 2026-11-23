@@ -5,6 +5,7 @@
 {% from "macros/graph.html" import graph_stage, graph_assets %}
 {% from "macros/claude.html" import session_card, start_form %}
 {% from "macros/worklinks.html" import work_panel %}
+{% from "macros/git.html" import task_git %}
 {% block title %}{{ task.title }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
@@ -133,9 +134,10 @@
       ("work", "fa-pen-ruler", "Work", (subtasks | length) or None),
       ("plan", "fa-diagram-project", "Plan", n_deps + (conditions | length) or None),
       ("linked", "fa-link", "Linked work", (work.own + work.known + work.inherited) | length or None),
+      ("git", "fa-code-branch", "Git", None) if task.project else none,
       ("files", "fa-paperclip", "Files", (resources | length) or None),
       ("discussion", "fa-comments", "Discussion", (comments | length) or None),
-      ("claude", "fa-claude", "Claude", None)] %}
+      ("claude", "fa-claude", "Claude", None)] | select %}
   <a class="cn-tab" href="{{ url_for('tasks.detail', task_id=task.id, tab=key) }}" {% if tab == key %}aria-current="page"{% endif %}>
     <i class="fa-solid {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>{% if count %}<span class="cn-tab-count">{{ count }}</span>{% endif %}
   </a>
@@ -193,6 +195,8 @@
       {% endif %}
       {{ quick_add("Add a subtask…", project=task.project, parent=task) }}
     </section>
+    {% elif tab == "git" and git %}
+    {{ task_git(git, task.project, url_for('tasks.detail', task_id=task.id, tab='git')) }}
     {% elif tab == "linked" %}
     {{ work_panel(work, "task", task.id, choices) }}
     {% elif tab == "plan" %}
