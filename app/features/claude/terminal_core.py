@@ -227,7 +227,10 @@ def _first_message(data: SessionStart, task: Task | None) -> str | None:
     about = f"\n\nThis is about the task “{task.title}” tracked in Cairn." if task is not None else ""
     if data.preset == "task" and task is not None:
         extra = f"\n\nAlso: {words}" if words else ""
-        return f"I want to work on this task, tracked in Cairn. Here is its brief:\n\n{_brief(task)}{extra}"
+        return (
+            f"I want to work on this task, tracked in Cairn. Here is its brief:\n\n{_brief(task)}{extra}"
+            f"\n\n{KEEP_THE_TASK.format(task_id=task.id)}"
+        )
     if data.preset == "pr":
         return (
             f"Take care of this pull request: {words}\n"
@@ -255,6 +258,16 @@ def _first_message(data: SessionStart, task: Task | None) -> str | None:
             f"code unless I ask.{about}"
         )
     return (words + about) if words else (about.strip() or None)
+
+
+KEEP_THE_TASK = (
+    "Keep this task true in Cairn as you go, with Cairn's tools (task id {task_id}): set_task_status to "
+    "in progress now; tick_checklist each item the moment it is done; for each subtask, set_task_status "
+    "when you start it and when it is done, and create_task (with parent_id) for the work you find on the "
+    "way. Before you tell me you are done: every checklist item and subtask is ticked or left open with "
+    "the reason, comment_on_task says what was done, on which branch, and what was checked, and the task "
+    "moves to its next status. Only what is really done."
+)
 
 
 RUN_MESSAGE = (

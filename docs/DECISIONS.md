@@ -537,3 +537,6 @@
 
 ## D-097 · 2026-11-23 · accepted — Back from a session; Stop is its own button
 - Owner request: on a Claude session's page, **Back** returns where the owner came from (on this site; else the session's project, else the Claude page) and the session goes on; **Stop the session** (red, confirmed) is the one that ends it. "Close" is gone: it was read as leaving the page.
+
+## D-098 · 2026-11-23 · accepted — A Claude on a task keeps it true
+- Owner request: a Claude opened on a task is told, with its brief, to keep the task true as it goes: in progress at once, each checklist item ticked when done (new tool `tick_checklist`, by text or number), each subtask moved when started and done, follow-ups created as subtasks, and before saying it is done every item and subtask ticked or left open with the reason, a comment with what was done, and the task's next status. The `/cairn` skill says the same to Claude Code outside Cairn.

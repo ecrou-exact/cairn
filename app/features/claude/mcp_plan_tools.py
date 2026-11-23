@@ -27,6 +27,7 @@ from app.features.worklinks import worklinks_core
 
 READ_TOOLS = ("linked_work", "schedule", "list_resources", "get_resource", "list_comments", "describe_schema")
 WRITE_TOOLS = (
+    "tick_checklist",
     "link_work",
     "update_task",
     "schedule_task",
@@ -326,6 +327,30 @@ def register(
                 CommentCreate(target_type="project", target_id=link.target_id, kind="comment", body_md=text)
             )
             return {"comment_id": str(comment.id)}
+
+        return run(work)
+
+    @server.tool()
+    def tick_checklist(task_id: str, item: str, done: bool = True) -> dict[str, Any]:
+        """Tick (or untick) one item of a task's checklist, named by its text (or its number, from 1),
+        as soon as it is done. Keep the checklist true while you work (D-098)."""
+
+        def work():
+            task = find_task(task_id)
+            texts = [entry["text"] for entry in task.checklist]
+            place = (
+                int(item) - 1
+                if item.isdigit()
+                else next(
+                    (n for n, text in enumerate(texts) if text.strip().lower() == item.strip().lower()), -1
+                )
+            )
+            if not 0 <= place < len(texts):
+                raise PlanToolError(f"No such item. The checklist: {texts}")
+            if bool(task.checklist[place].get("done")) != done:
+                tasks_core.toggle_checklist(task.id, place)
+            left = [entry["text"] for entry in find_task(task_id).checklist if not entry.get("done")]
+            return {"task": task.title, "item": texts[place], "done": done, "left": left}
 
         return run(work)
 
