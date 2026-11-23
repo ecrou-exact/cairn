@@ -15,6 +15,7 @@
 import { Pivotick } from '../../vendor/pivotick/pivotick.es.js';
 import { api, debounce } from '../core/api.js';
 import { subscribe } from '../core/events.js';
+import { confirmDialog } from '../components/cn-confirm.js';
 import { CARD_H, CARD_W, applyChanges, chip, el, fact, fitCards, icon, placePeek, token, viewAt as moveView } from './stage.js';
 
 const READABLE = 0.6; // below this zoom the cards' text is too small to read
@@ -450,7 +451,9 @@ function mount(stage) {
         onNodeContextmenu: (event, node) => { if (!linking) showMenu(event, node); },
         onNodeHoverIn: (event, node) => showPeek(event, node),
         onNodeHoverOut: hidePeek,
+        onEdgeClick: (_event, edge) => { if (!linking) dropOrder(edge); },
         onCanvasClick: () => { hidePanel(); hidePeek(); hideMenu(); if (!linking) say(''); },
+        onCanvasContextmenu: (event) => { if (linking) { event?.preventDefault?.(); setLinking(false); } },
         onCanvasMousemove: movePeek,
         onCanvasZoom: () => saveView(),
       },
@@ -600,9 +603,38 @@ function mount(stage) {
   // -- link mode -----------------------------------------------------------------------
 
   function say(text, tone = '') {
-    hint.textContent = text;
+    hint.replaceChildren(document.createTextNode(text));
+    if (text && linking) {
+      const stop = el('button', 'btn btn-sm btn-outline-secondary cn-graph-hint-stop', 'Stop (Esc)');
+      stop.type = 'button';
+      stop.addEventListener('click', () => setLinking(false));
+      hint.append(' ', stop);
+    }
     hint.dataset.tone = tone;
     hint.hidden = !text;
+  }
+
+  /** Remove an order between two projects by touching its arrow (D-089). */
+  async function dropOrder(edge) {
+    const data = edge?.getData?.();
+    if (!projectsView() || !data?.linkId) return;
+    const nodes = byId();
+    const from = nodes.get(edge.from?.id)?.label || 'this project';
+    const to = nodes.get(edge.to?.id)?.label || 'the next one';
+    const ok = await confirmDialog({
+      message: 'Remove this order?',
+      detail: `“${from}” will no longer pass before “${to}”. You can undo it from the history.`,
+      confirmLabel: 'Remove',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api(`/project-links/${data.linkId}`, { method: 'DELETE' });
+      say('Order removed.', 'ok');
+      later();
+    } catch (error) {
+      say(error.message, 'warn');
+    }
   }
 
   function setLinking(on) {
@@ -612,7 +644,7 @@ function mount(stage) {
     linkButton?.setAttribute('aria-pressed', String(on));
     if (on) {
       hidePanel();
-      say(projectsView() ? 'Order mode: touch the project that passes first. Esc to stop.' : 'Link mode: touch the task that must come first. Esc to stop.');
+      say(projectsView() ? 'Order mode: touch the project that passes first.' : 'Link mode: touch the task that must come first.');
     } else {
       graph?.deselectAll();
       say('');

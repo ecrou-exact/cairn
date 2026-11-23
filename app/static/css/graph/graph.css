@@ -279,6 +279,8 @@
 /* Link mode */
 .cn-graph-link-toggle[aria-pressed="true"] { background: var(--cn-mark); color: var(--cn-on-accent); }
 .cn-graph-linking .cn-gcard { cursor: crosshair; }
+.cn-graph-hint-stop { margin-left: var(--cn-space-2); }
+.cn-graph-projects:not(.cn-graph-linking) .pvt-edge, .cn-graph-projects:not(.cn-graph-linking) path { cursor: pointer; }
 .cn-graph-linking .cn-gcard:hover { box-shadow: 0 0 0 2px var(--cn-mark), 0 10px 24px -10px color-mix(in srgb, var(--cn-mark) 60%, transparent); }
 .cn-graph-hint {
   position: absolute;
