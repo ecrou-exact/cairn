@@ -53,6 +53,7 @@ def host(url: str | None) -> str:
 
 
 def register_template_filters(app: Flask) -> None:
+    from app.core.utils import breadcrumbs
     from app.features.about import about_core
     from app.features.claude import main_core
     from app.features.comments import comments_core
@@ -85,4 +86,5 @@ def register_template_filters(app: Flask) -> None:
             "cairn": about,
             "dock": current_user.is_authenticated,
             "pinned_projects": projects_core.pinned() if current_user.is_authenticated else [],
+            "trail": breadcrumbs.trail() if current_user.is_authenticated else [],
         }  # the main Claude beside the page (D-063)

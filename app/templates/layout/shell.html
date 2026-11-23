@@ -83,6 +83,7 @@
   </nav>
   <main class="cn-main" id="main" tabindex="-1">
     <div class="cn-page">
+      {% if trail %}<nav class="cn-trail" aria-label="Where you are"><ol>{% for label, href in trail %}<li>{% if href and not loop.last %}<a href="{{ href }}">{{ label }}</a>{% else %}<span aria-current="page">{{ label }}</span>{% endif %}</li>{% endfor %}</ol></nav>{% endif %}
       {{ flashes() }}
       {% block content %}{% endblock %}
     </div>
