@@ -1,0 +1,37 @@
+{# Work linked to a project or a task (D-083). `found`: worklinks_core.for_target(). #}
+{% macro work_row(w, removable) -%}
+<li class="cn-work {{ 'is-missing' if w.found == false }}">
+  <i class="fa-solid {{ w.icon }}" aria-hidden="true"></i>
+  <div class="cn-work-body">
+    <p><span class="cn-muted">{{ w.label }}</span> {% if w.url %}<a href="{{ w.url }}" {% if w.url.startswith('http') %}target="_blank" rel="noopener noreferrer"{% endif %}><code>{{ w.ref }}</code></a>{% else %}<code>{{ w.ref }}</code>{% endif %}
+      {% if w.title %} {{ w.title }}{% endif %}{% if w.state %} <span class="cn-badge cn-pull-{{ w.state }}">{{ w.state }}</span>{% endif %}
+      {% if w.found == false %} <span class="cn-badge cn-badge-warning">not found here</span>{% endif %}
+      {% if w["from"] %} <span class="cn-muted">from {{ w["from"] }}</span>{% endif %}</p>
+    {% if w.note %}<p class="cn-muted">{{ w.note }}</p>{% endif %}
+    {% for c in w.commits or [] %}<p class="cn-work-commit">{{ c }}</p>{% endfor %}
+  </div>
+  {% if removable %}<form method="post" action="{{ url_for('worklinks.remove', link_id=w.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="cn-icon-button" type="submit" title="Remove the link (undoable)"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="visually-hidden">Remove</span></button></form>{% endif %}
+</li>
+{%- endmacro %}
+
+{% macro work_panel(found, target_type, target_id) -%}
+<section class="cn-panel" id="work" aria-labelledby="work-title">
+  <h2 id="work-title">Linked work</h2>
+  <p class="cn-muted">Branches, commits, pull requests and Claude conversations of this work: every Claude on it reads them first.</p>
+  {% set rows = found.own + found.known + found.inherited %}
+  {% if rows %}<ul class="cn-works">
+    {% for w in found.own %}{{ work_row(w, True) }}{% endfor %}
+    {% for w in found.known + found.inherited %}{{ work_row(w, False) }}{% endfor %}
+  </ul>{% endif %}
+  <details class="cn-fold" {% if not rows %}open{% endif %}><summary><i class="fa-solid fa-link" aria-hidden="true"></i> Link work</summary>
+    <form class="cn-fold-body cn-work-form" method="post" action="{{ url_for('worklinks.add') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}#work">
+      <input type="hidden" name="target_type" value="{{ target_type }}"><input type="hidden" name="target_id" value="{{ target_id }}">
+      <div><label class="form-label" for="work-kind">What</label><select class="form-select" id="work-kind" name="kind">
+        <option value="branch">Branch</option><option value="commit">Commit</option><option value="pull">Pull request</option><option value="claude">Claude conversation</option><option value="folder">Folder</option></select></div>
+      <div><label class="form-label" for="work-ref">Which</label><input class="form-control" id="work-ref" name="ref" required maxlength="500" placeholder="feature/x · 3f2a9c1 · #1451 · a link"></div>
+      <div class="cn-work-wide"><label class="form-label" for="work-note">Why (optional)</label><input class="form-control" id="work-note" name="note" maxlength="500"></div>
+      <div><button class="btn btn-outline-secondary" type="submit">Link</button></div>
+    </form></details>
+</section>
+{%- endmacro %}

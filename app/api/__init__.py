@@ -44,6 +44,7 @@ def register_api(app: Flask) -> None:
     from app.api.recap_api import recap_api
     from app.api.resources_api import resources_api
     from app.api.settings_api import settings_api
+    from app.api.worklinks_api import worklinks_api
 
     for blueprint in (
         jobs_api,
@@ -58,6 +59,7 @@ def register_api(app: Flask) -> None:
         about_api,
         recap_api,
         folder_api,
+        worklinks_api,
     ):
         app.register_blueprint(blueprint)
 

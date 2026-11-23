@@ -11,3 +11,13 @@
 .cn-bring { display: grid; gap: var(--cn-space-4); justify-items: start; }
 .cn-bring > section { width: 100%; }
 .cn-bring-list li { overflow-wrap: anywhere; }
+.cn-works { list-style: none; margin: 0 0 var(--cn-space-3); padding: 0; display: grid; gap: var(--cn-space-2); }
+.cn-work { display: flex; gap: var(--cn-space-3); align-items: start; }
+.cn-work > i { margin-top: 0.3rem; color: var(--cn-mark); }
+.cn-work-body { flex: 1; min-width: 0; }
+.cn-work-body p { margin: 0; overflow-wrap: anywhere; }
+.cn-work.is-missing .cn-work-body { opacity: 0.7; }
+.cn-work-commit { font-family: var(--cn-font-mono); font-size: var(--cn-text-xs); color: var(--cn-text-muted); }
+.cn-work-form { display: grid; grid-template-columns: 12rem 1fr; gap: var(--cn-space-3); align-items: end; }
+.cn-work-wide { grid-column: 1 / -1; }
+@media (max-width: 40rem) { .cn-work-form { grid-template-columns: 1fr; } }

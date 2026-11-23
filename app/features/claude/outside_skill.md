@@ -1,7 +1,7 @@
 ---
 name: cairn
 description: Work with Cairn, the owner's planning workspace. Use when the user says to start, open or continue a project on Cairn ("commence un projet sur cairn", "start this on Cairn", "ouvre le projet dans Cairn"), to update Cairn or put tasks in it ("mets Cairn à jour", "ajoute ça dans Cairn", "note ça pour Cairn"), asks what to do next in a project, or when work just done belongs to a project Cairn knows.
-argument-hint: "[-init | -status | -next | -update | -bring | -copies | -note <text>]"
+argument-hint: "[-init | -status | -next | -update | -bring | -copies | -link [task] | -note <text>]"
 ---
 <!-- Written by Cairn (manage.py claude-connect). Changes are replaced; `claude-connect off` removes it. -->
 
@@ -14,6 +14,7 @@ Called as `/cairn $ARGUMENTS`. Do only what the argument says:
 - `-bring`: `found_in_project`, then the `bring_in` address.
 - `-copies`: `project_copies`: each folder, its branch, its pull request, what runs.
 - `-note <text>`: `take_note` with the text, for this project.
+- `-link [task]`: `link_work` the current branch (`git branch --show-current`) and this conversation to the task (or the project); ask which task when it is not clear.
 - Anything else: list these arguments in a few lines.
 
 Cairn's tools are the MCP tools of the server `cairn`. If they are not there, Cairn is not connected or could not start: say so in one line and carry on with the work, without them.
@@ -30,6 +31,7 @@ A folder with no project, and nobody asked for one: do not create it.
 
 ## While you work in a project Cairn knows
 - At the start, if the work is a task of the plan, `get_task` and `set_task_status` to what it becomes.
+- Link your work with `link_work`: the branch you are on, the pull request once opened, this conversation. `linked_work` gives what others linked before you.
 - Along the way, `create_task` for what you find and leave for later.
 - Before you say the work is done: `comment_on_task` with what was done, the branch and what was checked, and the task's new status. No task fits: say so and offer to create one.
 - Only facts. Never mark done what was not checked.

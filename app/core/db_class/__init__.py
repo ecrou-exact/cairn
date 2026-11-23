@@ -13,5 +13,6 @@ from app.core.db_class import (  # noqa: F401
     resource,
     secret,
     setting,
+    worklink,
     worktree,
 )

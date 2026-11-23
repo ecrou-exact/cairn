@@ -6,11 +6,13 @@
 {% from "macros/comments.html" import comments_panel %}
 {% from "macros/graph.html" import graph_stage, graph_assets, graph_toolbar %}
 {% from "macros/instances.html" import outside_row %}
+{% from "macros/worklinks.html" import work_panel %}
 {% from "macros/claude.html" import session_card, start_form, proposals_waiting %}
 {% block title %}{{ project.name }}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/changesets/changesets.css') }}">
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/upload.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
@@ -245,6 +247,7 @@
     {% endif %}
   </section>
   {{ resources_panel("project", project, resources, max_mb) }}
+  {{ work_panel(work, "project", project.id) }}
   <div class="cn-project-about-wide">{{ comments_panel("project", project, comments) }}</div>
 </div>
 {% endif %}

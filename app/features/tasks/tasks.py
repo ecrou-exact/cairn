@@ -29,6 +29,7 @@ from app.features.tasks import (
     workflow,
 )
 from app.features.tasks.tasks_forms import values_from_form, values_from_task, values_from_text
+from app.features.worklinks import worklinks_core
 
 tasks = Blueprint("tasks", __name__)
 
@@ -273,6 +274,7 @@ def detail(task_id: uuid.UUID):
         timing=current is not None and current[1].id == task.id,
         directions=DEPENDENCY_DIRECTIONS,
         resources=resources_core.for_target("task", task.id),
+        work=worklinks_core.for_target("task", task.id) if tab == "work" else None,
         max_mb=get_setting("resources.max_upload_mb"),
         comments=comments_core.for_target("task", task.id),
         inherited=[

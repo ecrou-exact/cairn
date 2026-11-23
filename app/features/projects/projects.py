@@ -23,6 +23,7 @@ from app.features.resources import resources_core, storage_core
 from app.features.resources.storage_core import StorageError
 from app.features.tasks import tasks_core
 from app.features.tasks.tasks import list_context
+from app.features.worklinks import worklinks_core
 
 projects = Blueprint("projects", __name__)
 
@@ -140,6 +141,7 @@ def detail(slug: str):
             next_up=tasks_core.next_actions(limit=3, project_id=project.id),
             events_after=after,
             resources=resources_core.for_target("project", project.id),
+            work=worklinks_core.for_target("project", project.id) if tab == "about" else None,
             comments=comments_core.for_target("project", project.id),
             max_mb=get_setting("resources.max_upload_mb"),
             **list_context(),

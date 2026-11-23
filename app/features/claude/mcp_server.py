@@ -45,6 +45,7 @@ from app.features.comments import comments_core
 from app.features.projects import place_core, projects_core
 from app.features.resources import resources_core
 from app.features.tasks import brief_core, dependencies_core, tasks_core, workflow
+from app.features.worklinks import worklinks_core
 
 SERVER_NAME = "cairn"
 READ_TOOLS = (
@@ -162,6 +163,7 @@ def build(
                 mcp_plan_tools.PlanToolError,
                 *mcp_time_tools.ERRORS,
                 mcp_place_tools.PlaceError,
+                worklinks_core.WorkLinkError,
                 changesets_core.ChangesetError,
             ) as exc:
                 raise ToolError(str(exc)) from exc  # a deliberate refusal: Claude gets the reason

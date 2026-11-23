@@ -187,6 +187,15 @@ def task_brief(task: Task) -> str:
     if attached:
         sections.append(_section("Resources", "\n".join(_resource_lines(r) for r in attached)))
 
+    from app.features.worklinks import worklinks_core  # it reads tasks
+
+    work = worklinks_core.brief_lines(task)
+    if work:
+        intro = (
+            "Branches, commits, pull requests and conversations of this work. Read them before you start.\n\n"
+        )
+        sections.append(_section("Linked work", intro + "\n".join(work)))
+
     related = _related_section(related_core.related_for(task))
     if related:
         sections.append(related)

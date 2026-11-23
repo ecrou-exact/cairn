@@ -52,6 +52,7 @@ Open the URL, create the owner account, then turn on two-factor sign-in under **
 | `/cairn -update` | Comment the task in progress (what was done, the branch, what was checked) and move its status |
 | `/cairn -bring` | To-do lists, GitHub issues and boards, skills and commands not in Cairn yet; you choose on the page |
 | `/cairn -copies` | Every copy of the project with its branch, pull request and what runs in it |
+| `/cairn -link [task]` | Link the current branch and this conversation to a task (or the project): every later Claude on it reads them |
 | `/cairn -note <text>` | Leave a note on the project |
 
 Writing in Cairn is always asked first, whatever the permission mode. Cairn must be running.

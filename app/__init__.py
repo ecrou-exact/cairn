@@ -106,6 +106,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.features.settings.settings import settings
     from app.features.tasks.tasks import tasks
     from app.features.trash.trash import trash
+    from app.features.worklinks.worklinks import worklinks
 
     for blueprint in (
         about,
@@ -128,5 +129,6 @@ def _register_blueprints(app: Flask) -> None:
         connections,
         trash,
         history,
+        worklinks,
     ):
         app.register_blueprint(blueprint)

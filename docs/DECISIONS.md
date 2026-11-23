@@ -473,3 +473,8 @@
 ## D-082 · 2026-11-23 · accepted — What happens outside Cairn, in the project (first steps)
 - A project's Claude tab lists the Claude Codes of the owner's terminals working in any copy of it (`place_core`), besides the ones Cairn opened.
 - The Copies page (branches, changes, pull requests, what runs) and the Instances page read themselves again while in front (`<cn-refresh>`, every 15 and 8 seconds), never while something in them is in use or open. Nothing is written in the owner's repositories and nothing is polled when no page looks.
+
+## D-083 · 2026-11-23 · accepted — Work linked to a project, a task, a subtask
+- Owner request: link a branch, a commit, a pull request, a Claude conversation or a folder to a project, a task or a subtask, so that a Claude starts with the real context. On the task's Work tab and the project's About tab, by the API, and by Claude (`link_work`, asked; `linked_work`; `/cairn -link`).
+- What Cairn made for a task is shown without being linked: its worktrees and the Claudes opened on it. A subtask also gets its parents' and its project's links.
+- Each is described where it lives: its last commits from the project's copies, the pull request from GitHub, the conversation from Cairn. The task's brief has a **Linked work** section with all of it; text from a pull request is data, as everywhere else.

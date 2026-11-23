@@ -4,11 +4,13 @@
 {% from "macros/comments.html" import comments_panel %}
 {% from "macros/graph.html" import graph_stage, graph_assets %}
 {% from "macros/claude.html" import session_card, start_form %}
+{% from "macros/worklinks.html" import work_panel %}
 {% block title %}{{ task.title }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/upload.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/resources/resources.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">
 {{ graph_assets() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments/comments.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
@@ -190,6 +192,7 @@
       {% endif %}
       {{ quick_add("Add a subtask…", project=task.project, parent=task) }}
     </section>
+    {{ work_panel(work, "task", task.id) }}
     {% elif tab == "plan" %}
     <section class="cn-panel" id="dependencies" aria-labelledby="deps-title">
       <h2 id="deps-title">Links</h2>
