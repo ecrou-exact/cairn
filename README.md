@@ -1,3 +1,5 @@
+<img width="654" height="468" alt="image" src="https://github.com/user-attachments/assets/a6f55ef5-d3cd-463b-ac1d-3279390cdcd0" />
+
 # Cairn
 
 Cairn is a self-hosted workspace for open-source developers. It keeps every task with its context, shows the plan as a graph, runs coding agents on several tasks in parallel under your control, and keeps GitHub items and local instances one click away.
