@@ -30,10 +30,12 @@
 
 {{ toolbar(page, "Search tasks") }}
 
+<div id="task-list" data-quick-list>
 {% if page.items %}
   {% if page.view == "cards" %}{{ task_cards(page, types) }}{% else %}{{ bulk_bar(workflow_statuses, project_options) }}{{ task_rows(page, types, workflow_statuses=workflow_statuses) }}{% endif %}
   {{ pagination(page) }}
 {% else %}
   {{ empty_state(page, "No tasks yet", "Type one in the field above: plain words, a date, a #type, a !priority.") }}
 {% endif %}
+</div>
 {% endblock %}

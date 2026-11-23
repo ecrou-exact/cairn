@@ -367,3 +367,5 @@ body:not(:has(input[form="bulk-form"]:checked)) .cn-bulk { display: none; }
 .cn-project-folder button:hover { background: color-mix(in srgb, var(--cn-chrome-text) 14%, transparent); color: var(--cn-chrome-text); }
 .cn-quick-full { display: inline-flex; align-items: center; gap: var(--cn-space-2); flex: none; white-space: nowrap; }
 @media (max-width: 700px) { .cn-quick-full span { display: none; } }
+.cn-quick-added { margin: var(--cn-space-1) 0 0; font-size: var(--cn-text-sm); color: var(--cn-success); }
+.cn-quick-error { margin: var(--cn-space-1) 0 0; font-size: var(--cn-text-sm); color: var(--cn-danger); }

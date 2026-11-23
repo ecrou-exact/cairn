@@ -183,7 +183,7 @@
     {% endif %}
     <section class="cn-panel" aria-labelledby="subtasks-title">
       <h2 id="subtasks-title">Subtasks{% if subtasks %} <span class="cn-muted">{{ subtasks | rejectattr("is_open") | list | length }} / {{ subtasks | length }} done</span>{% endif %}</h2>
-      {% if subtasks %}
+      <div id="subtask-list" data-quick-list>{% if subtasks %}
       <ul class="cn-subtasks">
         {% for sub in subtasks %}
         <li class="{% if not sub.is_open %}cn-task-closed{% endif %}">
@@ -192,7 +192,7 @@
         </li>
         {% endfor %}
       </ul>
-      {% endif %}
+      {% endif %}</div>
       {{ quick_add("Add a subtask…", project=task.project, parent=task) }}
     </section>
     {% elif tab == "git" and git %}

@@ -520,3 +520,6 @@
 - A task's (and subtask's) Git tab runs its versions too: a copy on its branch, or a branch not out yet, which Claude fetches into a worktree of its own, never switching the project's folder (D-091).
 - (D-086, later) A GitHub address is understood: a repository finds its project; a pull request or an issue finds the task linked to it in that project only (by `owner/name#n`, or `#n` on a task of that project), not a same number elsewhere; a branch (`/tree/…`) or a commit finds the task linked to it.
 - (D-086, later) A GitHub address of no project offers, in the palette, **Start it with Claude**: a Claude opens in the first folder of `recap.folders`, clones the repository (or uses a clone there), checks out the pull request or branch, starts the project as `/cairn -init` does once the owner agrees, and proposes the task of that pull request or issue. Nothing from the repository is run before the owner says so.
+
+## D-093 · 2026-11-23 · accepted — Quick add without reloading
+- Owner request: quick add (tasks, a project's tasks, subtasks, home) goes through the API: the field empties and keeps the focus, a line says what was added, and the list of the page is read again in place. Many tasks are typed one after the other. Without JavaScript the form still posts.

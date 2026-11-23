@@ -135,12 +135,14 @@
   {{ from_template(templates, project) }}
   <div class="cn-live-notice" id="list-changed" hidden role="status"><span>Tasks changed since this page loaded.</span> <a href="{{ page.url() }}">Reload the list</a></div>
   {{ toolbar(page, "Search this project's tasks") }}
+  <div id="project-task-list" data-quick-list>
   {% if page.items %}
     {% if page.view == "cards" %}{{ task_cards(page, types, show_project=False) }}{% else %}{{ bulk_bar(workflow_statuses, project_options) }}{{ task_rows(page, types, show_project=False, workflow_statuses=workflow_statuses) }}{% endif %}
     {{ pagination(page) }}
   {% else %}
     {{ empty_state(page, "No tasks in this project", "Add the first one above.") }}
   {% endif %}
+  </div>
 </section>
 
 {% elif tab == "git" %}
