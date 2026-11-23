@@ -142,5 +142,12 @@
 <nav class="cn-claude-views" aria-label="Views">
   <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.index') }}" {% if current == "cards" %}aria-current="page"{% endif %}><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>Cards</span></a>
   <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.live') }}" {% if current == "live" %}aria-current="page"{% endif %}><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span>Live graph</span></a>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('changesets.index') }}"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Proposals</span></a>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.tools') }}" {% if current == "tools" %}aria-current="page"{% endif %}><i class="fa-solid fa-toolbox" aria-hidden="true"></i><span>Tools</span></a>
 </nav>
+{%- endmacro %}
+
+{# Proposals waiting for the owner (D-071). #}
+{% macro proposals_waiting(proposals) -%}
+{% if proposals %}<div class="cn-proposals">{% for c in proposals %}<a class="cn-proposal" href="{{ url_for('changesets.detail', changeset_id=c.id) }}"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Claude proposes: <strong>{{ c.title }}</strong> ({{ c["items"] | length }} change{{ "s" if c["items"] | length != 1 }})</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>{% endfor %}</div>{% endif %}
 {%- endmacro %}

@@ -26,7 +26,8 @@ from app.core.schema.claude import OutsideStop, ResumeStart, SessionLink, Sessio
 from app.core.security.headers import allow_own_frame, csp_terminal
 from app.core.utils.events import latest_event_id
 from app.core.utils.web import FormErrors, local_path, validate
-from app.features.claude import claude_core, main_core, terminal_core
+from app.features.changesets import changesets_core
+from app.features.claude import claude_core, main_core, terminal_core, tools_core
 from app.features.graph.graph import with_graph_csp
 from app.features.projects import projects_core
 
@@ -43,7 +44,12 @@ def with_terminal_csp(response, nonce: str):
 @claude.get("/claude")
 def index():
     after = latest_event_id()
-    return render_template("claude/index.html", overview=claude_core.overview(), events_after=after)
+    return render_template(
+        "claude/index.html",
+        overview=claude_core.overview(),
+        proposals=changesets_core.waiting(),
+        events_after=after,
+    )
 
 
 @claude.post("/claude/main")
@@ -55,6 +61,14 @@ def open_main():
         flash(str(exc), "danger")
         return redirect(url_for("claude.index"))
     return redirect(url_for("claude.session", session_id=session.id))
+
+
+@claude.get("/claude/tools")
+def tools():
+    """What Claude can use, and what it used (D-072)."""
+    q, kind = request.args.get("q", "")[:100], request.args.get("kind", "")
+    kind = kind if kind in tools_core.KINDS else ""
+    return render_template("claude/tools.html", overview=tools_core.overview(q, kind), q=q, kind=kind)
 
 
 @claude.get("/claude/live")

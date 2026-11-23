@@ -5,9 +5,10 @@
 {% from "macros/resources.html" import resources_panel %}
 {% from "macros/comments.html" import comments_panel %}
 {% from "macros/graph.html" import graph_stage, graph_assets, graph_toolbar %}
-{% from "macros/claude.html" import session_card, start_form %}
+{% from "macros/claude.html" import session_card, start_form, proposals_waiting %}
 {% block title %}{{ project.name }}{% endblock %}
-{% block styles %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/changesets/changesets.css') }}">
+
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/upload.css') }}">
@@ -86,6 +87,7 @@
   </a>
   {% endfor %}
 </nav>
+{{ proposals_waiting(proposals) }}
 
 {% if tab == "plan" %}
 <section class="cn-project-plan" aria-label="{{ project.name }}: the plan">
@@ -157,6 +159,10 @@
         </form>
         {% endfor %}
         {% if live %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.session', session_id=live.id) }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Logs</span></a>{% endif %}
+        <form method="post" action="{{ url_for('instances.act', instance_id=inst.id, action='autostart') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ here }}">
+          <button class="btn btn-sm btn-outline-secondary" type="submit" aria-pressed="{{ 'true' if inst.autostart else 'false' }}" title="Start it when the machine starts (or your session opens again)"><i class="fa-solid {{ 'fa-toggle-on' if inst.autostart else 'fa-toggle-off' }}" aria-hidden="true"></i><span>At start</span></button>
+        </form>
         {% if not live and item.last %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('claude.session', session_id=item.last.id) }}"><i class="fa-solid fa-terminal" aria-hidden="true"></i><span>Last log</span></a>{% endif %}
         {% if not live %}
         <form method="post" action="{{ url_for('instances.act', instance_id=inst.id, action='delete') }}">

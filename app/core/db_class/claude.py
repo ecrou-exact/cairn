@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy import ForeignKey, Integer, String, Text, Uuid, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db_class.base import BaseEntity, UTCDateTime
@@ -30,6 +30,8 @@ class ProjectInstance(BaseEntity):
     command: Mapped[str] = mapped_column(String(1000), nullable=False)
     subfolder: Mapped[str] = mapped_column(String(300), default="", nullable=False)
     port: Mapped[int | None] = mapped_column(Integer)
+    # Started again once per session of the machine (D-073)
+    autostart: Mapped[bool] = mapped_column(default=False, server_default=false(), nullable=False)
 
 
 class ClaudeSession(BaseEntity):

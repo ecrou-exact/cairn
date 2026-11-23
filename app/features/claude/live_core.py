@@ -101,13 +101,6 @@ class Conversation:
     ids: set[str] = field(default_factory=set)  # every call seen, to tell whose an agent is
 
 
-def _epoch(at: str) -> float:
-    try:
-        return datetime.fromisoformat(at.replace("Z", "+00:00")).timestamp()
-    except (ValueError, AttributeError):
-        return 0.0
-
-
 def _request(entry: dict) -> str:
     """The owner's words in a user entry; empty for anything Claude Code wrote itself."""
     origin = entry.get("origin")
@@ -420,7 +413,12 @@ def _session(build: _Builder, session: dict[str, Any], full: bool) -> None:
                 )
 
     agents = (
-        _agents(transcript, cwd, _epoch(talk.prompt_at), session["started"] - 5 if session["started"] else 0)
+        _agents(
+            transcript,
+            cwd,
+            transcript_core.epoch(talk.prompt_at),
+            session["started"] - 5 if session["started"] else 0,
+        )
         if transcript is not None
         else []
     )
@@ -446,7 +444,7 @@ def _session(build: _Builder, session: dict[str, Any], full: bool) -> None:
         running(node, calls, agent["working"])
     running(key, talk.calls, working)
     for task_id, call in talk.background.items():
-        if _epoch(call.at) < session["started"] - 5:
+        if transcript_core.epoch(call.at) < session["started"] - 5:
             continue  # started by an earlier Claude Code on this conversation: gone with it
         build.add(
             f"{key}/b/{task_id}",

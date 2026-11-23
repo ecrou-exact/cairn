@@ -87,6 +87,7 @@ class CnClaudeDock extends HTMLElement {
       else if (event.data === 'cn-dock-ended') this.#load();
     });
     subscribe('claude.changed', () => { if (this.#isOpen) this.#load(); });
+    subscribe('changeset.changed', (event) => this.#proposed(event));
     const here = () => { if (!document.hidden) this.#tellPage(); };
     document.addEventListener('visibilitychange', here);
     window.addEventListener('focus', here);
@@ -120,7 +121,10 @@ class CnClaudeDock extends HTMLElement {
     this.#panel.hidden = !open;
     this.#tab.hidden = open;
     this.#tab.setAttribute('aria-expanded', String(open));
-    if (open) this.#load();
+    if (open) {
+      this.#tab.classList.remove('has-news');
+      this.#load();
+    }
   }
 
   async #load() {
@@ -134,6 +138,19 @@ class CnClaudeDock extends HTMLElement {
   #say(text = '') {
     this.#note.textContent = text;
     this.#note.hidden = !text;
+  }
+
+  /** Claude proposed changes: a link to review them (D-071). */
+  #proposed(event) {
+    if (event?.status !== 'proposed' || !event.id) {
+      this.#say();
+      return;
+    }
+    const link = el('a', '', `Claude proposes: ${event.title || 'changes'} — review`);
+    link.href = `/changesets/${event.id}`;
+    this.#note.replaceChildren(link);
+    this.#note.hidden = false;
+    if (!this.#isOpen) this.#tab.classList.add('has-news');
   }
 
   #show(session) {

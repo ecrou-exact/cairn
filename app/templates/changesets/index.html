@@ -1,0 +1,35 @@
+{% extends "layout/shell.html" %}
+{% from "macros/list.html" import toolbar, sort_header, pagination, empty_state %}
+{% block title %}Proposals{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/changesets/changesets.css') }}">{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('claude.index') }}">Claude</a></div>
+  <h1>Proposals</h1>
+  <p>Changes to the plan Claude proposes together. Nothing is written before you approve.</p>
+</header>
+{{ toolbar(page, "Search proposals") }}
+{% if page.items %}
+  {% if page.view == "cards" %}
+  <ul class="cn-cards">
+    {% for c in page.items %}
+    <li class="cn-card">
+      <div class="cn-card-head"><a href="{{ url_for('changesets.detail', changeset_id=c.id) }}">{{ c.title }}</a><span class="cn-badge cn-change-{{ c.status }}">{{ c.status }}</span></div>
+      <dl class="cn-card-meta"><div><dt>Changes</dt><dd>{{ c["items"] | length }}</dd></div><div><dt>Proposed</dt><dd><time datetime="{{ c.created_at.isoformat() }}">{{ c.created_at.strftime("%d %b, %H:%M") }}</time></dd></div></dl>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="cn-table-wrap"><table class="table cn-table">
+    <thead><tr>{{ sort_header(page, "title", "Proposal") }}<th scope="col">Status</th><th scope="col">Changes</th>{{ sort_header(page, "created", "Proposed") }}</tr></thead>
+    <tbody>{% for c in page.items %}<tr>
+      <td><a href="{{ url_for('changesets.detail', changeset_id=c.id) }}">{{ c.title }}</a></td><td>{{ c.status }}</td><td>{{ c["items"] | length }}</td>
+      <td><time datetime="{{ c.created_at.isoformat() }}">{{ c.created_at.strftime("%d %b, %H:%M") }}</time></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+  {{ pagination(page) }}
+{% else %}
+  {{ empty_state(page, "No proposal", "Tell Claude what you want to plan: it proposes the tasks, their links and dates here.") }}
+{% endif %}
+{% endblock %}

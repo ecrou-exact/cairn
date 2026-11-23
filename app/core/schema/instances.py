@@ -34,6 +34,10 @@ class FoundStop(Strict):
     id: Annotated[str, Field(pattern=r"^(pid-\d{1,10}|docker-[0-9a-f]{12,64})$")]
 
 
+class InstanceAutostart(Strict):
+    on: bool
+
+
 class InstanceStart(Strict):
     cols: Annotated[int, Field(ge=20, le=500)] = 120
     rows: Annotated[int, Field(ge=5, le=200)] = 32

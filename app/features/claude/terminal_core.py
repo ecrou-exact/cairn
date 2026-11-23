@@ -313,7 +313,10 @@ def command(
         argv += ["--mcp-config", str(mcp)]
         argv += [
             "--allowedTools",
-            ",".join(f"mcp__{mcp_server.SERVER_NAME}__{name}" for name in mcp_server.READ_TOOLS),
+            ",".join(
+                f"mcp__{mcp_server.SERVER_NAME}__{name}"
+                for name in (*mcp_server.READ_TOOLS, *mcp_server.PROPOSAL_TOOLS)
+            ),
         ]
     return argv
 

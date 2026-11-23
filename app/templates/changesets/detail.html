@@ -1,0 +1,48 @@
+{% extends "layout/shell.html" %}
+{% block title %}{{ changeset.title }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/changesets/changesets.css') }}">{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+{% if changeset.status == "proposed" %}<script type="module" src="{{ url_for('static', filename='js/changesets/review.js') }}"></script>{% endif %}{% endblock %}
+{% macro named(t) %}{% if t %}{% if t.url %}<a href="{{ t.url }}">{{ t.title }}</a>{% else %}<strong>{{ t.title }}</strong>{% if t.new %} <span class="cn-badge">new</span>{% endif %}{% endif %}{% endif %}{% endmacro %}
+{% block content %}
+{% set open = changeset.status == "proposed" %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('changesets.index') }}">Proposals</a></div>
+  <h1>{{ changeset.title }}</h1>
+  <p>{{ changeset["items"] | length }} change{{ "s" if changeset["items"] | length != 1 }} proposed by {{ changeset.by }}{% if changeset.project %} for <a href="{{ url_for('projects.detail', slug=changeset.project.slug) }}">{{ changeset.project.name }}</a>{% endif %}.
+  {% if open %}Nothing is written before you approve.{% elif changeset.status == "applied" %}{{ changeset.kept }} applied.{% else %}Dismissed.{% endif %}</p>
+</header>
+{% if changeset.reason %}
+<section class="cn-panel" aria-label="Why"><script type="application/json" id="changeset-reason">{{ changeset.reason | tojson }}</script>
+  <cn-vitrine kind="markdown" source="changeset-reason"></cn-vitrine></section>
+{% endif %}
+<form method="post" action="{{ url_for('changesets.apply', changeset_id=changeset.id) }}" class="cn-changes" data-changes>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <ol class="cn-change-list">
+    {% for item in changeset["items"] %}
+    <li class="cn-change cn-change-op-{{ item.op }} {{ 'is-refused' if item.kept == false }}" data-needs="{{ item.needs | join(' ') }}">
+      {% if open %}<input class="form-check-input" type="checkbox" name="keep" value="{{ item.place }}" id="change-{{ item.place }}" checked>
+      {% else %}<i class="fa-solid {{ 'fa-check' if item.kept else 'fa-xmark' }}" aria-label="{{ 'Applied' if item.kept else 'Not applied' }}"></i>{% endif %}
+      <label class="cn-change-body" {% if open %}for="change-{{ item.place }}"{% endif %}>
+        <span class="cn-change-head"><i class="fa-solid {{ item.icon }}" aria-hidden="true"></i> <span class="cn-change-label">{{ item.label }}</span>
+          {% if item.op == "create_task" %}<strong>{{ item.title }}</strong>{% if item.parent %} <span class="cn-muted">in</span> {{ named(item.parent) }}{% endif %}
+          {% elif item.op == "link_tasks" %}{{ named(item.first) }} <span class="cn-muted">{{ item.kind }}</span> {{ named(item.then) }}
+          {% else %}{{ named(item.task) }}{% endif %}
+          {% if item.target %}<a class="cn-change-target" href="{{ item.target }}">see it</a>{% endif %}
+        </span>
+        {% for f in item.fields %}<span class="cn-change-field"><span class="cn-muted">{{ f.name }}</span>{% if f.before %}<del>{{ f.before | truncate(400) }}</del>{% endif %}<ins>{{ f.after | truncate(1500) }}</ins></span>{% endfor %}
+        {% if item.text %}<span class="cn-change-field"><ins>{{ item.text | truncate(1500) }}</ins></span>{% endif %}
+        {% if item.reason %}<span class="cn-change-reason">{{ item.reason }}</span>{% endif %}
+        {% if open and item.needs %}<span class="cn-change-needs cn-muted" hidden>Needs a change you refused.</span>{% endif %}
+      </label>
+    </li>
+    {% endfor %}
+  </ol>
+  {% if open %}
+  <div class="cn-change-actions">
+    <button class="btn btn-primary" type="submit"><i class="fa-solid fa-check" aria-hidden="true"></i><span>Apply <span data-kept>{{ changeset["items"] | length }}</span> of {{ changeset["items"] | length }}</span></button>
+    <button class="btn btn-outline-secondary" type="submit" formnovalidate formaction="{{ url_for('changesets.dismiss', changeset_id=changeset.id) }}">Dismiss everything</button>
+  </div>
+  {% endif %}
+</form>
+{% endblock %}

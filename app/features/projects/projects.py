@@ -10,6 +10,7 @@ from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
 from app.core.utils.web import FormErrors, back_to, flash_undo, validate
+from app.features.changesets import changesets_core
 from app.features.claude import claude_core
 from app.features.comments import comments_core
 from app.features.graph.graph import graph_view, with_graph_csp
@@ -119,6 +120,7 @@ def detail(slug: str):
             claude=claude_core.overview(project_id=project.id) if tab == "claude" else None,
             instances=instances_core.for_project(project.id) if tab == "instances" else None,
             outside=outside,
+            proposals=changesets_core.waiting(project.id),
             editor=get_setting("projects.editor"),
             instances_running=instances_core.running_count(project.id) + len(outside),
             **graph_view(request.args, project=project),

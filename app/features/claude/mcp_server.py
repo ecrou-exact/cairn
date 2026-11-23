@@ -27,10 +27,12 @@ from sqlalchemy import func, select
 from app.core.db_class.claude import ClaudeSession
 from app.core.db_class.planning import Project, Task
 from app.core.extensions import db
+from app.core.schema.changesets import ChangesetCreate
 from app.core.schema.comments import CommentCreate
 from app.core.schema.planning import DependencyCreate, ProjectCreate, ProjectUpdate, TaskCreate
 from app.core.utils.actor import acting_as
 from app.core.utils.history import batch
+from app.features.changesets import changesets_core
 from app.features.claude import handover_core, main_core, mcp_plan_tools
 from app.features.comments import comments_core
 from app.features.projects import projects_core
@@ -47,7 +49,10 @@ READ_TOOLS = (
     "claude_sessions",
     "current_page",
     *mcp_plan_tools.READ_TOOLS,
+    "changeset_state",
 )
+# Only records a proposal the owner reviews in Cairn: nothing to ask in the terminal (D-071).
+PROPOSAL_TOOLS = ("propose_changeset",)
 WRITE_TOOLS = (
     "open_project_claude",
     "take_note",
@@ -140,6 +145,7 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
                 resources_core.ResourceError,
                 handover_core.HandoverError,
                 mcp_plan_tools.PlanToolError,
+                changesets_core.ChangesetError,
             ) as exc:
                 raise ToolError(str(exc)) from exc  # a deliberate refusal: Claude gets the reason
             except ValidationError as exc:  # what is wrong with each field, never the values
@@ -468,6 +474,40 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
                 )
             )
             return {"comment_id": str(comment.id), "task": task.title}
+
+        return run(work)
+
+    @server.tool()
+    def propose_changeset(title: str, items: list[dict[str, Any]], reason: str = "") -> dict[str, Any]:
+        """Propose several changes to the plan together: the owner reviews them one by one in Cairn
+        and applies what they keep. The way to plan anything beyond two or three changes. It is
+        tried first: errors come back here, nothing is written. Each item has an `op`:
+        create_task (key, title, project?, parent?, description?, acceptance?, checklist?, type?,
+        priority?, importance?, estimate_hours?, start_on?, do_on?, due_on?, tags?) ·
+        update_task (task + the fields to change) · set_status (task, status) ·
+        link_tasks (first, then, kind: blocks by default) · comment (task, text).
+        A task is its id, or the `key` of an earlier create_task. Each item may carry a `reason`.
+        `describe_schema` with kind changeset gives every limit. Never invent a deadline."""
+
+        def work():
+            data = ChangesetCreate.model_validate({"title": title, "reason": reason, "items": items})
+            row, here = session_row(), session_project()
+            found = changesets_core.propose(data, here.id if here else None, row.id if row else None)
+            return {"id": str(found.id), "items": len(found.items), "review": f"/changesets/{found.id}"}
+
+        return run(work)
+
+    @server.tool()
+    def changeset_state(changeset_id: str) -> dict[str, Any]:
+        """Whether the owner answered a proposal, and which changes they kept."""
+
+        def work():
+            try:
+                told = changesets_core.describe(changesets_core.get(uuid.UUID(changeset_id)))
+            except ValueError as exc:
+                raise CairnToolError(str(exc)) from exc
+            kept = [row["place"] + 1 for row in told["items"] if row["kept"]]
+            return {"status": told["status"], "kept": kept, "of": len(told["items"])}
 
         return run(work)
 

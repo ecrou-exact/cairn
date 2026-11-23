@@ -1,0 +1,35 @@
+{% extends "layout/shell.html" %}
+{% from "macros/claude.html" import views %}
+{% block title %}Claude's tools{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/tools.css') }}">{% endblock %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow">Claude</div>
+  <h1>Tools</h1>
+  <p>What Claude can use and what it used: {{ overview.calls }} calls in the end of {{ overview.conversations }} conversation{{ "s" if overview.conversations != 1 }}, the last {{ overview.days }} days.</p>
+</header>
+{{ views("tools") }}
+<form class="cn-tools-filter" method="get" role="search">
+  <label class="visually-hidden" for="tools-q">Search tools</label><input class="form-control" id="tools-q" type="search" name="q" value="{{ q }}" placeholder="Search a tool" maxlength="100">
+  <label class="visually-hidden" for="tools-kind">Kind</label>
+  <select class="form-select" id="tools-kind" name="kind"><option value="">Every kind</option>{% for key, label in overview.kinds.items() %}<option value="{{ key }}" {% if kind == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  <button class="btn btn-outline-secondary" type="submit">Show</button>
+</form>
+{% if overview.tools %}
+<div class="cn-table-wrap"><table class="table cn-table cn-tools">
+  <caption class="visually-hidden">Tools, the most used first</caption>
+  <thead><tr><th scope="col">Tool</th><th scope="col">From</th><th scope="col">Permission</th><th scope="col">Calls</th><th scope="col">Failed</th><th scope="col">Last used</th></tr></thead>
+  <tbody>{% for t in overview.tools %}<tr {% if not t.calls %}class="is-unused"{% endif %}>
+    <td><code>{{ t.label }}</code>{% if t.about %}<span class="cn-tool-about">{{ t.about }}</span>{% endif %}</td>
+    <td>{{ t.source }}</td>
+    <td>{% if t.asks is none %}<span class="cn-muted">Claude Code's</span>{% elif t.asks %}<span class="cn-badge cn-badge-warning">asks you</span>{% else %}<span class="cn-badge cn-badge-success">allowed</span>{% endif %}</td>
+    <td><span class="cn-tool-calls"><meter min="0" max="{{ overview.most or 1 }}" value="{{ t.calls }}" aria-hidden="true"></meter>{{ t.calls }}</span></td>
+    <td>{% if t.failed %}<span class="cn-due-late">{{ t.failed }}</span>{% else %}0{% endif %}</td>
+    <td>{% if t.last %}<time data-instance-since="{{ t.last }}"></time>{% else %}<span class="cn-muted">not used</span>{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table></div>
+{% else %}<p class="cn-muted">No tool matches.</p>{% endif %}
+{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/projects/instances.js') }}"></script>{% endblock %}

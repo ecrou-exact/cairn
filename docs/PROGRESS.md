@@ -109,7 +109,9 @@ Goal: owner approves architecture + design direction.
 - [ ] Chat (global/scoped), accounts/models, usage dashboard, skills library
 
 ## Phase 6 — Planning intake  ·  Phase 7 — GitHub  ·  Phase 8 — Instances & ports
-- [ ] Intake → changeset → approval → graph
+- [x] Changesets: proposed by Claude, tried first, approved one by one, applied and undone at once (D-071)
+- [x] Claude's tools on a page (D-072); an instance started with the machine (D-073)
+- [ ] Intake: from free text and attachments to a changeset (the main Claude does it by its rules; a guided form is left)
 - [ ] Ask Claude to fill a task from a few words (read-only research run → changeset), owner request 2026-11-21 (D-029)
 - [ ] GitHub accounts, inbox, link/sync, webhooks or polling
 - [x] Instances: definitions per project, start / stop / restart in a terminal (logs with history), port check and next free port as PORT, listening ports shown as links (D-053)

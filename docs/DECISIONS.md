@@ -420,3 +420,14 @@
 - The environment is passed by a 0600 file removed as soon as it is read, never on a command line.
 - **Stop one found outside Cairn**: its process and children, or its container; pid and start time checked; never Cairn itself.
 - Windows keeps the terminal in Cairn's process (ConPTY belongs to its creator). Not done: starting instances again after the machine restarts.
+
+## D-071 · 2026-11-23 · accepted — Changesets: Claude proposes, the owner approves one by one
+- `propose_changeset` (allowed up front: it only records a proposal) takes up to 60 items: create_task, update_task, set_status, link_tasks, comment; a task is its id or the key of an earlier item. It is **tried and rolled back** first, through the same cores, so a loop, a forbidden move or a missing task is told to Claude and never reaches the owner.
+- **Review** (`/changesets/<id>`): each change with what it replaces and why; unchecking one refuses those that need it (checked again by the server). Applied in one batch as `claude:<session>`, all or nothing, undone at once (it then waits again). Announced in the panel, on the Claude page and on the project.
+- Not in a changeset: statuses' workflow is not bypassed; skills, files, project instructions and deletions stay the owner's.
+
+## D-072 · 2026-11-23 · accepted — Claude's tools, on a page
+- Owner request. `/claude/tools`: Cairn's own tools (what each does, allowed or asking), and every tool called in the end of the conversations of the last 7 days (Claude Code's, MCP servers', skills), with calls, failures and last use. Names and counts only.
+
+## D-073 · 2026-11-23 · accepted — An instance started with the machine
+- `ProjectInstance.autostart`, off by default: started as Cairn starts for the first time since the machine did or the session opened again (a mark in the runtime folder), not at each restart of Cairn, so an instance the owner stopped stays stopped.

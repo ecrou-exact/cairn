@@ -1,0 +1,19 @@
+/* Proposals of changes (D-071) */
+.cn-changes { display: grid; gap: var(--cn-space-4); margin-top: var(--cn-space-4); }
+.cn-change-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cn-space-2); }
+.cn-change { display: flex; gap: var(--cn-space-3); padding: var(--cn-space-3) var(--cn-space-4); background: var(--cn-surface); border-radius: var(--cn-radius-lg); box-shadow: var(--cn-slab-shadow); }
+.cn-change > input, .cn-change > i { margin-top: 0.3rem; flex: none; }
+.cn-change.is-refused .cn-change-head, .cn-change.is-refused .cn-change-field { opacity: 0.5; }
+.cn-change-body { display: grid; gap: var(--cn-space-1); min-width: 0; flex: 1; }
+.cn-change-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cn-space-2); }
+.cn-change-label { font-size: var(--cn-text-xs); color: var(--cn-text-muted); min-width: 4.5rem; }
+.cn-change-head > i { color: var(--cn-mark); }
+.cn-change-field { display: grid; gap: 2px; font-size: var(--cn-text-sm); padding-left: var(--cn-space-4); border-left: 2px solid var(--cn-border); }
+.cn-change-field del, .cn-change-field ins { white-space: pre-line; overflow-wrap: anywhere; text-decoration: none; padding: 1px var(--cn-space-2); border-radius: var(--cn-radius-md); }
+.cn-change-field del { background: var(--cn-danger-soft); color: var(--cn-danger); text-decoration: line-through; }
+.cn-change-field ins { background: var(--cn-success-soft); color: var(--cn-text); }
+.cn-change-reason { font-size: var(--cn-text-sm); font-style: italic; color: var(--cn-text-muted); }
+.cn-change-actions { position: sticky; bottom: var(--cn-space-4); display: flex; gap: var(--cn-space-3); padding: var(--cn-space-3) var(--cn-space-4); background: var(--cn-surface-raised); border-radius: var(--cn-radius-slab); box-shadow: var(--cn-slab-shadow); }
+.cn-proposals { display: grid; gap: var(--cn-space-2); margin-bottom: var(--cn-space-4); }
+.cn-proposal { display: flex; align-items: center; gap: var(--cn-space-3); padding: var(--cn-space-3) var(--cn-space-4); border-radius: var(--cn-radius-lg); background: var(--cn-accent-soft); color: var(--cn-text); text-decoration: none; }
+.cn-proposal span { flex: 1; }

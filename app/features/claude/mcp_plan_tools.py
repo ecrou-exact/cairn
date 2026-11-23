@@ -15,6 +15,7 @@ from sqlalchemy import select
 from app.core.db_class.planning import Project, Task
 from app.core.db_class.resource import Resource, ResourceLink
 from app.core.extensions import db
+from app.core.schema.changesets import ChangesetCreate
 from app.core.schema.comments import CommentCreate
 from app.core.schema.planning import DependencyCreate, ProjectCreate, TaskCreate, TaskUpdate
 from app.core.schema.resources import LinkCreate, ResourceCreate
@@ -35,6 +36,7 @@ SCHEMAS: dict[str, type[BaseModel]] = {
     "dependency": DependencyCreate,
     "resource": ResourceCreate,
     "comment": CommentCreate,
+    "changeset": ChangesetCreate,
 }
 
 
@@ -322,7 +324,7 @@ def register(
 
     @server.tool()
     def describe_schema(
-        kind: Literal["project", "task", "dependency", "resource", "comment"],
+        kind: Literal["project", "task", "dependency", "resource", "comment", "changeset"],
     ) -> dict[str, Any]:
         """Every field of a kind of object, its type, limits and allowed values, as Cairn checks
         them; for a task, also the types, the statuses and the moves allowed between them."""

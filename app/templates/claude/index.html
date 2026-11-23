@@ -1,8 +1,9 @@
 {% extends "layout/shell.html" %}
-{% from "macros/claude.html" import session_card, instance_card, usage_left, views %}
+{% from "macros/claude.html" import session_card, instance_card, usage_left, views, proposals_waiting %}
 {% block title %}Claude{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">{% endblock %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/changesets/changesets.css') }}">{% endblock %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/claude/overview.js') }}"></script>{% endblock %}
 {% block content %}
@@ -24,6 +25,7 @@
 </header>
 
 {{ views("cards") }}
+{{ proposals_waiting(proposals) }}
 
 <div class="cn-live-notice" id="claude-changed" hidden role="status"><span>Sessions started or ended.</span> <a href="{{ url_for('claude.index') }}">Reload</a></div>
 

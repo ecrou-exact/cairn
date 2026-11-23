@@ -20,6 +20,7 @@ import re
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 import psutil
@@ -51,6 +52,13 @@ class Usage:
 
 def projects_root() -> Path:
     return Path.home() / ".claude" / "projects"
+
+
+def epoch(at: str) -> float:
+    try:
+        return datetime.fromisoformat(at.replace("Z", "+00:00")).timestamp()
+    except (ValueError, AttributeError):
+        return 0.0
 
 
 def registry_root() -> Path:

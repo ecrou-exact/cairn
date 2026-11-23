@@ -37,13 +37,21 @@ def create():
     return redirect(_back())
 
 
-@instances.post("/instances/<uuid:instance_id>/<any(start, stop, restart, delete):action>")
+@instances.post("/instances/<uuid:instance_id>/<any(start, stop, restart, delete, autostart):action>")
 def act(instance_id: uuid.UUID, action: str):
     try:
         if action == "delete":
             with batch() as batch_id:
                 instances_core.delete(instance_id)
             flash_undo("Instance removed.", batch_id)
+            return redirect(_back())
+        if action == "autostart":
+            with batch() as batch_id:
+                found = instances_core.toggle_autostart(instance_id)
+            flash_undo(
+                f"“{found.name}” {'starts' if found.autostart else 'no longer starts'} with the machine.",
+                batch_id,
+            )
             return redirect(_back())
         if action == "stop":
             instances_core.stop(instance_id)

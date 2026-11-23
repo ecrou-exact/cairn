@@ -18,7 +18,7 @@ from app.core.schema.claude import (
     TerminalInput,
     TerminalResize,
 )
-from app.features.claude import claude_core, live_core, main_core, terminal_core
+from app.features.claude import claude_core, live_core, main_core, terminal_core, tools_core
 from app.features.projects import projects_core
 
 claude_api = api_blueprint("claude_api")
@@ -93,6 +93,15 @@ def open_main():
 def tasks_at_work():
     """The tasks a running Claude is on (the plan's graph lights them)."""
     return jsonify(tasks=live_core.at_work())
+
+
+@claude_api.get("/claude/tools")
+def tools():
+    """What Claude can use, and what it used; `q`, `kind` (cairn, claude, server, skill)."""
+    kind = request.args.get("kind", "")
+    if kind and kind not in tools_core.KINDS:
+        raise ApiError("'kind' must be one of: " + ", ".join(tools_core.KINDS), 422)
+    return jsonify(tools_core.overview(request.args.get("q", "")[:100], kind))
 
 
 @claude_api.get("/claude/targets")

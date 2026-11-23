@@ -1,0 +1,8 @@
+/* Claude's tools (D-072) */
+.cn-tools-filter { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); margin-bottom: var(--cn-space-4); }
+.cn-tools-filter input { flex: 1 1 16rem; }
+.cn-tools-filter select { width: auto; }
+.cn-tool-about { display: block; font-size: var(--cn-text-xs); color: var(--cn-text-muted); max-width: 46rem; }
+.cn-tool-calls { display: inline-flex; align-items: center; gap: var(--cn-space-2); font-family: var(--cn-font-mono); }
+.cn-tool-calls meter { width: 6rem; height: 0.5rem; }
+.cn-tools .is-unused td { color: var(--cn-text-muted); }

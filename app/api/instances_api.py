@@ -7,7 +7,7 @@ import uuid
 from flask import jsonify, request
 
 from app.api import ApiError, api_blueprint, body
-from app.core.schema.instances import FoundStop, InstanceCreate, InstanceStart, LogOpen
+from app.core.schema.instances import FoundStop, InstanceAutostart, InstanceCreate, InstanceStart, LogOpen
 from app.features.claude import claude_core, terminal_core
 from app.features.instances import found_core, instances_core
 from app.features.projects import projects_core
@@ -30,6 +30,7 @@ def _row(item: dict) -> dict:
         "command": instance.command,
         "subfolder": instance.subfolder,
         "port": instance.port,
+        "autostart": instance.autostart,
         "running": claude_core.describe(live) if live else None,
         "ports": item["ports"],
         "last_exit_code": last.exit_code if last and not live else None,
@@ -85,6 +86,13 @@ def start_instance(instance_id: uuid.UUID):
     size = InstanceStart.model_validate(request.get_json(silent=True) or {})
     session = _guard(instances_core.start, instance_id, size.cols, size.rows)
     return jsonify(session=claude_core.describe(session)), 201
+
+
+@instances_api.put("/instances/<uuid:instance_id>/autostart")
+def autostart_instance(instance_id: uuid.UUID):
+    """Start it with the machine, or not (`on`)."""
+    found = _guard(instances_core.set_autostart, instance_id, body(InstanceAutostart).on)
+    return jsonify(id=str(found.id), autostart=found.autostart)
 
 
 @instances_api.post("/instances/<uuid:instance_id>/stop")

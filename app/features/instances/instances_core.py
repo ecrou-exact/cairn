@@ -10,6 +10,7 @@ from the process and its children.
 
 from __future__ import annotations
 
+import logging
 import os
 import shlex
 import shutil
@@ -21,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import psutil
+from flask import current_app
 from sqlalchemy import select
 
 from app.core.db_class.base import utcnow
@@ -28,6 +30,7 @@ from app.core.db_class.claude import ClaudeSession, ProjectInstance
 from app.core.db_class.planning import Project
 from app.core.extensions import db
 from app.core.schema.instances import InstanceCreate
+from app.core.utils.actor import acting_as
 from app.core.utils.events import publish
 from app.core.utils.history import batch, register_undo
 from app.core.utils.logger import log_action
@@ -249,6 +252,77 @@ def start(instance_id: uuid.UUID, cols: int = 120, rows: int = 32) -> ClaudeSess
 
 def _outlive(session: ClaudeSession, argv: list[str], **options) -> survivor.Survivor:
     return survivor.launch(session.id, argv, **options)
+
+
+def set_autostart(instance_id: uuid.UUID, on: bool) -> ProjectInstance:
+    instance = _get(instance_id)
+    if instance.autostart != on:
+        with batch():
+            instance.autostart = on
+            log_action(
+                "instance.autostart",
+                target_type="instance",
+                target_id=instance.id,
+                diff={"autostart": [not on, on]},
+            )
+            _changed(instance)
+    return instance
+
+
+def toggle_autostart(instance_id: uuid.UUID) -> ProjectInstance:
+    return set_autostart(instance_id, not _get(instance_id).autostart)
+
+
+def _undo_autostart(row) -> None:
+    instance = db.session.get(ProjectInstance, uuid.UUID(row.target_id))
+    if instance is not None:
+        instance.autostart = row.diff["autostart"][0]
+        _changed(instance)
+
+
+register_undo("instance.autostart", _undo_autostart)
+
+
+def _first_start() -> bool:
+    """Whether Cairn starts for the first time since the machine did, or since the session
+    opened again (the runtime folder goes with it): not at each restart of Cairn, so an instance
+    the owner stopped stays stopped."""
+    base = os.environ.get("XDG_RUNTIME_DIR")
+    place = Path(base) / "cairn" if base else Path(current_app.config["CAIRN_DATA_DIR"])
+    mark = place / "started"
+    boot = str(round(psutil.boot_time() / 60))
+    try:
+        place.mkdir(mode=0o700, parents=True, exist_ok=True)
+        known = mark.read_text(encoding="ascii") if mark.is_file() else ""
+        same = known.isdigit() and abs(int(known) - int(boot)) <= 1  # the clock may be set a little
+        if not same:
+            mark.write_text(boot, encoding="ascii")
+        return not same
+    except OSError:
+        return False
+
+
+def start_with_machine(app) -> int:
+    """Start the instances asked for (D-073); returns how many."""
+    started = 0
+    with app.app_context(), acting_as("system"):
+        if not _first_start():
+            return 0
+        for instance in db.session.scalars(
+            select(ProjectInstance).where(
+                ProjectInstance.autostart.is_(True), ProjectInstance.deleted_at.is_(None)
+            )
+        ).all():
+            try:
+                start(instance.id)
+                started += 1
+            except (InstanceError, terminal_core.TerminalError) as exc:
+                db.session.rollback()
+                logging.getLogger("cairn.instances").warning("“%s” did not start: %s", instance.name, exc)
+            except Exception:
+                db.session.rollback()
+                logging.getLogger("cairn.instances").exception("An instance did not start")
+    return started
 
 
 def reattach() -> int:

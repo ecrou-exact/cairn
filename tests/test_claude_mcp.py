@@ -95,7 +95,9 @@ def test_sessions_get_the_server(app, tmp_path, monkeypatch):
     )
     assert argv[1] == " -x first"  # the message comes first, never read as an option
     assert argv[-4] == "--mcp-config" and argv[-2] == "--allowedTools"
-    assert argv[-1] == ",".join(f"mcp__cairn__{n}" for n in mcp_server.READ_TOOLS)  # writes still ask
+    assert argv[-1] == ",".join(
+        f"mcp__cairn__{n}" for n in (*mcp_server.READ_TOOLS, *mcp_server.PROPOSAL_TOOLS)
+    )
 
 
 def test_notes_travel_between_claudes(app, tmp_path):
@@ -141,7 +143,9 @@ def test_every_tool_is_declared(app):
         async with Client(mcp_server.build(app, None)) as client:
             return {tool.name for tool in (await client.list_tools()).tools}
 
-    assert asyncio.run(names()) == set(mcp_server.READ_TOOLS) | set(mcp_server.WRITE_TOOLS)
+    assert asyncio.run(names()) == (
+        {*mcp_server.READ_TOOLS, *mcp_server.WRITE_TOOLS, *mcp_server.PROPOSAL_TOOLS}
+    )
     assert not set(mcp_server.READ_TOOLS) & set(mcp_server.WRITE_TOOLS)
 
 
