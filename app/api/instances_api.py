@@ -7,7 +7,7 @@ import uuid
 from flask import jsonify, request
 
 from app.api import ApiError, api_blueprint, body
-from app.core.schema.instances import InstanceCreate, InstanceStart, LogOpen
+from app.core.schema.instances import FoundStop, InstanceCreate, InstanceStart, LogOpen
 from app.features.claude import claude_core, terminal_core
 from app.features.instances import found_core, instances_core
 from app.features.projects import projects_core
@@ -49,6 +49,14 @@ def list_instances():
         instances=[_row(item) for item in instances_core.for_project(project_id)],
         outside=found_core.for_project(project),
     )
+
+
+@instances_api.post("/instances/outside/stop")
+def stop_outside():
+    """Stop an instance running outside Cairn."""
+    data = body(FoundStop)
+    _guard(found_core.stop, _guard(projects_core.get_project, data.project_id), data.id)
+    return jsonify(ok=True)
 
 
 @instances_api.post("/instances/log")

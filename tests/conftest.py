@@ -28,7 +28,7 @@ def app(tmp_path):
     with app.app_context():
         db.create_all()
     yield app
-    terminal_core.close_all()  # before the database goes: each reader records its session's end
+    terminal_core.close_all(survivors=True)  # before the database goes: each reader records its session's end
     with app.app_context():
         db.session.remove()
         db.drop_all()

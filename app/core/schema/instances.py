@@ -27,6 +27,13 @@ class LogOpen(Strict):
     key: Annotated[str, Field(min_length=1, max_length=1000)]
 
 
+class FoundStop(Strict):
+    """Stop an instance found outside Cairn: its id, as listed."""
+
+    project_id: uuid.UUID
+    id: Annotated[str, Field(pattern=r"^(pid-\d{1,10}|docker-[0-9a-f]{12,64})$")]
+
+
 class InstanceStart(Strict):
     cols: Annotated[int, Field(ge=20, le=500)] = 120
     rows: Annotated[int, Field(ge=5, le=200)] = 32

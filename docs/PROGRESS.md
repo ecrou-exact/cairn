@@ -115,7 +115,8 @@ Goal: owner approves architecture + design direction.
 - [x] Instances: definitions per project, start / stop / restart in a terminal (logs with history), port check and next free port as PORT, listening ports shown as links (D-053)
 - [x] Instances running outside Cairn (other clones, worktrees, Docker) in each project, with their ports and their logs in a terminal (D-061)
 - [x] Cairn starts with the session on Linux: `manage.py autostart on` (D-062)
-- [ ] Instances: indicator in the header, restart on crash, registry across projects; keep running when Cairn restarts
+- [x] Instances survive a restart of Cairn (Linux, macOS), their log kept; stop one found outside Cairn (D-070)
+- [ ] Instances: indicator in the header, restart on crash, registry across projects
 
 ## Phase 9 — Modules  ·  Phase 10 — Calendar & activity  ·  Phase 11 — Hardening & release
 - [ ] Module registry, event automations, task action modules

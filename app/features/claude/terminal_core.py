@@ -85,6 +85,7 @@ class Terminal:
     size: int = 0
     seq: int = 0
     ended: bool = False
+    left: bool = False
     reader: threading.Thread | None = None
     cond: threading.Condition = field(default_factory=threading.Condition)
 
@@ -600,10 +601,12 @@ def open_session(
     cols: int = 120,
     rows: int = 32,
     meta: dict[str, Any] | None = None,
+    spawn=None,
 ) -> ClaudeSession:
     """Run a program in a terminal Cairn keeps (D-050, D-053): the session row, the terminal,
     the reader thread, the log and the event. `build(session)` gives the argv and the files
-    to remove when it ends (it may need the session's id)."""
+    to remove when it ends (it may need the session's id). `spawn(session, argv, **options)`
+    starts it otherwise than in a terminal of this process (an instance that survives, D-070)."""
     with batch():
         session = ClaudeSession(
             kind=kind,
@@ -619,7 +622,8 @@ def open_session(
         db.session.flush()
         argv, files = build(session)
         try:
-            pty = Pty.spawn(argv, cwd=str(folder), env=env, cols=cols, rows=rows)
+            options = {"cwd": str(folder), "env": env, "cols": cols, "rows": rows}
+            pty = spawn(session, argv, **options) if spawn else Pty.spawn(argv, **options)
         except OSError as exc:
             for path in files:
                 _remove(path)
@@ -632,15 +636,24 @@ def open_session(
             meta={"cwd": session.cwd, "task": str(task.id) if task else None, **(meta or {})},
         )
         publish(f"{kind}.changed", {"id": str(session.id), "status": "running"})
-    terminal = Terminal(session.id, pty, tuple(files), kind)
+    _follow(Terminal(session.id, pty, tuple(files), kind))
+    return session
+
+
+def reattach(session: ClaudeSession, pty: Any) -> None:
+    """Follow again a program that outlived a restart of Cairn (D-070)."""
+    if not is_running(session.id):
+        _follow(Terminal(session.id, pty, (), session.kind))
+
+
+def _follow(terminal: Terminal) -> None:
     app = current_app._get_current_object()
     terminal.reader = threading.Thread(
-        target=_pump, args=(app, terminal), name=f"{kind}-{session.id}", daemon=True
+        target=_pump, args=(app, terminal), name=f"{terminal.kind}-{terminal.session_id}", daemon=True
     )
     with _lock:
-        _terminals[session.id] = terminal
+        _terminals[terminal.session_id] = terminal
     terminal.reader.start()
-    return session
 
 
 def _pump(app: Any, terminal: Terminal) -> None:
@@ -655,16 +668,21 @@ def _pump(app: Any, terminal: Terminal) -> None:
         if text:
             terminal.append(text)
     terminal.finish()
+    if terminal.left:  # it goes on: Cairn only stops following it
+        with _lock:
+            _terminals.pop(terminal.session_id, None)
+        return
     code = terminal.pty.exit_code()
     for path in terminal.files:  # the rules, MCP file and skills only live as long as their session
         _remove(path)
     with app.app_context(), acting_as("system"):
-        _ended(terminal.session_id, code, "")
+        record_end(terminal.session_id, code, "")
     with _lock:
         _terminals.pop(terminal.session_id, None)
 
 
-def _ended(session_id: uuid.UUID, code: int | None, reason: str) -> None:
+def record_end(session_id: uuid.UUID, code: int | None, reason: str) -> None:
+    """Close a session's row, with how it ended."""
     with batch():
         session = db.session.get(ClaudeSession, session_id)
         if session is None or session.status == "ended":
@@ -702,11 +720,17 @@ def write(session_id: uuid.UUID, text: str) -> None:
     terminal = _terminal(session_id)
     if terminal.ended:
         raise TerminalError("This session has ended.")
-    terminal.pty.write(text)
+    try:
+        terminal.pty.write(text)
+    except OSError as exc:
+        raise TerminalError("This program no longer takes keys.") from exc
 
 
 def resize(session_id: uuid.UUID, cols: int, rows: int) -> None:
-    _terminal(session_id).pty.resize(cols, rows)
+    try:
+        _terminal(session_id).pty.resize(cols, rows)
+    except OSError as exc:
+        raise TerminalError("This program has just ended.") from exc
 
 
 def stop(session_id: uuid.UUID) -> None:
@@ -714,13 +738,18 @@ def stop(session_id: uuid.UUID) -> None:
     _terminal(session_id).pty.kill()
 
 
-def close_all(wait: float = 10.0) -> None:
-    """Stop every terminal and let its reader record the end. Run when Cairn exits, too: an
+def close_all(wait: float = 10.0, *, survivors: bool = False) -> None:
+    """Stop every terminal and let its reader record the end; an instance that survives Cairn is
+    only left (`survivors`: stopped too). Run when Cairn exits, too: an
     interpreter ending while readers still wait for output can hang on their buffers."""
     with _lock:
         terminals = list(_terminals.values())
     for terminal in terminals:  # one at a time: each reader writes its session's end
-        terminal.pty.kill()
+        if getattr(terminal.pty, "survives", False) and not survivors:
+            terminal.left = True
+            terminal.pty.leave()
+        else:
+            terminal.pty.kill()
         if terminal.reader is not None:
             terminal.reader.join(wait)
 
@@ -788,7 +817,7 @@ def sessions(
     for row in rows:
         if row.status == "running" and not is_running(row.id):
             with acting_as("system"):
-                _ended(row.id, None, "Cairn was restarted while it ran")
+                record_end(row.id, None, "Cairn was restarted while it ran")
             _remove_session_files(row.id)  # its reader died with the old process
     rows.sort(key=lambda r: (r.status != "running", -r.created_at.timestamp()))
     return rows

@@ -9,6 +9,7 @@
 {% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/components/cn-terminal.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/claude/overview.js') }}"></script>
+{% if log %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>{% endif %}
 {% endblock %}
 {% block content %}
 <section class="cn-claude-band" data-claude-card="{{ session.id }}" aria-labelledby="session-title">
@@ -69,7 +70,18 @@
 {% if session.running %}
 <cn-terminal class="cn-claude-terminal" session="{{ session.id }}" nonce="{{ nonce }}" aria-label="Claude Code terminal"></cn-terminal>
 {% else %}
+{% if session.kind == "claude" %}
 <div class="cn-empty"><i class="fa-solid fa-claude" aria-hidden="true"></i><h2>This session has ended</h2>
   <p>{{ session.end_reason or "Claude Code was closed." }} Its conversation stays in Claude Code: <code>claude --resume</code> in <code>{{ session.cwd }}</code>.</p></div>
+{% else %}
+<div class="cn-empty"><i class="fa-solid fa-server" aria-hidden="true"></i><h2>It has ended</h2>
+  <p>{{ session.end_reason }}{% if session.exit_code is not none %} Exit code {{ session.exit_code }}.{% endif %}</p></div>
+{% if log %}
+<section class="cn-panel" aria-label="Its log">
+  <script type="application/json" id="ended-log">{{ log | tojson }}</script>
+  <cn-vitrine kind="log" source="ended-log" vt-variant="full" vt-time="none"></cn-vitrine>
+</section>
+{% endif %}
+{% endif %}
 {% endif %}
 {% endblock %}

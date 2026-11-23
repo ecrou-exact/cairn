@@ -206,6 +206,15 @@ def open_with_cairn(app: Flask) -> None:
     if os.environ.get("CAIRN_RELOAD") == "1" and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
         return
 
+    from app.features.instances import instances_core  # instances build on this feature
+
+    with app.app_context(), acting_as("system"):
+        try:  # before anything looks at the sessions: one without its terminal would be closed
+            instances_core.reattach()
+        except Exception:
+            db.session.rollback()
+            logging.getLogger("cairn.instances").exception("Running instances could not be found again")
+
     def work() -> None:
         from app.features.claude import terminal_core
 

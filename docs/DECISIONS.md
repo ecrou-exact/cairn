@@ -413,3 +413,10 @@
 - `mcp_plan_tools` (reading allowed up front: `schedule`, `list_resources`, `get_resource`, `list_comments`, `describe_schema`; asking the owner: `update_task`, `schedule_task`, `add_resource`, `attach_resource`, `comment_on_project`), on the same cores and pydantic schemas as the pages. `describe_schema` gives the schemas themselves, with the task types, statuses and moves from the settings. Invalid input names each wrong field.
 - **Kept from Claude:** creating or attaching a skill (it would speak to later sessions), a file by its path, a project's instructions, the inbox tags. A resource's text is cut at 20 000 characters and marked as data.
 - Left for Phase 6: changesets for bulk changes.
+
+## D-070 · 2026-11-23 · accepted — Instances survive a restart of Cairn
+- Owner need: come back the next morning and find what runs. On Linux and macOS an instance runs under a **runner** of its own (`runner.py`: a pseudo-terminal, a log file cut at 4 MB, a private Unix socket for keys and sizes, a state file), started on Linux by the session's systemd so that stopping Cairn's service does not stop it. Cairn sees it through `Survivor`, with `Pty`'s face: terminal, preview, stop and restart are unchanged.
+- **As Cairn starts** (`instances_core.reattach`, before anything looks at the sessions) it follows again those still alive (the runner's command line names the session: a reused pid is never taken for it) and closes the others with their exit code. The log of an ended one is shown on its page and kept 7 days.
+- The environment is passed by a 0600 file removed as soon as it is read, never on a command line.
+- **Stop one found outside Cairn**: its process and children, or its container; pid and start time checked; never Cairn itself.
+- Windows keeps the terminal in Cairn's process (ConPTY belongs to its creator). Not done: starting instances again after the machine restarts.

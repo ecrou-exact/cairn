@@ -9,6 +9,7 @@ the log files it keeps open or the copy's log folders. Only those files can be f
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess  # nosec B404 (fixed argument lists only, never a shell)
@@ -22,6 +23,9 @@ import psutil
 
 from app.core.db_class.claude import ClaudeSession
 from app.core.db_class.planning import Project
+from app.core.utils.events import publish
+from app.core.utils.history import batch
+from app.core.utils.logger import log_action
 from app.features.claude import terminal_core, transcript_core
 from app.features.claude.live_core import program
 from app.features.instances import follow, instances_core
@@ -205,6 +209,7 @@ def for_project(project: Project) -> list[dict[str, Any]]:
         return []
     listeners: dict[int, set[int]] = _reuse("listeners", _listeners)
     ours = terminal_core.running_pids(kind="instance")
+    cairn = {os.getpid(), *transcript_core.own_ancestors()}
     found = []
     for pid, ports in listeners.items():
         try:
@@ -232,6 +237,7 @@ def for_project(project: Project) -> list[dict[str, Any]]:
                     "where": transcript_core.host_of(pid),
                     "since": process.create_time(),
                     "ports": sorted(ports),
+                    "is_cairn": pid in cairn,
                     "logs": logs,
                 }
             )
@@ -248,6 +254,7 @@ def for_project(project: Project) -> list[dict[str, Any]]:
                     "where": "Docker",
                     "since": None,
                     "ports": container["ports"],
+                    "is_cairn": False,
                     "logs": [{"key": f"docker-{container['id']}", "label": "Container log", "path": None}],
                 }
             )
@@ -256,6 +263,60 @@ def for_project(project: Project) -> list[dict[str, Any]]:
 
 def _same_ports(pids: set[int], ports: set[int], listeners: dict[int, set[int]]) -> bool:
     return any(ports <= listeners[pid] for pid in pids)
+
+
+# -- stopping one ------------------------------------------------------------------------------
+
+
+def stop(project: Project, found_id: str) -> None:
+    """Stop an instance found outside Cairn (its process and its children, or its container).
+    Never the one Cairn runs in."""
+    item = next((i for i in for_project(project) if i["id"] == found_id), None)
+    if item is None:
+        raise instances_core.InstanceError("This instance is no longer running.")
+    if item["where"] == "Docker":
+        docker = shutil.which("docker")
+        if docker is None:
+            raise instances_core.InstanceError("docker was not found on this machine.")
+        try:
+            done = subprocess.run(  # noqa: S603  # nosec B603
+                [docker, "stop", found_id.removeprefix("docker-")],
+                capture_output=True,
+                timeout=40,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise instances_core.InstanceError(f"The container did not stop: {exc}") from exc
+        if done.returncode:
+            raise instances_core.InstanceError("The container did not stop.")
+    else:
+        if item["is_cairn"]:
+            raise instances_core.InstanceError("This is Cairn itself.")
+        try:
+            process = psutil.Process(int(found_id.removeprefix("pid-")))
+            if abs(process.create_time() - item["since"]) > 1:
+                raise instances_core.InstanceError("This instance is no longer running.")
+            family = [*process.children(recursive=True), process]
+            process.terminate()
+            _, alive = psutil.wait_procs([process], timeout=8)
+            if alive:
+                raise instances_core.InstanceError("It did not stop: stop it where it was started.")
+            for child in family[:-1]:
+                if child.is_running():
+                    child.terminate()
+        except psutil.NoSuchProcess:
+            pass
+        except psutil.AccessDenied as exc:
+            raise instances_core.InstanceError("It cannot be stopped from here.") from exc
+    _kept.clear()
+    with batch():
+        log_action(
+            "instance.stop_outside",
+            target_type="project",
+            target_id=project.id,
+            meta={"what": item["label"], "folder": item["folder"], "ports": item["ports"]},
+        )
+        publish("instance.changed", {"id": found_id, "project": str(project.id)})
 
 
 # -- logs in a Cairn terminal -----------------------------------------------------------------

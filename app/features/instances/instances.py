@@ -6,7 +6,7 @@ import uuid
 
 from flask import Blueprint, flash, redirect, request, url_for
 
-from app.core.schema.instances import InstanceCreate, LogOpen
+from app.core.schema.instances import FoundStop, InstanceCreate, LogOpen
 from app.core.utils.history import batch
 from app.core.utils.web import FormErrors, flash_undo, local_path, validate
 from app.features.claude import terminal_core
@@ -69,3 +69,17 @@ def open_log():
         flash(str(exc), "danger")
         return redirect(_back())
     return redirect(url_for("claude.session", session_id=session.id))
+
+
+@instances.post("/instances/outside/stop")
+def stop_outside():
+    """Stop an instance running outside Cairn (D-070)."""
+    values = {key: request.form.get(key, "") for key in ("project_id", "id")}
+    try:
+        data = validate(FoundStop, values)
+        found_core.stop(projects_core.get_project(data.project_id), data.id)
+    except FormErrors as exc:
+        flash(" ".join(exc.errors.values()), "danger")
+    except (instances_core.InstanceError, projects_core.ProjectError) as exc:
+        flash(str(exc), "danger")
+    return redirect(_back())

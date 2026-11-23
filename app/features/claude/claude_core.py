@@ -64,6 +64,16 @@ def describe(session: ClaudeSession) -> dict[str, Any]:
     }
 
 
+def ended_log(session: ClaudeSession) -> str:
+    """The end of an instance's log, once it has ended (colours left out)."""
+    if session.kind != "instance" or terminal_core.is_running(session.id):
+        return ""
+    from app.features.instances import survivor  # instances build on this module
+
+    text = terminal_core.ANSI.sub("", survivor.tail(session.id)) if survivor.available() else ""
+    return text.replace("\r\n", "\n")
+
+
 def outside() -> list[dict[str, Any]]:
     """The Claude Codes running outside Cairn, with the project of their folder."""
     sessions = transcript_core.outside_sessions(terminal_core.running_pids())

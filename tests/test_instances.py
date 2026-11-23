@@ -83,7 +83,7 @@ def test_instance_runs_listens_and_stops(app, ctx, tmp_path, monkeypatch):
     assert listed[0]["running"].id == session.id and port in listed[0]["ports"]
     shown = claude_core.overview()["instances"]  # on the Claude page, with the end of its log
     assert [s["id"] for s in shown] == [str(session.id)]
-    assert any(f"listening on {port}" in line for line in shown[0]["log"])
+    assert _until(lambda: any(f"listening on {port}" in s for s in terminal_core.preview(session.id)))
     with pytest.raises(instances_core.InstanceError, match="Stop it first"):
         instances_core.delete(instance.id)
 

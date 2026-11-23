@@ -32,8 +32,10 @@ from app.core.utils.events import publish
 from app.core.utils.history import batch, register_undo
 from app.core.utils.logger import log_action
 from app.features.claude import terminal_core
+from app.features.instances import survivor
 
 PORT_SEARCH = 50  # how far past a taken port to look for a free one
+LOGS_KEPT = 7 * 86400.0  # seconds an ended instance's log is kept
 BATCH_SUFFIXES = (".cmd", ".bat")
 
 
@@ -241,7 +243,34 @@ def start(instance_id: uuid.UUID, cols: int = 120, rows: int = 32) -> ClaudeSess
         cols=cols,
         rows=rows,
         meta={"command": instance.command, "port": port, "asked_port": instance.port},
+        spawn=_outlive if survivor.available() else None,
     )
+
+
+def _outlive(session: ClaudeSession, argv: list[str], **options) -> survivor.Survivor:
+    return survivor.launch(session.id, argv, **options)
+
+
+def reattach() -> int:
+    """As Cairn starts: follow again the instances that went on without it (D-070); those that
+    ended meanwhile are closed with how they ended. Returns how many still run."""
+    if not survivor.available():
+        return 0
+    rows = list(
+        db.session.scalars(
+            select(ClaudeSession).where(ClaudeSession.kind == "instance", ClaudeSession.status == "running")
+        )
+    )
+    alive = 0
+    for row in rows:
+        found = survivor.find(row.id)
+        if found is not None:
+            terminal_core.reattach(row, found)
+            alive += 1
+        elif not terminal_core.is_running(row.id):
+            terminal_core.record_end(row.id, survivor.ended_code(row.id), "It ended while Cairn was closed")
+    survivor.prune({row.id for row in rows}, LOGS_KEPT)
+    return alive
 
 
 def stop(instance_id: uuid.UUID) -> None:

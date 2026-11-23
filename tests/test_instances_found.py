@@ -141,3 +141,22 @@ def test_nothing_without_a_folder(ctx):
         busy.bind(("127.0.0.1", 0))
         busy.listen()
         assert found_core.for_project(projects_core.create(ProjectCreate(name="Loose"))) == []
+
+
+def test_one_outside_can_be_stopped(ctx, tmp_path, serve, monkeypatch):
+    folder = _repo(tmp_path / "site", "https://github.com/x/site.git")
+    process, _ = serve(folder)
+    project = projects_core.create(ProjectCreate(name="Site", local_path=str(folder)))
+    other = projects_core.create(ProjectCreate(name="Other", local_path=str(tmp_path / "none")))
+    (item,) = found_core.for_project(project)
+    with pytest.raises(instances_core.InstanceError, match="no longer running"):
+        found_core.stop(other, item["id"])  # not one of that project
+    monkeypatch.setattr(found_core.transcript_core, "own_ancestors", lambda: {process.pid})
+    with pytest.raises(instances_core.InstanceError, match="Cairn itself"):
+        found_core.stop(project, item["id"])
+    monkeypatch.undo()
+    assert process.poll() is None
+    monkeypatch.setattr(found_core, "_containers", list)
+    found_core.stop(project, item["id"])
+    process.wait(5)
+    assert found_core.for_project(project) == []

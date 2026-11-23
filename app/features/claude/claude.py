@@ -87,6 +87,7 @@ def session(session_id: uuid.UUID):
     page = render_template(
         "claude/session.html",
         session=claude_core.describe(row),
+        log=claude_core.ended_log(row),
         **({"dock": False} if main_core.is_main(row) else {}),  # already on the page
         targets=claude_core.targets(),
         nonce=nonce,
