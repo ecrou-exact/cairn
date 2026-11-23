@@ -211,3 +211,17 @@ def test_quick_add_opens_the_full_form_with_the_same_words(signed_in):
     odd = signed_in.get("/tasks/new?text=%3Cb%3Ex&project_id=nope")
     assert odd.status_code == 200 and b"&lt;b&gt;x" in odd.data
     assert len(signed_in.get("/api/tasks").json["items"]) == 1  # nothing was created
+
+
+def test_quick_add_through_the_api(app, signed_in):
+    from app.core.schema.planning import TaskCreate
+    from app.features.tasks import tasks_core
+
+    with app.app_context():
+        parent = tasks_core.create(TaskCreate(title="Tree"))
+        parent_id = str(parent.id)
+    made = signed_in.post("/api/tasks/quick", json={"text": "leaf !high", "parent_id": parent_id})
+    assert made.status_code == 201 and made.json["task"]["title"] == "leaf"
+    with app.app_context():
+        assert [t.title for t in tasks_core.subtasks(parent.id)] == ["leaf"]
+    assert signed_in.post("/api/tasks/quick", json={"text": "#bug"}).status_code in (409, 422)

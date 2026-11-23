@@ -217,7 +217,9 @@ def parse_quick_add():
 @planning_api.post("/tasks/quick")
 def quick_add():
     data = body(QuickAdd)
-    task, batch_id = _guard(quickadd_core.quick_add, data.text, data.project_id, data.parent_id)
+    task, batch_id = _guard(
+        lambda: quickadd_core.quick_add(data.text, project_id=data.project_id, parent_id=data.parent_id)
+    )
     return jsonify(task=_task(task), batch=str(batch_id), url=url_for("tasks.detail", task_id=task.id)), 201
 
 

@@ -87,7 +87,7 @@ class CnQuickAdd extends HTMLElement {
   async #update(text) {
     this.#controller?.abort();
     if (!text.trim()) {
-      this.#preview.replaceChildren();
+      if (!this.#preview.querySelector('.cn-quick-added')) this.#preview.replaceChildren(); // keep "Added: …"
       return;
     }
     this.#controller = new AbortController();
