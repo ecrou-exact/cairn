@@ -1,0 +1,6 @@
+{
+  "label": "Folders of your repositories",
+  "category": "Day summary",
+  "description": "Where the day summary looks for git repositories (three levels deep), besides the folders of your projects.",
+  "value": ["~/Documents", "~/Projects", "~/src"]
+}

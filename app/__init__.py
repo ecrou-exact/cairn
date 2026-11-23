@@ -100,6 +100,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.features.instances.instances import instances
     from app.features.jobs.jobs import jobs
     from app.features.projects.projects import projects
+    from app.features.recap.recap import recap
     from app.features.resources.resources import resources
     from app.features.settings.settings import settings
     from app.features.tasks.tasks import tasks
@@ -116,6 +117,7 @@ def _register_blueprints(app: Flask) -> None:
         projects,
         graph,
         tasks,
+        recap,
         resources,
         comments,
         changesets,

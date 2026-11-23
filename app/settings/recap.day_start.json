@@ -1,0 +1,6 @@
+{
+  "label": "Start of the day",
+  "category": "Day summary",
+  "description": "When the first time entry proposed for a day begins (HH:MM).",
+  "value": "08:00"
+}

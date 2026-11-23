@@ -20,7 +20,9 @@ PASSWORD = "correct horse battery staple"
 
 
 @pytest.fixture()
-def app(tmp_path):
+def app(tmp_path, monkeypatch):
+    for name in ("CAIRN_KIMAI_URL", "CAIRN_KIMAI_TOKEN"):
+        monkeypatch.setenv(name, "")  # set, so that .env cannot: tests never reach a real time tracking
     app = create_app("testing")
     app.config["CAIRN_UPLOAD_DIR"] = tmp_path / "uploads"
     app.config["CAIRN_DATA_DIR"] = tmp_path / "data"  # never the real data folder

@@ -1,0 +1,6 @@
+{
+  "label": "Length of the day",
+  "category": "Day summary",
+  "description": "Minutes shared between the time entries proposed for a day.",
+  "value": 480
+}

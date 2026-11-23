@@ -178,6 +178,14 @@ SETTING_TYPES: dict[str, TypeAdapter] = {
     "claude.rules": TypeAdapter(
         Annotated[list[Annotated[str, Field(min_length=1, max_length=600)]], Field(max_length=40)]
     ),
+    "recap.folders": TypeAdapter(
+        Annotated[list[Annotated[str, Field(min_length=1, max_length=300)]], Field(max_length=20)]
+    ),
+    "recap.ignored": TypeAdapter(
+        Annotated[list[Annotated[str, Field(min_length=1, max_length=100)]], Field(max_length=200)]
+    ),
+    "recap.day_start": TypeAdapter(Annotated[str, Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")]),
+    "recap.day_minutes": TypeAdapter(Annotated[int, Field(strict=True, ge=15, le=1440)]),
     "ui.themes": TypeAdapter(
         Annotated[dict[THEME_NAMES, Annotated[str, Field(min_length=1, max_length=60)]], Field(min_length=1)]
     ),

@@ -40,6 +40,7 @@ def register_api(app: Flask) -> None:
     from app.api.instances_api import instances_api
     from app.api.jobs_api import jobs_api
     from app.api.planning_api import planning_api
+    from app.api.recap_api import recap_api
     from app.api.resources_api import resources_api
     from app.api.settings_api import settings_api
 
@@ -54,6 +55,7 @@ def register_api(app: Flask) -> None:
         instances_api,
         changesets_api,
         about_api,
+        recap_api,
     ):
         app.register_blueprint(blueprint)
 

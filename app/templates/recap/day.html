@@ -1,0 +1,80 @@
+{% extends "layout/shell.html" %}
+{% block title %}Day summary{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/recap/recap.css') }}">{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/recap/day.js') }}"></script>{% endblock %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+{% macro fields(key, entry=None) %}
+  <div><label class="form-label" for="begin-{{ key }}">From</label><input class="form-control" type="time" id="begin-{{ key }}" name="begin" value="{{ entry.begin if entry else '' }}" required></div>
+  <div><label class="form-label" for="duration-{{ key }}">Duration</label><input class="form-control" id="duration-{{ key }}" name="duration" pattern="[0-9]{1,2}:[0-5][0-9]" placeholder="1:30" title="hours:minutes" value="{{ '%d:%02d' % (entry.minutes // 60, entry.minutes % 60) if entry else '' }}" required></div>
+  <div class="cn-entry-wide"><label class="form-label" for="target-{{ key }}">Project and activity</label>
+    <select class="form-select" id="target-{{ key }}" name="target_id" required>{% for t in targets %}<option value="{{ t.id }}" {% if entry and entry.target_id == t.id | string %}selected{% endif %}>{{ t.label }}: {{ t.project_label }}, {{ t.activity_label }}</option>{% endfor %}</select></div>
+  <div class="cn-entry-full"><label class="form-label" for="description-{{ key }}">Description</label><textarea class="form-control" id="description-{{ key }}" name="description" rows="4" maxlength="4000">{{ entry.description if entry else '' }}</textarea></div>
+{% endmacro %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow">Day summary</div>
+  <h1>{{ "Today" if day == today else day.strftime("%A %d %B") }}</h1>
+  <p>What you did, read from git, GitHub, your tasks and Claude. Nothing leaves Cairn before you send it.</p>
+</header>
+<div class="cn-day-bar">
+  <a class="btn btn-outline-secondary" href="{{ url_for('recap.day', raw=before.isoformat()) }}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span class="visually-hidden">The day before</span></a>
+  <form method="get" action="{{ url_for('recap.index') }}" class="cn-day-pick"><label class="visually-hidden" for="on">Day</label><input class="form-control" type="date" id="on" name="on" value="{{ day.isoformat() }}" max="{{ today.isoformat() }}" required><button class="btn btn-outline-secondary" type="submit">Go</button></form>
+  {% if after %}<a class="btn btn-outline-secondary" href="{{ url_for('recap.day', raw=after.isoformat()) }}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i><span class="visually-hidden">The day after</span></a>{% endif %}
+  <form method="post" action="{{ url_for('recap.read', raw=day.isoformat()) }}" data-slow="Reading…">{{ csrf() }}<button class="btn {{ 'btn-outline-secondary' if found.read_at else 'btn-primary' }}" type="submit"><i class="fa-solid fa-rotate" aria-hidden="true"></i><span class="ms-2">{{ "Read again" if found.read_at else "Read the day" }}</span></button></form>
+  <a class="btn btn-outline-secondary" href="{{ url_for('recap.rules') }}"><i class="fa-solid fa-signs-post" aria-hidden="true"></i><span class="ms-2">Rules</span></a>
+  {% if read_at %}<span class="cn-muted">Read {{ read_at.strftime("%d %b at %H:%M") }}</span>{% endif %}
+</div>
+
+{% if found.facts %}
+{% if not found.facts.github %}<p class="alert alert-warning">GitHub was not read in full: sign in with <code>gh auth login</code>, or try again in a minute. Local commits are here.</p>{% endif %}
+<section class="cn-panel" aria-labelledby="done-title">
+  <h2 id="done-title">What you did</h2>
+  {% if found.facts.repos %}<ul class="cn-day-repos">
+    {% for row in found.facts.repos %}
+    <li class="cn-day-repo">
+      <details><summary><strong>{{ row.name }}</strong>
+        <span class="cn-muted">{{ row.commits | length }} commit{{ "s" if row.commits | length != 1 }}{% if row["items"] %}, {{ row["items"] | length }} on GitHub{% endif %}{% if row.tasks %}, {{ row.tasks | length }} task{{ "s" if row.tasks | length != 1 }}{% endif %}{% if row.asked %}, {{ row.asked }} request{{ "s" if row.asked != 1 }} to Claude{% endif %}</span>
+        {% if row.name in found.unplaced %}<a class="cn-badge" href="{{ url_for('recap.rules', repo=row.name) }}">no rule: say where it goes</a>{% endif %}</summary>
+        <ul class="cn-day-facts">
+          {% for t in row.tasks %}<li>Task done: <a href="{{ url_for('tasks.detail', task_id=t.id) }}">{{ t.title }}</a></li>{% endfor %}
+          {% for i in row["items"] %}<li>{{ kinds[i.kind] }}: <a href="{{ i.url }}" target="_blank" rel="noopener noreferrer">#{{ i.number }} {{ i.title }}</a></li>{% endfor %}
+          {% for c in row.commits %}<li>{% if c.url %}<a href="{{ c.url }}" target="_blank" rel="noopener noreferrer"><code>{{ c.sha }}</code></a>{% else %}<code>{{ c.sha }}</code>{% endif %} {{ c.subject }}{% if c.branch %} <span class="cn-muted">{{ c.branch }}</span>{% endif %}</li>{% endfor %}
+        </ul></details>
+    </li>{% endfor %}
+  </ul>{% else %}<p class="cn-muted">Nothing found for this day.</p>{% endif %}
+</section>
+
+<section class="cn-panel" aria-labelledby="time-title">
+  <header class="cn-home-head"><h2 id="time-title">Time entries</h2>{% if kimai_url %}<a href="{{ kimai_url }}" target="_blank" rel="noopener noreferrer">Open Kimai</a>{% endif %}</header>
+  {% if not kimai_ready %}<p class="cn-muted">To send your time, set <code>CAIRN_KIMAI_URL</code> and <code>CAIRN_KIMAI_TOKEN</code> in <code>.env</code> and restart Cairn.</p>{% endif %}
+  {% if problem %}<p class="alert alert-warning">{{ problem }}</p>{% endif %}
+  {% for row in there %}<p class="cn-entry-there"><i class="fa-solid fa-lock" aria-hidden="true"></i> In Kimai: <strong>{{ row.begin.strftime("%H:%M") }}{% if row.end %} to {{ row.end.strftime("%H:%M") }}{% endif %}</strong> {{ row.project_name }}, {{ row.activity_name }}{% if row.description %}: {{ row.description | truncate(120) }}{% endif %}</p>{% endfor %}
+  {% set drafts = found.entries | rejectattr("sent") | list %}
+  {% for entry in found.entries %}
+    {% if entry.sent %}<p class="cn-entry-there"><i class="fa-solid fa-check" aria-hidden="true"></i> Sent: <strong>{{ entry.begin }}, {{ "%d:%02d" % (entry.minutes // 60, entry.minutes % 60) }}</strong> {{ entry.project }}, {{ entry.activity }}: {{ entry.description | truncate(120) }}</p>
+    {% else %}
+    <div class="cn-entry">
+      <form method="post" class="cn-entry-fields" id="entry-{{ entry.id }}" action="{{ url_for('recap.update_entry', raw=day.isoformat(), entry_id=entry.id) }}" data-entry>{{ csrf() }}{{ fields(entry.id, entry) }}</form>
+      <div class="cn-entry-actions"><button class="btn btn-sm btn-outline-secondary" type="submit" form="entry-{{ entry.id }}">Save</button>
+        <form method="post" action="{{ url_for('recap.delete_entry', raw=day.isoformat(), entry_id=entry.id) }}">{{ csrf() }}<button class="btn btn-sm btn-outline-secondary" type="submit">Remove</button></form></div>
+    </div>{% endif %}
+  {% endfor %}
+  {% if not found.entries and targets and found.facts.repos %}<form method="post" action="{{ url_for('recap.propose', raw=day.isoformat()) }}">{{ csrf() }}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span class="ms-2">Propose the entries</span></button></form>{% endif %}
+  {% if found.unplaced %}<p class="cn-muted">No rule for {{ found.unplaced | join(", ") }}: their share of the day is left free. Add a rule, or leave your own projects out in the <a href="{{ url_for('settings.index') }}">settings</a>.</p>{% endif %}
+  {% if targets %}<details class="cn-entry-add"><summary>Add an entry</summary><form method="post" class="cn-entry-fields" action="{{ url_for('recap.add_entry', raw=day.isoformat()) }}">{{ csrf() }}{{ fields("new") }}<div class="cn-entry-full"><button class="btn btn-outline-secondary" type="submit">Add</button></div></form></details>
+  {% else %}<p><a href="{{ url_for('recap.rules') }}">Write your first rule</a> to say which project and activity your work goes to.</p>{% endif %}
+  {% if drafts and kimai_ready %}
+  <cn-confirm message="Send to Kimai?" detail="{{ drafts | length }} entr{{ 'y' if drafts | length == 1 else 'ies' }}, {{ '%d:%02d' % ((drafts | sum(attribute='minutes')) // 60, (drafts | sum(attribute='minutes')) % 60) }} on {{ day.strftime('%d %B') }}. Once there, they are changed in Kimai." confirm-label="Send">
+    <form method="post" action="{{ url_for('recap.send', raw=day.isoformat()) }}" class="cn-entry-send">{{ csrf() }}{% for e in drafts %}<input type="hidden" name="entries" value="{{ e.id }}">{% endfor %}
+      <button class="btn btn-primary" type="submit" data-send><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span class="ms-2">Send {{ drafts | length }} to Kimai</span></button><span class="cn-muted" data-unsaved hidden>Save your changes first.</span></form></cn-confirm>{% endif %}
+</section>
+
+<section class="cn-panel" aria-labelledby="summary-title">
+  <header class="cn-home-head"><h2 id="summary-title">Summary</h2><button class="btn btn-sm btn-outline-secondary" type="button" data-copy="day-summary"><i class="fa-regular fa-copy" aria-hidden="true"></i><span class="ms-2">Copy</span></button></header>
+  <script type="application/json" id="day-summary">{{ found.summary | tojson }}</script>
+  <cn-vitrine kind="markdown" source="day-summary"></cn-vitrine>
+  <details class="cn-entry-add"><summary>Edit the summary</summary><form method="post" action="{{ url_for('recap.summary', raw=day.isoformat()) }}">{{ csrf() }}<label class="visually-hidden" for="summary">Summary</label><textarea class="form-control cn-day-text" id="summary" name="summary" rows="16" maxlength="50000">{{ found.summary }}</textarea><button class="btn btn-outline-secondary mt-2" type="submit">Save the summary</button></form></details>
+</section>
+{% endif %}
+{% endblock %}

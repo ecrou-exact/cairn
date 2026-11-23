@@ -1,0 +1,50 @@
+{% extends "layout/shell.html" %}
+{% block title %}Where your work goes{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/recap/recap.css') }}">{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/recap/rules.js') }}"></script>{% endblock %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('recap.index') }}">Day summary</a></div>
+  <h1>Where your work goes</h1>
+  <p>Each rule sends some work to a project and an activity. Claude reads them, and can write one when you tell it where something goes.</p>
+</header>
+{% if problem %}<p class="alert alert-warning">{{ problem }}</p>{% endif %}
+<form class="cn-day-bar" method="get" role="search"><label class="visually-hidden" for="q">Search</label><input class="form-control cn-rule-search" type="search" id="q" name="q" value="{{ q }}" maxlength="100" placeholder="Search a repository, a project, a task"><button class="btn btn-outline-secondary" type="submit">Search</button>
+  {% if edited %}<a class="btn btn-outline-secondary" href="{{ url_for('recap.rules') }}">New rule</a>{% endif %}</form>
+{% if rules %}<ul class="cn-rules">
+  {% for r in rules %}<li class="cn-rule">
+    <div><p class="cn-rule-name"><strong>{{ r.label }}</strong>{% if r.is_default %} <span class="cn-badge">default</span>{% endif %}</p>
+      <p>{{ r.project_label }}, {{ r.activity_label }}</p>
+      <p class="cn-muted">{% for name in r.repos %}<code>{{ name }}</code> {% endfor %}{% if r.keywords %}words: {{ r.keywords | join(", ") }}{% endif %}{% if r.tags %} tags: {{ r.tags | join(", ") }}{% endif %}</p>
+      {% if r.guidance %}<p class="cn-rule-guidance">{{ r.guidance }}</p>{% endif %}</div>
+    <div class="cn-entry-actions"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('recap.rules', edit=r.id) }}#rule">Edit</a>
+      <form method="post" action="{{ url_for('recap.delete_rule', target_id=r.id) }}">{{ csrf() }}<button class="btn btn-sm btn-outline-secondary" type="submit">Remove</button></form></div>
+  </li>{% endfor %}</ul>
+{% else %}<p class="cn-muted">{{ "No rule matches." if q else "No rule yet: write the first one below." }}</p>{% endif %}
+
+{% if places %}
+<section class="cn-panel" id="rule" aria-labelledby="rule-title">
+  <h2 id="rule-title">{{ "Edit " ~ edited.label if edited else "New rule" }}</h2>
+  <form method="post" class="cn-rule-form" action="{{ url_for('recap.update_rule', target_id=edited.id) if edited else url_for('recap.add_rule') }}">{{ csrf() }}
+    <div><label class="form-label" for="label">Name</label><input class="form-control" id="label" name="label" maxlength="80" value="{{ edited.label if edited else repo }}" required></div>
+    <div><label class="form-label" for="repos">Repositories</label><input class="form-control" id="repos" name="repos" value="{{ edited.repos | join(', ') if edited else repo }}" placeholder="lookyloo, lacus"><p class="form-text">Names separated by commas. Forks count as the same.</p></div>
+    <div class="cn-entry-full"><label class="form-label" for="place">Project and activity</label>
+      <input class="form-control mb-2" type="search" id="place-filter" aria-label="Filter the projects and activities" placeholder="Filter: FETTA T3.2" autocomplete="off" hidden>
+      <select class="form-select" id="place" name="place" required size="8">{% for p in places %}<optgroup label="{{ p.name }}{% if p.customer %} ({{ p.customer }}){% endif %}">{% for a in p.activities %}<option value="{{ p.id }}:{{ a.id }}" data-words="{{ p.name }} {{ a.name }}" {% if edited and edited.kimai_project == p.id and edited.kimai_activity == a.id %}selected{% endif %}>{{ p.name }}: {{ a.name }}</option>{% endfor %}</optgroup>{% endfor %}</select></div>
+    <div class="cn-entry-full"><label class="form-label" for="guidance">What goes here, in your words</label><textarea class="form-control" id="guidance" name="guidance" rows="3" maxlength="2000" placeholder="Campaign and phishing analysis with Lookyloo, not the development of the tool">{{ edited.guidance if edited else '' }}</textarea><p class="form-text">For Claude, when the repository alone does not say.</p></div>
+    <div><label class="form-label" for="keywords">Words that choose this rule</label><input class="form-control" id="keywords" name="keywords" value="{{ edited.keywords | join(', ') if edited else '' }}" placeholder="phishing, campaign"><p class="form-text">In a commit, a branch or a title. Without a repository, they apply everywhere.</p></div>
+    <div><label class="form-label" for="tags">Tags</label><input class="form-control" id="tags" name="tags" value="{{ edited.tags | join(', ') if edited else '' }}"></div>
+    <div class="cn-entry-full"><label class="form-label" for="about">Start of the description</label><input class="form-control" id="about" name="about" maxlength="500" value="{{ edited.about if edited else '' }}" placeholder="Lookyloo campaign analysis, phishing pattern analysis"></div>
+    <div class="cn-entry-full form-check"><input class="form-check-input" type="checkbox" id="is_default" name="is_default" value="1" {% if edited and edited.is_default %}checked{% endif %}><label class="form-check-label" for="is_default">Default when several rules share a repository</label></div>
+    <div class="cn-entry-full"><button class="btn btn-primary" type="submit">{{ "Save the rule" if edited else "Add the rule" }}</button></div>
+  </form>
+</section>
+{% endif %}
+<section class="cn-panel" aria-labelledby="share-title">
+  <h2 id="share-title">Keep or share your rules</h2>
+  <p class="cn-muted">The file holds the rules only, never the address or the token of your time tracking.</p>
+  <div class="cn-day-bar"><a class="btn btn-outline-secondary" href="{{ url_for('recap.export_rules') }}">Export</a>
+    <form method="post" enctype="multipart/form-data" action="{{ url_for('recap.import_rules') }}" class="cn-day-pick">{{ csrf() }}<label class="visually-hidden" for="file">Rules file</label><input class="form-control" type="file" id="file" name="file" accept="application/json,.json" required><button class="btn btn-outline-secondary" type="submit">Import</button></form></div>
+</section>
+{% endblock %}

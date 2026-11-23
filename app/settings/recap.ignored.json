@@ -1,0 +1,6 @@
+{
+  "label": "Repositories left out of your time",
+  "category": "Day summary",
+  "description": "Names of repositories (your own projects) that stay in the summary but never count in the time entries proposed.",
+  "value": []
+}

@@ -9,6 +9,7 @@ from app.core.db_class import (  # noqa: F401
     job,
     owner,
     planning,
+    recap,
     resource,
     secret,
     setting,

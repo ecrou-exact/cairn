@@ -105,6 +105,7 @@ Goal: owner approves architecture + design direction.
 - [x] More MCP tools: schedule, task edits, resources, comments, `describe_schema` (D-069) — changesets for bulk changes come with Phase 6
 - [x] A Claude outside Cairn read in a terminal as it goes (D-075)
 - [ ] Later, optional: agent runs through the Claude Agent SDK with an API key (D-049, D-050) — the terminal covers the owner's own Claude Code
+- [ ] Two-way sync (owner request 2026-11-23): what is done outside Cairn shows up live; Claude Code in the owner's terminal keeps Cairn up to date
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS
 - [x] A git worktree per Claude on a task (D-077); hard rules via system prompt append (D-051)
@@ -121,10 +122,11 @@ Goal: owner approves architecture + design direction.
 - [x] Instances running outside Cairn (other clones, worktrees, Docker) in each project, with their ports and their logs in a terminal (D-061)
 - [x] Cairn starts with the session on Linux: `manage.py autostart on` (D-062)
 - [x] Instances survive a restart of Cairn (Linux, macOS), their log kept; stop one found outside Cairn (D-070)
-- [ ] Instances: indicator in the header, restart on crash, registry across projects
+- [ ] Instances: every project's in one menu entry, whoever started them (owner request 2026-11-23); restart on crash
 
 ## Phase 9 — Modules  ·  Phase 10 — Calendar & activity  ·  Phase 11 — Hardening & release
 - [ ] Module registry, event automations, task action modules
-- [ ] Owner ideas (2026-11-23), later: mail connected for Claude; evening summary of what was done with its branches, for a day or a period, then sent to the owner's time-tracking API
+- [x] Day summary with its branches, rules that place the work, time entries sent to Kimai by the owner (D-078)
+- [ ] Owner ideas (2026-11-23), later: mail connected for Claude; summary for a period
 - [ ] Calendar, scheduled runs, Gantt timeline, activity feed, right-now panel, alerts
 - [ ] Security review, E2E (Playwright), docs, logo, packaging, release checklist

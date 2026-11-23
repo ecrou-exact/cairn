@@ -33,7 +33,7 @@ from app.core.schema.planning import DependencyCreate, ProjectCreate, ProjectUpd
 from app.core.utils.actor import acting_as
 from app.core.utils.history import batch
 from app.features.changesets import changesets_core
-from app.features.claude import handover_core, main_core, mcp_plan_tools
+from app.features.claude import handover_core, main_core, mcp_plan_tools, mcp_time_tools
 from app.features.comments import comments_core
 from app.features.projects import projects_core
 from app.features.resources import resources_core
@@ -49,6 +49,7 @@ READ_TOOLS = (
     "claude_sessions",
     "current_page",
     *mcp_plan_tools.READ_TOOLS,
+    *mcp_time_tools.READ_TOOLS,
     "changeset_state",
 )
 # Only records a proposal the owner reviews in Cairn: nothing to ask in the terminal (D-071).
@@ -64,6 +65,7 @@ WRITE_TOOLS = (
     "link_tasks",
     "comment_on_task",
     *mcp_plan_tools.WRITE_TOOLS,
+    *mcp_time_tools.WRITE_TOOLS,
 )
 
 INSTRUCTIONS = (
@@ -145,6 +147,7 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
                 resources_core.ResourceError,
                 handover_core.HandoverError,
                 mcp_plan_tools.PlanToolError,
+                *mcp_time_tools.ERRORS,
                 changesets_core.ChangesetError,
             ) as exc:
                 raise ToolError(str(exc)) from exc  # a deliberate refusal: Claude gets the reason
@@ -512,6 +515,7 @@ def build(app: Flask, session_id: str | None) -> MCPServer:
         return run(work)
 
     mcp_plan_tools.register(server, run, _project, _task, session_project)
+    mcp_time_tools.register(server, run)
     return server
 
 
