@@ -183,6 +183,10 @@ def _pull_facts(project: Project | None, ref: str) -> dict[str, Any]:
     state = "merged" if found.get("merged_at") else "draft" if found.get("draft") else found["state"]
     return {
         "found": True,
+        "number": found["number"],
+        "repo": repo,
+        "mergeable": found.get("mergeable"),
+        "mergeable_state": found.get("mergeable_state") or "",
         "title": found["title"],
         "url": found["html_url"],
         "state": state,

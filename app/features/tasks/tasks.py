@@ -487,3 +487,17 @@ def run(task_id: uuid.UUID):
         flash(str(exc), "danger")
         return redirect(url_for("tasks.detail", task_id=task_id, tab="git"))
     return redirect(url_for("claude.session", session_id=session.id))
+
+
+@tasks.post("/tasks/<uuid:task_id>/merge")
+def merge(task_id: uuid.UUID):
+    """Merge one of the task's pull requests on GitHub, confirmed by the owner (D-099)."""
+    try:
+        done = git_core.merge(
+            tasks_core.get_task(task_id), request.form.get("pull", ""), request.form.get("method", "squash")
+        )
+    except (git_core.GitError, tasks_core.TaskNotFound) as exc:
+        flash(str(exc), "danger")
+    else:
+        flash(f"Merged {done['pull']}: commit {done['sha'][:12]} kept on the task.", "success")
+    return redirect(url_for("tasks.detail", task_id=task_id, tab="git"))

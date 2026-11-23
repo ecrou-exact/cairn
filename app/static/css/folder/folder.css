@@ -39,3 +39,7 @@
 .cn-git-wanted { padding: var(--cn-space-2) var(--cn-space-3); border-radius: var(--cn-radius); background: var(--cn-accent-soft); }
 .cn-paused-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cn-space-3); margin: 0 0 var(--cn-space-2); font-size: var(--cn-text-sm); }
 .cn-paused-note form { margin: 0; }
+.cn-git-merge { display: flex; gap: var(--cn-space-2); align-items: center; margin: var(--cn-space-1) 0 var(--cn-space-3); }
+.cn-git-merge .form-select { width: auto; }
+.cn-git-commits { list-style: none; padding: 0; display: grid; gap: 2px; font-size: var(--cn-text-sm); }
+.cn-git-commits li { overflow-wrap: anywhere; }

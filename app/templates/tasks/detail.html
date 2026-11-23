@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments/comments.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/claude/claude.css') }}">
 {% endblock %}
-{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/resources/panel.js') }}"></script>
+{% block scripts %}{% if tab == "git" %}<script type="module" src="{{ url_for('static', filename='js/components/cn-refresh.js') }}"></script>{% endif %}<script type="module" src="{{ url_for('static', filename='js/resources/panel.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-picker.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/components/cn-quick-add.js') }}"></script>

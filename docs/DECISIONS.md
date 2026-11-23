@@ -540,3 +540,7 @@
 
 ## D-098 · 2026-11-23 · accepted — A Claude on a task keeps it true
 - Owner request: a Claude opened on a task is told, with its brief, to keep the task true as it goes: in progress at once, each checklist item ticked when done (new tool `tick_checklist`, by text or number), each subtask moved when started and done, follow-ups created as subtasks, and before saying it is done every item and subtask ticked or left open with the reason, a comment with what was done, and the task's next status. The `/cairn` skill says the same to Claude Code outside Cairn.
+
+## D-099 · 2026-11-23 · accepted — Commits kept on a task; a pull request merged from Cairn
+- Owner request: a trace of the work. A task's (and subtask's) Git tab lists the commits of its branches (its own, its parents', its pull requests') that the main branch does not have yet, and keeps each as a link on the task: they stay when the branch is gone, and reach Claude's brief.
+- An open pull request linked to a task is **merged from its Git tab** (squash, merge commit or rebase), by the owner only, confirmed; never forced: GitHub refuses what its checks or reviews do not allow. The merge commit is linked to the task, a comment says what was merged where, and the action is logged. Claude has no tool for it.

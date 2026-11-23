@@ -85,8 +85,114 @@ def for_task(task: Task) -> dict[str, Any]:
     out = {c["branch"] for c in copies}
     elsewhere = [w for w in every if w["kind"] == "branch" and w["ref"] not in out]
     pulls = [w for w in every if w["kind"] == "pull"]
+    commits = _branch_commits(project, sorted(branches)) if project and project.local_path else []
+    _keep_commits(task, commits)
     return {"copies": copies, "elsewhere": elsewhere, "pulls": pulls, "branches": sorted(branches),
-            "github": found.get("github", True)}  # fmt: skip
+            "commits": commits, "github": found.get("github", True)}  # fmt: skip
+
+
+MOST_COMMITS = 50
+
+
+def _branch_commits(project: Project, branches: list[str]) -> list[dict[str, Any]]:
+    """The commits of the task's branches that its project's main branch does not have, newest first."""
+    folders = copies_core.folders(project)
+    if not folders:
+        return []
+    main = folders[0]
+    found: dict[str, dict[str, Any]] = {}
+    for branch in branches:
+        for ref in (branch, f"origin/{branch}"):
+            log = programs.git(
+                main, "log", f"--max-count={MOST_COMMITS}", "--format=%H%x1f%h%x1f%ct%x1f%an%x1f%s",
+                ref, f"^{project.default_branch}", "--",
+            )  # fmt: skip
+            if not log:
+                continue
+            for line in log.splitlines():
+                sha, short, when, who, subject = (line.split("\x1f") + [""] * 5)[:5]
+                found.setdefault(sha, {"sha": sha, "short": short, "at": int(when or 0), "author": who,
+                                       "subject": subject, "branch": branch})  # fmt: skip
+            break
+    return sorted(found.values(), key=lambda c: -c["at"])[: MOST_COMMITS * 2]
+
+
+def _keep_commits(task: Task, commits: list[dict[str, Any]]) -> None:
+    """A trace on the task of the commits made for it: they stay linked when the branch is gone (D-099)."""
+    from sqlalchemy import select
+
+    from app.core.db_class.worklink import WorkLink
+    from app.core.extensions import db
+    from app.core.schema.worklinks import WorkLinkCreate
+
+    known = set(
+        db.session.scalars(
+            select(WorkLink.ref).where(
+                WorkLink.target_type == "task", WorkLink.target_id == task.id, WorkLink.kind == "commit"
+            )
+        )
+    )
+    new = [c for c in commits if c["sha"] not in known]
+    if not new:
+        return
+    with batch():
+        for commit in new:
+            worklinks_core.add(
+                WorkLinkCreate(
+                    target_type="task", target_id=task.id, kind="commit", ref=commit["sha"],
+                    note=f"{commit['subject'][:400]} ({commit['branch']})",
+                )
+            )  # fmt: skip
+
+
+# -- merging a pull request (D-099) -------------------------------------------------------------------
+
+MERGE_METHODS = ("merge", "squash", "rebase")
+
+
+def merge(task: Task, ref: str, method: str) -> dict[str, Any]:
+    """Merge one of the task's pull requests on GitHub, by the owner only; the merge commit and a
+    comment stay on the task. Never forced: GitHub refuses what is not mergeable."""
+    from app.core.schema.comments import CommentCreate
+    from app.core.schema.worklinks import WorkLinkCreate
+    from app.core.utils.actor import current_actor
+    from app.features.comments import comments_core
+
+    if current_actor() != "user":
+        raise GitError("Only the owner merges.")
+    if method not in MERGE_METHODS:
+        raise GitError("Merge, squash or rebase.")
+    links = worklinks_core.for_target("task", task.id)
+    pull = next(
+        (w for w in [*links["own"], *links["inherited"]] if w["kind"] == "pull" and w["ref"] == ref), None
+    )
+    if pull is None or not pull.get("found"):
+        raise GitError("This pull request is not linked to the task, or GitHub did not answer.")
+    if pull["state"] == "merged":
+        raise GitError("This pull request is merged already.")
+    if pull["state"] != "open":
+        raise GitError("Only an open pull request, not a draft nor a closed one, is merged.")
+    repo, number = pull["repo"], pull["number"]
+    answer = programs.gh(f"repos/{repo}/pulls/{number}/merge", f"merge_method={method}", method="PUT")
+    if not isinstance(answer, dict) or not answer.get("merged"):
+        raise GitError("GitHub did not merge it: look at its checks and reviews on GitHub.")
+    sha = answer.get("sha", "")
+    with batch():
+        if sha:
+            worklinks_core.add(
+                WorkLinkCreate(target_type="task", target_id=task.id, kind="commit", ref=sha,
+                               note=f"Merge of {repo}#{number} ({method})")
+            )  # fmt: skip
+        comments_core.create(
+            CommentCreate(
+                target_type="task", target_id=task.id, kind="comment",
+                body_md=f"Merged {repo}#{number} into `{pull.get('base') or 'its base'}` ({method}), "
+                f"commit `{sha[:12]}`.",
+            )
+        )  # fmt: skip
+        log_action("git.merge", target_type="task", target_id=task.id,
+                   meta={"pull": f"{repo}#{number}", "method": method, "sha": sha})  # fmt: skip
+    return {"merged": True, "sha": sha, "pull": f"{repo}#{number}"}
 
 
 def act(project: Project, folder: str, action: str) -> str:
