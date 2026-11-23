@@ -56,3 +56,11 @@ def test_every_theme_defines_the_same_tokens():
     reference = set(_block(css, '[data-theme="stone"]'))
     for theme in ("basalt", "moss", "ember"):
         assert set(_block(css, f'[data-theme="{theme}"]')) == reference, theme
+
+
+def test_static_files_are_cached_whatever_the_session(signed_in):
+    response = signed_in.get("/static/css/core/base.css?v=1")
+    assert "immutable" in response.headers["Cache-Control"]
+    assert "Cookie" not in response.headers.get("Vary", "") and "Set-Cookie" not in response.headers
+    response.close()
+    assert "Cookie" in signed_in.get("/tasks").headers["Vary"]  # pages still depend on it
