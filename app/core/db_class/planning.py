@@ -22,6 +22,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    false,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -52,6 +53,9 @@ class Project(BaseEntity):
     links: Mapped[list[dict[str, str]]] = mapped_column(JSON, default=list, nullable=False)
     tags: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     claude_instructions_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    starred: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
     weight: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)  # project weight in the score
 
     @property

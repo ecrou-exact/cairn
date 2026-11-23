@@ -41,7 +41,7 @@ function projectCard(d) {
   const top = el('div', 'cn-gcard-top');
   const type = el('span', 'cn-gcard-type');
   type.append(d.projectImage ? picture(d.projectImage) : icon(`fa-solid ${d.projectIcon}`));
-  top.append(type, el('span', 'cn-gcard-project', d.status === 'active' ? 'Project' : d.status));
+  top.append(type, el('span', 'cn-gcard-project', `${d.starred ? '★ ' : ''}${d.status === 'active' ? 'Project' : d.status}`));
   if (d.score) top.append(el('span', 'cn-gcard-score', d.score));
   const meta = el('div', 'cn-gcard-meta');
   meta.append(el('span', '', `${d.open} open`));

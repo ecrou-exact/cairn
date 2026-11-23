@@ -6,7 +6,8 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 
 from app.core.jobs import jobs_core
 from app.core.schema.folder import BringInput, DiscoverMake
-from app.core.utils.web import FormErrors, local_path, validate
+from app.core.utils.history import batch
+from app.core.utils.web import FormErrors, flash_undo, local_path, validate
 from app.features.changesets.changesets_core import ChangesetError
 from app.features.folder import copies_core, discover_core, git_core, scan_core
 from app.features.instances.instances_core import InstanceError
@@ -69,6 +70,19 @@ def git_action(slug: str, action: str):
     else:
         flash(f"{action.capitalize()}: {said.splitlines()[-1][:200]}", "success")
     return redirect(back)
+
+
+@folder.post("/projects/<slug>/git/task")
+def git_task(slug: str):
+    project = _project(slug)
+    try:
+        with batch() as batch_id:
+            task = git_core.task_from_copy(project, request.form.get("folder", ""))
+    except git_core.GitError as exc:
+        flash(str(exc), "warning")
+        return redirect(url_for("projects.detail", slug=slug, tab="git"))
+    flash_undo(f"Task made: {task.title}.", batch_id)
+    return redirect(url_for("tasks.detail", task_id=task.id, tab="git"))
 
 
 # -- every project of the machine (D-088) ------------------------------------------------------------

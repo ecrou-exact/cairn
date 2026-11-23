@@ -542,8 +542,8 @@ def project_plan(include_archived: bool = False) -> dict[str, Any]:
     pass before it (project links) and of the projects whose tasks block or come before its
     own tasks (shown as one edge with how many task links it stands for)."""
     query = select(Project).where(Project.deleted_at.is_(None))
-    if not include_archived:
-        query = query.where(Project.status != "archived")
+    if not include_archived:  # nor the hidden ones (D-089)
+        query = query.where(Project.status != "archived", Project.hidden.is_(False))
     projects = {p.id: p for p in db.session.scalars(query)}
     links = (
         list(
@@ -565,7 +565,9 @@ def project_plan(include_archived: bool = False) -> dict[str, Any]:
             crossing[(a.project_id, b.project_id)] += 1
 
     ordering = [(link.from_project_id, link.to_project_id) for link in links] + list(crossing)
-    places = plan_layout(projects, ordering, sort_key=lambda p: (p.status != "active", p.name.lower()))
+    places = plan_layout(
+        projects, ordering, sort_key=lambda p: (not p.starred, p.status != "active", p.name.lower())
+    )
 
     today = date.today()
     by_project: dict[uuid.UUID, list[Task]] = defaultdict(list)
@@ -592,6 +594,7 @@ def project_plan(include_archived: bool = False) -> dict[str, Any]:
                     "url": f"/projects/{project.slug}",
                     "drill": f"/projects/{project.slug}?tab=plan",
                     "status": project.status,
+                    "starred": project.starred,
                     "projectColor": project.color,
                     "projectIcon": project.icon,
                     "projectImage": project.image_url,

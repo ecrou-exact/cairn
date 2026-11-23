@@ -6,6 +6,7 @@
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/list.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/folder/folder.css') }}">
 {{ graph_assets() }}
 {% endblock %}
 {% block scripts %}
@@ -18,14 +19,17 @@
     <h1>Projects</h1>
     <p>{{ "In which order to do them: what passes first on the left. Press L to order two projects." if graph_view else "Each project with what is open, blocked and late." }}</p>
   </div>
+  <div class="cn-header-buttons">
   <a class="btn btn-outline-secondary" href="{{ url_for('folder.discover') }}"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="ms-2">Find my projects</span></a>
   <a class="btn btn-outline-secondary" href="{{ url_for('projects.import_form') }}"><i class="fa-solid fa-file-import" aria-hidden="true"></i><span class="ms-2">Import</span></a>
   <a class="btn btn-primary" href="{{ url_for('projects.new') }}"><i class="fa-solid fa-plus" aria-hidden="true"></i><span class="ms-2">New project</span></a>
+  </div>
 </header>
 
 <nav class="cn-tabs" aria-label="View">
-  <a class="cn-tab" href="{{ url_for('projects.index') }}" {% if not graph_view %}aria-current="page"{% endif %}><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>Cards</span><span class="cn-tab-count">{{ page.total }}</span></a>
+  <a class="cn-tab" href="{{ url_for('projects.index') }}" {% if not graph_view and not hidden_view %}aria-current="page"{% endif %}><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>Cards</span><span class="cn-tab-count">{{ page.total }}</span></a>
   <a class="cn-tab" href="{{ url_for('projects.index', mode='graph') }}" {% if graph_view %}aria-current="page"{% endif %}><i class="fa-solid fa-diagram-project" aria-hidden="true"></i><span>Graph</span></a>
+  {% if hidden_count %}<a class="cn-tab" href="{{ url_for('projects.index', hidden=1) }}" {% if hidden_view %}aria-current="page"{% endif %}><i class="fa-regular fa-eye-slash" aria-hidden="true"></i><span>Hidden</span><span class="cn-tab-count">{{ hidden_count }}</span></a>{% endif %}
 </nav>
 
 {% if graph_view %}
@@ -37,12 +41,19 @@
 
 {% if page.items %}
   {% if page.view == "cards" %}
+  <p class="cn-project-sorts">Order:
+    {% for key, label in [("repo", "by owner"), ("name", "by name"), ("updated", "last changed")] %}<a href="{{ page.sort_url(key) }}" {% if page.sort == key %}aria-current="true"{% endif %}>{{ label }}</a>{{ " · " if not loop.last }}{% endfor %}</p>
   <ul class="cn-cards cn-project-cards">
     {% for project in page.items %}{% set st = stats[project.id] %}
+    {% if page.sort == "repo" %}{% set owner = "Starred" if project.starred else (project.github_repo.split("/")[0] if project.github_repo else "No repository") %}
+    {% if loop.changed(owner) %}<li class="cn-project-group"><h2>{% if owner == "Starred" %}<i class="fa-solid fa-star" aria-hidden="true"></i> {% elif project.github_repo %}<i class="fa-brands fa-github" aria-hidden="true"></i> {% endif %}{{ owner }}</h2></li>{% endif %}{% endif %}
     <li class="cn-card cn-project-card cn-color-{{ project.color }}">
       <div class="cn-card-head">
         <a class="cn-project-name" href="{{ url_for('projects.detail', slug=project.slug) }}"><span class="cn-project-tile" aria-hidden="true">{{ project_mark(project) }}</span>{{ project.name }}</a>
-        <span class="cn-card-head-end">{% if project.status != "active" %}<span class="cn-badge">{{ project.status }}</span>{% endif %}
+        <span class="cn-card-head-end">
+        {% if hidden_view %}<form method="post" action="{{ url_for('projects.mark', slug=project.slug, mark='hide') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="cn-icon-button" type="submit" title="Show in the list again"><i class="fa-regular fa-eye" aria-hidden="true"></i><span class="visually-hidden">Show again</span></button></form>{% endif %}
+        <form method="post" action="{{ url_for('projects.mark', slug=project.slug, mark='star') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}"><button class="cn-icon-button cn-star {{ 'is-on' if project.starred }}" type="submit" aria-pressed="{{ 'true' if project.starred else 'false' }}" title="{{ 'Starred: first in the list' if project.starred else 'Star: first in the list' }}"><i class="fa-{{ 'solid' if project.starred else 'regular' }} fa-star" aria-hidden="true"></i><span class="visually-hidden">Star</span></button></form>
+        {% if project.status != "active" %}<span class="cn-badge">{{ project.status }}</span>{% endif %}
         {% if project.local_path %}<button class="cn-icon-button cn-claude-go" type="button" data-claude-launch data-project="{{ project.id }}" title="Claude in {{ project.name }}"><i class="fa-solid fa-claude" aria-hidden="true"></i><span class="visually-hidden">Claude in {{ project.name }}</span></button>{% endif %}</span>
       </div>
       {% if project.github_repo %}<code class="cn-muted">{{ project.github_repo }}</code>{% endif %}
@@ -64,12 +75,12 @@
   {% else %}
   <div class="cn-table-wrap">
     <table class="table cn-table">
-      <thead><tr>{{ sort_header(page, "name", "Project") }}{{ sort_header(page, "status", "Status") }}<th scope="col">Open</th><th scope="col">Done</th><th scope="col">Late</th><th scope="col">Next due</th>{{ sort_header(page, "updated", "Updated") }}</tr></thead>
+      <thead><tr>{{ sort_header(page, "name", "Project") }}{{ sort_header(page, "repo", "Repository") }}{{ sort_header(page, "status", "Status") }}<th scope="col">Open</th><th scope="col">Done</th><th scope="col">Late</th><th scope="col">Next due</th>{{ sort_header(page, "updated", "Updated") }}</tr></thead>
       <tbody>
         {% for project in page.items %}{% set st = stats[project.id] %}
         <tr>
           <td><a class="cn-color-{{ project.color }}" href="{{ url_for('projects.detail', slug=project.slug) }}">{{ project_mark(project) }}{{ project.name }}</a></td>
-          <td>{{ project.status }}</td><td>{{ st.open }}</td><td>{{ st.closed }}</td>
+          <td>{{ project.github_repo or "—" }}</td><td>{{ project.status }}</td><td>{{ st.open }}</td><td>{{ st.closed }}</td>
           <td>{% if st.overdue %}<span class="cn-due-late">{{ st.overdue }}</span>{% else %}0{% endif %}</td>
           <td>{{ st.next_due | relative_day if st.next_due else "—" }}</td>
           <td><time datetime="{{ project.updated_at.isoformat() }}">{{ project.updated_at.strftime("%d %b") }}</time></td>

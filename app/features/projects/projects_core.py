@@ -314,12 +314,14 @@ register_undo("project.restore", _undo_restore)
 def list_spec() -> ListSpec:
     return ListSpec(
         sortable={
+            # by owner then name on GitHub (ecrou-exact/…, rulezet/…); those with no repository last
+            "repo": func.lower(func.coalesce(Project.github_repo, "~" + Project.name)),
             "name": func.lower(Project.name),
             "created": Project.created_at,
             "updated": Project.updated_at,
             "status": Project.status,
         },
-        default_sort="name",
+        default_sort="repo",
         default_direction="asc",
         tiebreak=Project.id,
         searchable=(Project.name, Project.slug, Project.description_md, Project.github_repo),
@@ -333,7 +335,25 @@ def list_spec() -> ListSpec:
 
 
 def list_projects(args: Mapping[str, Any]) -> ListPage:
-    return run_list(list_spec(), select(Project).where(Project.deleted_at.is_(None)), args)
+    """Starred projects first, whatever the sort; hidden ones only when asked (`hidden=1`, D-089)."""
+    shown = args.get("hidden") == "1"
+    query = (
+        select(Project)
+        .where(Project.deleted_at.is_(None), Project.hidden.is_(shown))
+        .order_by(Project.starred.desc())
+    )
+    return run_list(list_spec(), query, args)
+
+
+def pinned() -> list[Project]:
+    """The projects pinned in the menu."""
+    return list(
+        db.session.scalars(
+            select(Project)
+            .where(Project.deleted_at.is_(None), Project.pinned.is_(True))
+            .order_by(func.lower(Project.name))
+        )
+    )
 
 
 def stats(project_ids: list[uuid.UUID], today: date | None = None) -> dict[uuid.UUID, dict[str, Any]]:
@@ -379,4 +399,11 @@ def deleted_projects() -> list[Project]:
         db.session.scalars(
             select(Project).where(Project.deleted_at.is_not(None)).order_by(Project.deleted_at.desc())
         )
+    )
+
+
+def hidden_count() -> int:
+    return (
+        db.session.scalar(select(func.count()).where(Project.deleted_at.is_(None), Project.hidden.is_(True)))
+        or 0
     )

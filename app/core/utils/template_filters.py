@@ -56,6 +56,7 @@ def register_template_filters(app: Flask) -> None:
     from app.features.about import about_core
     from app.features.claude import main_core
     from app.features.comments import comments_core
+    from app.features.projects import projects_core
     from app.features.resources import resources_core
     from app.features.tasks import recurrence_core, timer_core, workflow
 
@@ -83,4 +84,5 @@ def register_template_filters(app: Flask) -> None:
         return {
             "cairn": about,
             "dock": current_user.is_authenticated,
+            "pinned_projects": projects_core.pinned() if current_user.is_authenticated else [],
         }  # the main Claude beside the page (D-063)

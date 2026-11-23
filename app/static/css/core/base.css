@@ -200,6 +200,7 @@ code, kbd, pre { font-family: var(--cn-font-mono); }
 .cn-page-header .cn-eyebrow { display: inline-flex; align-items: center; gap: var(--cn-space-2); }
 .cn-page-header .cn-eyebrow::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 2px 2px 3px 3px; background: var(--cn-mark); }
 .cn-page-header p { color: var(--cn-text-muted); max-width: 40rem; margin: var(--cn-space-1) 0 0; }
+.cn-header-buttons { display: flex; flex-wrap: wrap; gap: var(--cn-space-2); }
 .cn-page-header-actions { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--cn-space-4); }
 .cn-eyebrow a { color: inherit; }
 

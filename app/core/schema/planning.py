@@ -95,6 +95,9 @@ class ProjectCreate(ProjectFields):
 
 class ProjectUpdate(Strict):
     name: Annotated[str, Field(min_length=1, max_length=120)] | None = None
+    starred: bool | None = None  # first in the list (D-089)
+    pinned: bool | None = None  # in the menu (D-089)
+    hidden: bool | None = None  # out of the list, in its Hidden section (D-089)
     slug: Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9-]{0,79}$")] | None = None
     description_md: Markdown | None = None
     status: Literal[PROJECT_STATUSES] | None = None  # type: ignore[valid-type]

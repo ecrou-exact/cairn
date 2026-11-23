@@ -21,3 +21,8 @@
 .cn-work-form { display: grid; grid-template-columns: 12rem 1fr; gap: var(--cn-space-3); align-items: end; }
 .cn-work-wide { grid-column: 1 / -1; }
 @media (max-width: 40rem) { .cn-work-form { grid-template-columns: 1fr; } }
+.cn-star.is-on i { color: var(--cn-palette-ochre); }
+.cn-project-group { grid-column: 1 / -1; list-style: none; }
+.cn-project-group h2 { margin: var(--cn-space-3) 0 0; font-size: var(--cn-text-md); color: var(--cn-text-muted); }
+.cn-project-sorts { font-size: var(--cn-text-sm); color: var(--cn-text-muted); }
+.cn-project-sorts a[aria-current] { font-weight: var(--cn-weight-strong); }

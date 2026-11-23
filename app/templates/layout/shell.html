@@ -69,6 +69,12 @@
       {% endfor %}
     </ul>
     {% endfor %}
+    {% if pinned_projects %}
+    <p class="cn-nav-group" id="nav-pinned">Pinned</p>
+    <ul class="cn-nav" aria-labelledby="nav-pinned">
+      {% for p in pinned_projects %}<li><a class="cn-nav-link" href="{{ url_for('projects.detail', slug=p.slug) }}" title="{{ p.name }}" {% if request.view_args and request.view_args.get('slug') == p.slug %}aria-current="page"{% endif %}><i class="fa-solid {{ p.icon or 'fa-folder' }}" aria-hidden="true"></i><span class="cn-nav-label">{{ p.name }}</span></a></li>{% endfor %}
+    </ul>
+    {% endif %}
     <div class="cn-sidebar-foot">
       {{ brand_mark("cn-sidebar-mark") }}
       <p>Every task rests on the ones below it.</p>

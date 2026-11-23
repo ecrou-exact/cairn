@@ -24,7 +24,7 @@ from app.core.schema.planning import ProjectCreate, ProjectUpdate
 from app.core.utils.events import latest_event_id
 from app.core.utils.history import batch
 from app.core.utils.settings import get_setting
-from app.core.utils.web import FormErrors, back_to, flash_undo, validate
+from app.core.utils.web import FormErrors, back_to, flash_undo, local_path, validate
 from app.features.changesets import changesets_core
 from app.features.claude import claude_core, worktrees_core
 from app.features.comments import comments_core
@@ -88,6 +88,8 @@ def index():
             page=page,
             graph_view=graph_view,
             stats=projects_core.stats([p.id for p in page.items]),
+            hidden_view=request.args.get("hidden") == "1",
+            hidden_count=projects_core.hidden_count(),
             events_after=after,
         )
     )
@@ -201,6 +203,23 @@ def import_apply(token: str):
     path.unlink(missing_ok=True)
     flash(f"“{project.name}” is up to date with the file.", "success")
     return redirect(url_for("projects.detail", slug=project.slug))
+
+
+@projects.post("/projects/<slug>/<any(star, pin, hide):mark>")
+def mark(slug: str, mark: str):
+    """Star (first in the list), pin (in the menu) or hide (out of the list), and back (D-089)."""
+    project = _project_or_404(slug)
+    field = {"star": "starred", "pin": "pinned", "hide": "hidden"}[mark]
+    with batch() as batch_id:
+        projects_core.update(project.id, ProjectUpdate(**{field: not getattr(project, field)}))
+    on = getattr(project, field)
+    told = {
+        "starred": ("Starred", "Unstarred"),
+        "pinned": ("Pinned in the menu", "Unpinned"),
+        "hidden": ("Hidden from the list", "Back in the list"),
+    }[field]
+    flash_undo(f"{told[0] if on else told[1]}: {project.name}.", batch_id)
+    return redirect(local_path(request.form.get("next")) or url_for("projects.detail", slug=slug))
 
 
 @projects.get("/projects/<slug>")

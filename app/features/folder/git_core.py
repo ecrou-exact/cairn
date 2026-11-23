@@ -24,8 +24,53 @@ class GitError(ValueError):
 
 
 def state(project: Project) -> dict[str, Any]:
+    """Each copy, with the task that has its branch already."""
+    from app.features.worklinks import github_work_core  # it builds on the copies
+
     found = copies_core.overview(project)
+    taken = github_work_core._taken(project)
+    for copy in found["copies"]:
+        copy["task"] = taken.get(("branch", copy["branch"].lower())) if copy["branch"] else None
     return {**found, "repo": project.github_repo, "default": project.default_branch}
+
+
+def task_from_copy(project: Project, folder: str) -> Task:
+    """A task for the work in one copy: its pull request's title, or its branch; linked to its branch,
+    its folder and its pull request; in progress while the pull request is open (D-089)."""
+    from app.core.schema.planning import TaskCreate
+    from app.core.schema.worklinks import WorkLinkCreate
+    from app.features.tasks import tasks_core, workflow
+
+    wanted = str(Path(folder).resolve())
+    copy = next((c for c in state(project)["copies"] if str(Path(c["folder"]).resolve()) == wanted), None)
+    if copy is None:
+        raise GitError("This folder is not a copy of the project.")
+    if copy["task"]:
+        raise GitError(f"“{copy['task']['title']}” has this branch already.")
+    if not copy["branch"] or copy["branch"] == project.default_branch:
+        raise GitError("This copy is on the main branch: a task is for the work of a branch.")
+    pull = copy["pull"]
+    title = f"#{pull['number']} {pull['title']}" if pull else copy["branch"]
+    with batch():
+        task = tasks_core.create(
+            TaskCreate(
+                title=title[:200],
+                project_id=project.id,
+                description_md=f"The work of `{copy['branch']}`, in `{copy['folder']}`.",
+            )
+        )
+        links = [("branch", copy["branch"]), ("folder", copy["folder"])]
+        if pull:
+            links.append(("pull", f"{pull['repo']}#{pull['number']}"))
+        for kind, ref in links:
+            worklinks_core.add(WorkLinkCreate(target_type="task", target_id=task.id, kind=kind, ref=ref))
+        if (
+            pull
+            and pull["state"] in ("open", "draft")
+            and "in_progress" in workflow.allowed_next(task.status)
+        ):
+            tasks_core.set_status(task.id, "in_progress")
+    return task
 
 
 def for_task(task: Task) -> dict[str, Any]:
