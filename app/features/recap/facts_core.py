@@ -1,14 +1,12 @@
-"""What the owner did in a day, read where it happened (D-078): the commits of every branch of the
-repositories on this machine, GitHub (pull requests, issues, commits of repositories not here), the
-tasks finished in Cairn and the Claude conversations. Read only: nothing is fetched, nothing changes.
+"""What the owner did in a day, read where it happened (D-078, D-103): the commits of every branch of
+the repositories on this machine and GitHub (pull requests, issues, commits of repositories not here).
+Only what the owner wrote counts: not Claude's conversations, not Cairn's tasks or timers. Read only:
+nothing is fetched, nothing changes.
 """
 
 from __future__ import annotations
 
-import json
-import os
 import re
-from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -16,11 +14,9 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app.core.db_class.base import utcnow
-from app.core.db_class.planning import Project, Task, TimeEntry
+from app.core.db_class.planning import Project
 from app.core.extensions import db
 from app.core.utils.settings import get_setting
-from app.features.claude import transcript_core
 from app.features.folder import programs
 
 DEPTH = 3
@@ -127,7 +123,7 @@ def _read_repository(folder: Path, start: datetime, end: datetime, login: str) -
                     "subject": subject,
                 }
             )
-    return {"repo": name, "github": bool(remote), "folder": str(folder), "commits": commits}
+    return {"repo": name, "github": bool(remote), "commits": commits}
 
 
 # -- GitHub ------------------------------------------------------------------------------------
@@ -158,10 +154,13 @@ def _github(start: datetime, end: datetime) -> dict[str, Any]:
     for kind in ("pr_opened", "pr_merged", "issue_opened"):
         for row in (answers[kind] or {}).get("items", []):
             repo = row["repository_url"].split("/repos/", 1)[-1]
+            merged = (row.get("pull_request") or {}).get("merged_at") or row.get("closed_at")
+            at = merged if kind == "pr_merged" else row["created_at"]
             items.append(
                 {
                     "kind": kind,
                     "repo": repo,
+                    "at": at.replace("Z", "+00:00"),
                     "number": row["number"],
                     "title": row["title"],
                     "url": row["html_url"],
@@ -187,39 +186,6 @@ def _github(start: datetime, end: datetime) -> dict[str, Any]:
     }
 
 
-# -- Claude ------------------------------------------------------------------------------------
-
-
-def _asked(line: bytes) -> tuple[str, datetime] | None:
-    """(folder, when) of a request the owner typed; what was said is not kept."""
-    if b'"type":"user"' not in line or b'"tool_use_id"' in line:
-        return None
-    try:
-        entry = json.loads(line)
-        if entry.get("type") != "user" or entry.get("isMeta") or entry.get("isSidechain"):
-            return None
-        return entry["cwd"], datetime.fromisoformat(entry["timestamp"].replace("Z", "+00:00"))
-    except (ValueError, KeyError, TypeError, AttributeError):
-        return None
-
-
-def _claude(start: datetime, end: datetime) -> dict[str, list[datetime]]:
-    """When the owner asked something to Claude, by folder."""
-    found: dict[str, list[datetime]] = defaultdict(list)
-    for path in transcript_core.projects_root().glob("*/*.jsonl"):
-        try:
-            if path.stat().st_mtime < start.timestamp():
-                continue
-            with path.open("rb") as lines:
-                for line in lines:
-                    asked = _asked(line)
-                    if asked and start <= asked[1] < end:
-                        found[asked[0]].append(asked[1])
-        except OSError:
-            continue
-    return found
-
-
 # -- together ----------------------------------------------------------------------------------
 
 
@@ -228,96 +194,53 @@ def slot(when: datetime) -> str:
     return f"{local.hour:02d}:{local.minute // SLOT * SLOT:02d}"
 
 
-def _finished(start: datetime, end: datetime) -> list[Task]:
-    return list(
-        db.session.scalars(
-            select(Task)
-            .where(Task.deleted_at.is_(None), Task.completed_at >= start, Task.completed_at < end)
-            .order_by(Task.completed_at)
-        )
-    )
-
-
-def _repo_of(task: Task) -> str:
-    return (task.project.github_repo or task.project.name) if task.project else "No project"
-
-
-def _timed(start: datetime, end: datetime) -> dict[str, set[str]]:
-    """The half hours a task's timer ran, by repository."""
-    found: dict[str, set[str]] = defaultdict(set)
-    query = (
-        select(TimeEntry, Task)
-        .join(Task, Task.id == TimeEntry.task_id)
-        .where(TimeEntry.deleted_at.is_(None), TimeEntry.started_at < end)
-        .where((TimeEntry.ended_at.is_(None)) | (TimeEntry.ended_at > start))
-    )
-    for entry, task in db.session.execute(query):
-        at, until = max(entry.started_at, start), min(entry.ended_at or utcnow(), end)
-        while at < until:
-            found[_repo_of(task)].add(slot(at))
-            at += timedelta(minutes=SLOT)
-    return found
-
-
 def short(repo: str) -> str:
     """A repository and its forks are one: the name alone."""
     return repo.rsplit("/", 1)[-1].lower()
 
 
 def gather(day: date) -> dict[str, Any]:
-    """The day by repository, the busiest first."""
-    start, end = bounds(day)
+    return gather_span(day, day)[day]
+
+
+def gather_span(first: date, last: date) -> dict[date, dict[str, Any]]:
+    """Each day from `first` to `last`, by repository, the busiest first. Git and GitHub are read once
+    for the whole span (GitHub's search allows few calls a minute)."""
+    start, end = bounds(first)[0], bounds(last)[1]
     folders = repositories()
     github = _github(start, end)
     with ThreadPoolExecutor(8) as pool:
         read = list(pool.map(lambda f: _read_repository(f, start, end, github["login"]), folders))
-    groups: dict[str, dict[str, Any]] = {}
+    groups: dict[date, dict[str, dict[str, Any]]] = {}
 
-    def group(repo: str) -> dict[str, Any]:
-        return groups.setdefault(
-            short(repo),
-            {
-                "name": short(repo),
-                "repo": repo,
-                "commits": [],
-                "items": [],
-                "tasks": [],
-                "asked": 0,
-                "slots": set(),
-            },
+    def group(repo: str, at: str) -> dict[str, Any]:
+        rows = groups.setdefault(datetime.fromisoformat(at).astimezone().date(), {})
+        return rows.setdefault(
+            short(repo), {"name": short(repo), "repo": repo, "commits": [], "items": [], "slots": set()}
         )
 
     seen: set[str] = set()
     same: set[tuple[str, str, str]] = set()
-    by_folder: dict[str, str] = {}
     for found in read:
-        by_folder[found["folder"]] = found["repo"]
         for commit in found["commits"]:
-            _add(group(found["repo"]), commit, found["repo"] if found["github"] else "", seen, same)
+            row = group(found["repo"], commit["at"])
+            _add(row, commit, found["repo"] if found["github"] else "", seen, same)
     for commit in github["commits"]:
-        _add(group(commit["repo"]), commit, commit["repo"], seen, same)
+        _add(group(commit["repo"], commit["at"]), commit, commit["repo"], seen, same)
     for item in github["items"]:
-        group(item["repo"])["items"].append({k: item[k] for k in ("kind", "number", "title", "url")})
-    for task in _finished(start, end):
-        row = group(_repo_of(task))
-        row["tasks"].append({"id": str(task.id), "title": task.title})
-        row["slots"].add(slot(task.completed_at))
-    for repo, slots in _timed(start, end).items():
-        group(repo)["slots"] |= slots
-    places = sorted(by_folder, key=len, reverse=True)
-    for cwd, times in _claude(start, end).items():
-        place = next((p for p in places if cwd == p or cwd.startswith(p + os.sep)), None)
-        if place is not None:
-            row = group(by_folder[place])
-            row["asked"] += len(times)
-            row["slots"] |= {slot(when) for when in times}
-    rows = []
-    for row in groups.values():
-        row["commits"].sort(key=lambda c: c["at"])
-        row["slots"] = sorted(row["slots"])
-        rows.append(row)
-    rows.sort(key=lambda r: (-len(r["slots"]), -len(r["commits"]), r["name"]))
-    return {"repos": rows, "github": github["read"], "folders": len(folders)}
+        row = group(item["repo"], item["at"])
+        row["items"].append({k: item[k] for k in ("kind", "number", "title", "url", "at")})
+        row["slots"].add(slot(datetime.fromisoformat(item["at"])))
+    days = {}
+    for offset in range((last - first).days + 1):
+        day = first + timedelta(days=offset)
+        rows = list(groups.get(day, {}).values())
+        for row in rows:
+            row["commits"].sort(key=lambda c: c["at"])
+            row["slots"] = sorted(row["slots"])
+        rows.sort(key=lambda r: (-len(r["slots"]), -len(r["commits"]), r["name"]))
+        days[day] = {"repos": rows, "github": github["read"], "folders": len(folders)}
+    return days
 
 
 def _add(row: dict, commit: dict, github: str, seen: set[str], same: set[tuple[str, str, str]]) -> None:

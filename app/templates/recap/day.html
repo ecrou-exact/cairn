@@ -15,7 +15,7 @@
 <header class="cn-page-header">
   <div class="cn-eyebrow">Day summary</div>
   <h1>{{ "Today" if day == today else day.strftime("%A %d %B") }}</h1>
-  <p>What you did, read from git, GitHub, your tasks and Claude. Nothing leaves Cairn before you send it.</p>
+  <p>What you did, read from your commits, pull requests and issues. Nothing leaves Cairn before you send it.</p>
 </header>
 <div class="cn-day-bar">
   <a class="btn btn-outline-secondary" href="{{ url_for('recap.day', raw=before.isoformat()) }}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span class="visually-hidden">The day before</span></a>
@@ -23,6 +23,7 @@
   {% if after %}<a class="btn btn-outline-secondary" href="{{ url_for('recap.day', raw=after.isoformat()) }}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i><span class="visually-hidden">The day after</span></a>{% endif %}
   <form method="post" action="{{ url_for('recap.read', raw=day.isoformat()) }}" data-slow="Reading…">{{ csrf() }}<button class="btn {{ 'btn-outline-secondary' if found.read_at else 'btn-primary' }}" type="submit"><i class="fa-solid fa-rotate" aria-hidden="true"></i><span class="ms-2">{{ "Read again" if found.read_at else "Read the day" }}</span></button></form>
   <a class="btn btn-outline-secondary" href="{{ url_for('recap.rules') }}"><i class="fa-solid fa-signs-post" aria-hidden="true"></i><span class="ms-2">Rules</span></a>
+  <a class="btn btn-outline-secondary" href="{{ url_for('recap.period') }}"><i class="fa-solid fa-calendar-week" aria-hidden="true"></i><span class="ms-2">A period</span></a>
   {% if read_at %}<span class="cn-muted">Read {{ read_at.strftime("%d %b at %H:%M") }}</span>{% endif %}
 </div>
 
@@ -34,10 +35,9 @@
     {% for row in found.facts.repos %}
     <li class="cn-day-repo">
       <details><summary><strong>{{ row.name }}</strong>
-        <span class="cn-muted">{{ row.commits | length }} commit{{ "s" if row.commits | length != 1 }}{% if row["items"] %}, {{ row["items"] | length }} on GitHub{% endif %}{% if row.tasks %}, {{ row.tasks | length }} task{{ "s" if row.tasks | length != 1 }}{% endif %}{% if row.asked %}, {{ row.asked }} request{{ "s" if row.asked != 1 }} to Claude{% endif %}</span>
+        <span class="cn-muted">{{ row.commits | length }} commit{{ "s" if row.commits | length != 1 }}{% if row["items"] %}, {{ row["items"] | length }} on GitHub{% endif %}</span>
         {% if row.name in found.unplaced %}<a class="cn-badge" href="{{ url_for('recap.rules', repo=row.name) }}">no rule: say where it goes</a>{% endif %}</summary>
         <ul class="cn-day-facts">
-          {% for t in row.tasks %}<li>Task done: <a href="{{ url_for('tasks.detail', task_id=t.id) }}">{{ t.title }}</a></li>{% endfor %}
           {% for i in row["items"] %}<li>{{ kinds[i.kind] }}: <a href="{{ i.url }}" target="_blank" rel="noopener noreferrer">#{{ i.number }} {{ i.title }}</a></li>{% endfor %}
           {% for c in row.commits %}<li>{% if c.url %}<a href="{{ c.url }}" target="_blank" rel="noopener noreferrer"><code>{{ c.sha }}</code></a>{% else %}<code>{{ c.sha }}</code>{% endif %} {{ c.subject }}{% if c.branch %} <span class="cn-muted">{{ c.branch }}</span>{% endif %}</li>{% endfor %}
         </ul></details>
@@ -60,7 +60,8 @@
         <form method="post" action="{{ url_for('recap.delete_entry', raw=day.isoformat(), entry_id=entry.id) }}">{{ csrf() }}<button class="btn btn-sm btn-outline-secondary" type="submit">Remove</button></form></div>
     </div>{% endif %}
   {% endfor %}
-  {% if not found.entries and targets and found.facts.repos %}<form method="post" action="{{ url_for('recap.propose', raw=day.isoformat()) }}">{{ csrf() }}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span class="ms-2">Propose the entries</span></button></form>{% endif %}
+  {% if found.off %}<p class="cn-muted">No time is proposed on a {{ found.off }}. If you worked, change the days off in the <a href="{{ url_for('settings.index') }}">settings</a>, or add an entry yourself.</p>
+  {% elif not found.entries and targets and found.facts.repos %}<form method="post" action="{{ url_for('recap.propose', raw=day.isoformat()) }}">{{ csrf() }}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span class="ms-2">Propose the entries</span></button></form>{% endif %}
   {% if found.unplaced %}<p class="cn-muted">No rule for {{ found.unplaced | join(", ") }}: it is not counted in the day. Add a rule, or leave your own projects out in the <a href="{{ url_for('settings.index') }}">settings</a>.</p>{% endif %}
   {% if targets %}<details class="cn-entry-add"><summary>Add an entry</summary><form method="post" class="cn-entry-fields" action="{{ url_for('recap.add_entry', raw=day.isoformat()) }}">{{ csrf() }}{{ fields("new") }}<div class="cn-entry-full"><button class="btn btn-outline-secondary" type="submit">Add</button></div></form></details>
   {% else %}<p><a href="{{ url_for('recap.rules') }}">Write your first rule</a> to say which project and activity your work goes to.</p>{% endif %}

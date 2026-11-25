@@ -146,6 +146,7 @@ Goal: owner approves architecture + design direction.
 ## Phase 9 — Modules  ·  Phase 10 — Calendar & activity  ·  Phase 11 — Hardening & release
 - [ ] Module registry, event automations, task action modules
 - [x] Day summary with its branches, rules that place the work, time entries sent to Kimai by the owner (D-078)
-- [ ] Owner ideas (2026-11-23), later: mail connected for Claude; summary for a period
+- [x] A period summary from commits, pull requests and issues only; weekends and days off never filled; sent by rule (D-103)
+- [ ] Owner ideas (2026-11-23), later: mail connected for Claude
 - [ ] Calendar, scheduled runs, Gantt timeline, activity feed, right-now panel, alerts
 - [ ] Security review, E2E (Playwright), docs, logo, packaging, release checklist

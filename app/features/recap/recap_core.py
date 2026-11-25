@@ -130,10 +130,24 @@ def _checked(day: date) -> None:
         raise RecapError("This day has not come yet.")
 
 
+def day_off(day: date) -> str:
+    """Why no time is proposed for this day, or "" on a working day (D-103)."""
+    if day.isoweekday() not in get_setting("recap.work_days"):
+        return "weekend"
+    for span in get_setting("recap.days_off"):
+        first, _, last = span.partition("..")
+        if date.fromisoformat(first) <= day <= date.fromisoformat(last or first):
+            return "day off"
+    return ""
+
+
 def read_day(day: date) -> WorkDay:
     """Read what was done; the summary follows unless the owner wrote in it."""
     _checked(day)
-    facts = facts_core.gather(day)
+    return store_day(day, facts_core.gather(day))
+
+
+def store_day(day: date, facts: dict[str, Any]) -> WorkDay:
     with batch():
         found = get_day(day) or WorkDay(day=day, summary_edited=False, summary_md="")
         found.facts, found.read_at = facts, utcnow()
@@ -149,15 +163,11 @@ def write_summary(day: date, facts: dict[str, Any]) -> str:
     lines = [f"# {day:%A %d %B %Y}"]
     for row in facts["repos"]:
         lines += ["", f"## {row['repo']}"]
-        for task in row["tasks"]:
-            lines.append(f"- Task done: {task['title']}")
         for item in row["items"]:
             lines.append(f"- {KINDS[item['kind']]}: [#{item['number']}]({item['url']}) {item['title']}")
         for branch, commits in _by_branch(row["commits"]).items():
             lines.append(f"- `{branch or 'default branch'}`: {_count(len(commits), 'commit')}")
-            lines += [f"  - {commit['subject']}" for commit in commits]
-        if row["asked"]:
-            lines.append(f"- {_count(row['asked'], 'request')} to Claude")
+            lines += [f"  - {linked(commit)}" for commit in commits]
     if not facts["repos"]:
         lines += ["", "Nothing found for this day."]
     return "\n".join(lines) + "\n"
@@ -177,6 +187,11 @@ def save_summary(day: date, text: str) -> WorkDay:
 
 def _count(n: int, word: str) -> str:
     return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+def linked(commit: dict) -> str:
+    sha = f"[`{commit['sha']}`]({commit['url']})" if commit["url"] else f"`{commit['sha']}`"
+    return f"{sha} {commit['subject']}"
 
 
 def _by_branch(commits: list[dict]) -> dict[str, list[dict]]:
@@ -241,7 +256,6 @@ def describe_work(about: str, parts: list[dict[str, Any]]) -> str:
             where = f"{part['name']} ({branch})" if branch else part["name"]
             last = f" - {commits[-1]['url']}" if commits[-1]["url"] else ""
             lines.append(f"{where}: {'; '.join(subjects[:SUBJECTS])}{more}{last}")
-        lines += [f"Done: {task['title']}" for task in part["tasks"]]
     return "\n".join(lines)[:4000]
 
 
@@ -249,7 +263,8 @@ def plan(
     facts: dict[str, Any], among: list[WorkTarget]
 ) -> tuple[list[tuple[WorkTarget, int, str]], dict[str, int]]:
     """(rule, weight, description) for the day, and the weight of each repository with work no rule
-    takes. The weight is the number of half hours with something done; ignored repositories have none."""
+    takes. The weight is the number of half hours with something done; ignored repositories have none.
+    Only commits, pull requests and issues count (D-103)."""
     ignored = {name.lower() for name in get_setting("recap.ignored")}
     grouped: dict[uuid.UUID, dict[str, Any]] = {}
     lost: dict[str, int] = {}
@@ -261,26 +276,22 @@ def plan(
             return None
         group = grouped.setdefault(target.id, {"target": target, "parts": {}, "slots": set()})
         group["slots"] |= slots
-        return group["parts"].setdefault(
-            row["name"], {"name": row["name"], "commits": [], "items": [], "tasks": []}
-        )
+        return group["parts"].setdefault(row["name"], {"name": row["name"], "commits": [], "items": []})
 
     for row in facts["repos"]:
         if row["name"] in ignored:
             continue
-        for kind in ("commits", "items", "tasks"):
+        for kind in ("commits", "items"):
             for value in row[kind]:
                 words = " ".join((value.get("branch", ""), value.get("subject", ""), value.get("title", "")))
                 slots = {facts_core.slot(datetime.fromisoformat(value["at"]))} if kind == "commits" else set()
                 part = put(row, words, slots)
                 if part is not None:
                     part[kind].append(value)
-        # What is not a commit says nothing of the rule: it goes with most of the day's commits.
+        # A pull request or an issue says when, not how long: its half hours go with the commits.
         worked = [g for g in grouped.values() if g["parts"].get(row["name"], {}).get("commits")]
         if worked:
             max(worked, key=lambda g: len(g["parts"][row["name"]]["commits"]))["slots"] |= set(row["slots"])
-        else:
-            put(row, "", set(row["slots"]))
     found = [
         (g["target"], max(1, len(g["slots"])), describe_work(g["target"].about, list(g["parts"].values())))
         for g in grouped.values()
@@ -292,6 +303,8 @@ def plan(
 def propose(day: date) -> list[DayEntry]:
     """Drafts for the day from its facts, in the time not taken in Kimai. Only on a day with no draft."""
     _checked(day)
+    if off := day_off(day):
+        raise RecapError(f"No time on a {off}: change the days off in the settings if you worked.")
     found = get_day(day)
     if found is None or found.read_at is None:
         raise RecapError("Read the day first.")
@@ -504,6 +517,7 @@ def describe_day(day: date) -> dict[str, Any]:
         "read_at": found.read_at.isoformat() if found and found.read_at else None,
         "facts": facts,
         "summary": found.summary_md if found else "",
+        "off": day_off(day),
         "unplaced": list(plan(facts, targets())[1]) if facts else [],
         "entries": [describe_entry(entry) for entry in entries(day)],
     }

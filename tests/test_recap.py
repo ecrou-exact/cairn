@@ -1,7 +1,6 @@
 """Day summary, rules and time entries (D-078)."""
 
 import io
-import json
 import os
 import shutil
 import subprocess
@@ -12,8 +11,9 @@ import pytest
 from app.core.schema.recap import EntryInput, EntryUpdate, TargetInput
 from app.core.utils.actor import acting_as
 from app.core.utils.history import batch, undo
-from app.features.claude import mcp_server, mcp_time_tools, transcript_core
-from app.features.recap import facts_core, kimai, recap_core
+from app.core.utils.settings import set_setting
+from app.features.claude import mcp_server, mcp_time_tools
+from app.features.recap import facts_core, kimai, period_core, recap_core
 
 DAY = date(2026, 11, 20)
 CATALOG = [
@@ -69,8 +69,6 @@ def _facts(*commits, name="tool", slots=()):
         "repo": f"org/{name}",
         "commits": list(commits),
         "items": [],
-        "tasks": [],
-        "asked": 0,
     }
     return {"repos": [{**row, "slots": list(slots)}], "github": True, "folders": 1}
 
@@ -114,20 +112,33 @@ def test_git_is_read_on_every_branch_once(tmp_path, monkeypatch):
     assert len(row["commits"]) == 2 and len(row["slots"]) == 1
 
 
-def test_claude_requests_are_counted_without_their_words(tmp_path, monkeypatch):
-    monkeypatch.setattr(transcript_core, "projects_root", lambda: tmp_path)
-    (tmp_path / "p").mkdir()
-    start, end = facts_core.bounds(DAY)
-    asked = {"type": "user", "cwd": "/w", "timestamp": (start + timedelta(hours=9)).isoformat()}
-    lines = [
-        {**asked, "message": {"content": "SECRET"}},
-        {**asked, "message": {"content": [{"tool_use_id": "t"}]}},
-        {**asked, "isMeta": True},
-        {**asked, "timestamp": (end + timedelta(hours=1)).isoformat()},
+def test_a_span_is_read_once_and_split_by_day(monkeypatch):
+    """Git and GitHub are read once for a period; Claude's conversations are never read (D-103)."""
+    first, last = DAY - timedelta(days=1), DAY
+    calls = []
+    monkeypatch.setattr(facts_core, "repositories", lambda: ["/r"])
+
+    def github(start, end):
+        calls.append((start, end))
+        at = datetime(2026, 11, 19, 16).astimezone().isoformat()
+        item = {"kind": "pr_merged", "repo": "org/tool", "number": 4, "title": "t", "url": "u", "at": at}
+        return {"login": "me", "read": True, "items": [item], "commits": []}
+
+    commits = [
+        _commit("monday", 9),
+        {**_commit("sunday", 9), "at": datetime(2026, 11, 19, 9).astimezone().isoformat()},
     ]
-    text = "\n".join([*(json.dumps(line, separators=(",", ":")) for line in lines), '{"type":"user" cut'])
-    (tmp_path / "p" / "a.jsonl").write_text(text)
-    assert {k: len(v) for k, v in facts_core._claude(start, end).items()} == {"/w": 1}
+    monkeypatch.setattr(facts_core, "_github", github)
+    monkeypatch.setattr(
+        facts_core, "_read_repository", lambda *a: {"repo": "Org/Tool", "github": True, "commits": commits}
+    )
+    found = facts_core.gather_span(first, last)
+    assert len(calls) == 1 and list(found) == [first, last]
+    (before,), (after,) = found[first]["repos"], found[last]["repos"]
+    assert [c["subject"] for c in before["commits"]] == ["sunday"] and len(before["items"]) == 1
+    assert [c["subject"] for c in after["commits"]] == ["monday"] and after["items"] == []
+    assert after["commits"][0]["url"].startswith("https://github.com/Org/Tool/commit/")
+    assert not hasattr(facts_core, "_claude")
 
 
 def test_rules_place_the_work(ctx, tracking):
@@ -268,3 +279,68 @@ def test_the_day_is_shared_equally():
     assert recap_core.share([1], 480) == [480]
     assert recap_core.share([1, 1], 480) == [240, 240]
     assert sorted(recap_core.share([1, 1, 1], 480)) == [150, 165, 165]
+
+
+def test_weekends_and_days_off_are_never_filled(ctx, tracking, monkeypatch):
+    _rule()
+    saturday = date(2026, 11, 21)
+    monkeypatch.setattr(facts_core, "gather", lambda day: _facts(_commit("x", 9)))
+    assert recap_core.day_off(saturday) == "weekend" and recap_core.day_off(DAY) == ""
+    recap_core.read_day(saturday)
+    with pytest.raises(recap_core.RecapError, match="weekend"):
+        recap_core.propose(saturday)
+    set_setting("recap.days_off", ["2026-11-18..2026-11-20"])
+    assert recap_core.day_off(DAY) == "day off" and recap_core.day_off(DAY + timedelta(days=3)) == ""
+    with pytest.raises(ValueError):
+        set_setting("recap.days_off", ["Christmas"])
+
+
+def test_a_period_is_filled_by_day_and_sent_by_rule(ctx, tracking, monkeypatch):
+    """Mon 16 to Sun 22 Nov 2026, Wednesday off: each working day split equally between the rules of
+    its work; only the ticked rule is sent."""
+    tool = _rule()
+    other = _rule("Other", 71, repos=["other"])
+    set_setting("recap.days_off", ["2026-11-18"])
+    first, last = date(2026, 11, 16), date(2026, 11, 22)
+
+    def span(a, b):
+        found = {}
+        for n in range((b - a).days + 1):
+            day = a + timedelta(days=n)
+            facts = _facts(_commit(f"tool {day}", 9))
+            if day.day in (16, 21):  # Monday, and a Saturday
+                facts["repos"] += _facts(_commit("other", 10), name="other")["repos"]
+            found[day] = facts
+        return found
+
+    monkeypatch.setattr(facts_core, "gather_span", span)
+    with pytest.raises(recap_core.RecapError):
+        period_core.read_period(last, first)
+    assert period_core.read_period(first, last) == 7
+    done = period_core.propose_period(first, last)
+    assert done["made"] == ["2026-11-16", "2026-11-17", "2026-11-19", "2026-11-20"]
+    monday = sorted((e.target_id, e.minutes) for e in recap_core.entries(first))
+    assert monday == sorted([(tool.id, 240), (other.id, 240)])
+    assert recap_core.entries(date(2026, 11, 18)) == recap_core.entries(date(2026, 11, 21)) == []
+    found = period_core.describe_period(first, last)
+    assert {r["target"]: r["draft"] for r in found["rules"]} == {"Tool": 480 * 3 + 240, "Other": 240}
+    assert "[`tool 2026`](https://x/tool 2026-11-16)" in found["summary"]
+    assert "Claude" not in found["summary"]
+    with acting_as("claude:x"), pytest.raises(recap_core.RecapError, match="owner"):
+        period_core.send_period(first, last, [other.id])
+    assert period_core.send_period(first, last, [other.id]) == 1
+    assert [(h["activity"], h["minutes"]) for h in tracking] == [(71, 240)]
+    with pytest.raises(recap_core.RecapError, match="No draft"):
+        period_core.send_period(first, last, [other.id])
+    assert period_core.propose_period(first, last)["made"] == []  # days with entries are left
+
+
+def test_period_page_and_api(app, signed_in, tracking, monkeypatch):
+    monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {a: _facts(_commit("x", 9))})
+    page = signed_in.get(f"/day/period?from={DAY}&to={DAY}")
+    assert page.status_code == 200 and b"not read" in page.data
+    form = {"from": DAY.isoformat(), "to": DAY.isoformat()}
+    assert b"1 day read" in signed_in.post("/day/period/read", data=form, follow_redirects=True).data
+    assert b"ends before" in signed_in.get(f"/day/period?from={DAY}&to={DAY - timedelta(days=1)}").data
+    assert signed_in.get(f"/api/period/{DAY}/{DAY}").json["days"][0]["read"]
+    assert signed_in.post(f"/api/period/{DAY}/{DAY}/send", json={"rules": []}).status_code == 422

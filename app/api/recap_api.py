@@ -8,8 +8,16 @@ from datetime import date
 from flask import jsonify, request
 
 from app.api import ApiError, api_blueprint, body
-from app.core.schema.recap import EntryInput, EntryUpdate, RulesInput, SendInput, SummaryInput, TargetInput
-from app.features.recap import kimai, recap_core
+from app.core.schema.recap import (
+    EntryInput,
+    EntryUpdate,
+    PeriodSendInput,
+    RulesInput,
+    SendInput,
+    SummaryInput,
+    TargetInput,
+)
+from app.features.recap import kimai, period_core, recap_core
 
 recap_api = api_blueprint("recap_api")
 
@@ -26,6 +34,31 @@ def _day(raw: str) -> date:
         return date.fromisoformat(raw)
     except ValueError as exc:
         raise ApiError("Write the day as YYYY-MM-DD.", 422) from exc
+
+
+@recap_api.get("/period/<first>/<last>")
+def get_period(first: str, last: str):
+    """A period: each day's facts, drafts and entries, the time by rule and the summary."""
+    return jsonify(_guard(period_core.describe_period, _day(first), _day(last)))
+
+
+@recap_api.post("/period/<first>/<last>/read")
+def read_period(first: str, last: str):
+    _guard(period_core.read_period, _day(first), _day(last))
+    return jsonify(period_core.describe_period(_day(first), _day(last)))
+
+
+@recap_api.post("/period/<first>/<last>/propose")
+def propose_period(first: str, last: str):
+    """Drafts for each working day with work and no entry; weekends and days off are left."""
+    return jsonify(_guard(period_core.propose_period, _day(first), _day(last))), 201
+
+
+@recap_api.post("/period/<first>/<last>/send")
+def send_period(first: str, last: str):
+    """Create in Kimai the period's drafts of the named rules."""
+    sent = _guard(period_core.send_period, _day(first), _day(last), body(PeriodSendInput).rules)
+    return jsonify(sent=sent)
 
 
 @recap_api.get("/day/<raw>")

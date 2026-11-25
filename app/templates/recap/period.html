@@ -1,0 +1,66 @@
+{% extends "layout/shell.html" %}
+{% block title %}Period summary{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/recap/recap.css') }}">{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/recap/day.js') }}"></script>{% endblock %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+{% macro span() %}<input type="hidden" name="from" value="{{ first.isoformat() }}"><input type="hidden" name="to" value="{{ last.isoformat() }}">{% endmacro %}
+{% macro clock(m) %}{{ "%d:%02d" % (m // 60, m % 60) }}{% endmacro %}
+{% block content %}
+<header class="cn-page-header">
+  <div class="cn-eyebrow"><a href="{{ url_for('recap.index') }}">Day summary</a></div>
+  <h1>{{ first.strftime("%d %B") }} to {{ last.strftime("%d %B %Y") }}</h1>
+  <p>Your commits, pull requests and issues of the period. Weekends and days off are never filled; nothing leaves Cairn before you send it.</p>
+</header>
+<div class="cn-day-bar">
+  <form method="get" action="{{ url_for('recap.period') }}" class="cn-day-pick">
+    <label class="visually-hidden" for="from">From</label><input class="form-control" type="date" id="from" name="from" value="{{ first.isoformat() }}" max="{{ today.isoformat() }}" required>
+    <label class="visually-hidden" for="to">To</label><input class="form-control" type="date" id="to" name="to" value="{{ last.isoformat() }}" max="{{ today.isoformat() }}" required>
+    <button class="btn btn-outline-secondary" type="submit">Show</button></form>
+  {% if found %}<form method="post" action="{{ url_for('recap.read_period') }}" data-slow="Reading…">{{ csrf() }}{{ span() }}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-rotate" aria-hidden="true"></i><span class="ms-2">Read the period</span></button></form>
+  <form method="post" action="{{ url_for('recap.propose_period') }}" data-slow="Proposing…">{{ csrf() }}{{ span() }}<button class="btn btn-outline-secondary" type="submit"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span class="ms-2">Propose the entries</span></button></form>{% endif %}
+  <a class="btn btn-outline-secondary" href="{{ url_for('recap.rules') }}"><i class="fa-solid fa-signs-post" aria-hidden="true"></i><span class="ms-2">Rules</span></a>
+  <a class="btn btn-outline-secondary" href="{{ url_for('settings.index') }}"><i class="fa-solid fa-umbrella-beach" aria-hidden="true"></i><span class="ms-2">Days off</span></a>
+</div>
+{% if problem %}<p class="alert alert-warning">{{ problem }}</p>{% endif %}
+
+{% if found %}
+<section class="cn-panel" aria-labelledby="days-title">
+  <h2 id="days-title">Day by day</h2>
+  <div class="table-responsive"><table class="table cn-period">
+    <thead><tr><th scope="col">Day</th><th scope="col">Work</th><th scope="col">Time</th></tr></thead>
+    <tbody>{% for row in found.days %}
+      <tr class="{{ 'cn-period-off' if row.off }}">
+        <th scope="row"><a href="{{ url_for('recap.day', raw=row.day) }}">{{ row.day }}</a></th>
+        <td>{% if not row.read %}<span class="cn-muted">not read</span>
+          {% elif row.facts.repos %}{% for repo in row.facts.repos %}<span class="cn-period-repo">{{ repo.name }} <span class="cn-muted">{{ repo.commits | length }}{% if repo["items"] %} + {{ repo["items"] | length }} on GitHub{% endif %}</span>{% if repo.name in row.unplaced %} <a class="cn-badge" href="{{ url_for('recap.rules', repo=repo.name) }}">no rule</a>{% endif %}</span>{% endfor %}
+          {% else %}<span class="cn-muted">nothing</span>{% endif %}</td>
+        <td>{% if row.off %}<span class="cn-badge">{{ row.off }}</span>{% endif %}
+          {% for e in row.entries %}<span class="cn-period-entry">{% if e.sent %}<i class="fa-solid fa-check" aria-hidden="true"></i><span class="visually-hidden">sent</span>{% endif %} {{ e.target }} {{ clock(e.minutes) }}</span>{% endfor %}</td>
+      </tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+
+<section class="cn-panel" aria-labelledby="send-title">
+  <h2 id="send-title">Time by rule</h2>
+  {% if found.rules %}
+  {% set waiting = found.rules | selectattr("draft") | list %}
+  <cn-confirm message="Send to Kimai?" detail="The drafts of the ticked rules, from {{ first.strftime('%d %B') }} to {{ last.strftime('%d %B') }}. Once there, they are changed in Kimai." confirm-label="Send">
+  <form method="post" action="{{ url_for('recap.send_period') }}">{{ csrf() }}{{ span() }}
+    <ul class="cn-rules">{% for r in found.rules %}<li class="cn-rule"><div class="form-check">
+      {% if r.draft %}<input class="form-check-input" type="checkbox" name="rules" value="{{ r.id }}" id="rule-{{ r.id }}">{% endif %}
+      <label class="form-check-label" for="rule-{{ r.id }}"><strong>{{ r.target }}</strong> {{ r.project }}, {{ r.activity }}</label>
+      <p class="cn-muted">{% if r.draft %}{{ clock(r.draft) }} to send{% endif %}{% if r.draft and r.sent %}, {% endif %}{% if r.sent %}{{ clock(r.sent) }} in Kimai{% endif %}</p></div></li>{% endfor %}</ul>
+    {% if waiting and kimai_ready %}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span class="ms-2">Send the ticked rules</span></button>{% endif %}
+  </form></cn-confirm>
+  {% if not kimai_ready %}<p class="cn-muted">To send your time, set <code>CAIRN_KIMAI_URL</code> and <code>CAIRN_KIMAI_TOKEN</code> in <code>.env</code> and restart Cairn.</p>{% endif %}
+  {% else %}<p class="cn-muted">No time entry in this period yet: read it, then propose the entries.</p>{% endif %}
+</section>
+
+<section class="cn-panel" aria-labelledby="summary-title">
+  <header class="cn-home-head"><h2 id="summary-title">Summary</h2><button class="btn btn-sm btn-outline-secondary" type="button" data-copy="period-summary"><i class="fa-regular fa-copy" aria-hidden="true"></i><span class="ms-2">Copy</span></button></header>
+  <script type="application/json" id="period-summary">{{ found.summary | tojson }}</script>
+  <cn-vitrine kind="markdown" source="period-summary"></cn-vitrine>
+</section>
+{% endif %}
+{% endblock %}

@@ -80,3 +80,9 @@ class RulesInput(Strict):
     """Rules of another Cairn, or a copy of these."""
 
     rules: Annotated[list[TargetInput], Field(min_length=1, max_length=100)]
+
+
+class PeriodSendInput(Strict):
+    """The rules whose drafts of a period the owner sends (D-103)."""
+
+    rules: Annotated[list[uuid.UUID], Field(min_length=1, max_length=100)]

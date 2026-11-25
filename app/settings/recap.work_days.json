@@ -1,0 +1,6 @@
+{
+  "label": "Working days",
+  "category": "Day summary",
+  "description": "Days of the week time is proposed for (1 is Monday, 7 is Sunday). Other days are never filled.",
+  "value": [1, 2, 3, 4, 5]
+}

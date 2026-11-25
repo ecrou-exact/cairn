@@ -8,10 +8,18 @@ from datetime import date, datetime, timedelta
 
 from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
 
-from app.core.schema.recap import EntryInput, EntryUpdate, RulesInput, SendInput, SummaryInput, TargetInput
+from app.core.schema.recap import (
+    EntryInput,
+    EntryUpdate,
+    PeriodSendInput,
+    RulesInput,
+    SendInput,
+    SummaryInput,
+    TargetInput,
+)
 from app.core.utils.history import batch
 from app.core.utils.web import FormErrors, flash_undo, split_list, validate
-from app.features.recap import kimai, recap_core
+from app.features.recap import kimai, period_core, recap_core
 
 recap = Blueprint("recap", __name__)
 PROBLEMS = (FormErrors, recap_core.RecapError, kimai.KimaiError)
@@ -32,6 +40,71 @@ def _back(day: str):
 def index():
     chosen = request.args.get("on", "")
     return _back(_day(chosen).isoformat() if chosen else date.today().isoformat())
+
+
+# -- a period (D-103) --------------------------------------------------------------------------
+
+
+def _span() -> tuple[date, date]:
+    source = request.form if request.method == "POST" else request.args
+    today = date.today()
+    first = _day(source.get("from") or today.replace(day=1).isoformat())
+    return first, _day(source.get("to") or today.isoformat())
+
+
+def _period(action, message):
+    first, last = _span()
+    try:
+        done = action(first, last)
+    except PROBLEMS as exc:
+        flash(str(exc), "danger")
+    else:
+        flash(message(done), "success")
+    return redirect(url_for("recap.period", **{"from": first.isoformat(), "to": last.isoformat()}))
+
+
+@recap.get("/day/period")
+def period():
+    first, last = _span()
+    found, problem = None, ""
+    try:
+        found = period_core.describe_period(first, last)
+    except recap_core.RecapError as exc:
+        problem = str(exc)
+    return render_template(
+        "recap/period.html",
+        first=first,
+        last=last,
+        today=date.today(),
+        found=found,
+        problem=problem,
+        kimai_ready=kimai.configured(),
+        kinds=recap_core.KINDS,
+    )
+
+
+@recap.post("/day/period/read")
+def read_period():
+    return _period(period_core.read_period, lambda n: f"{n} day{'' if n == 1 else 's'} read.")
+
+
+@recap.post("/day/period/propose")
+def propose_period():
+    def told(done):
+        for line in done["left"]:
+            flash(line, "warning")
+        return f"Drafts proposed for {len(done['made'])} days: check them before you send."
+
+    return _period(period_core.propose_period, told)
+
+
+@recap.post("/day/period/send")
+def send_period():
+    def work(first, last):
+        chosen = validate(PeriodSendInput, {"rules": request.form.getlist("rules")})
+        return period_core.send_period(first, last, chosen.rules)
+
+    return _period(work, lambda n: f"{n} entries sent to Kimai.")
 
 
 @recap.get("/day/<raw>")
