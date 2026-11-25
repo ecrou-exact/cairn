@@ -148,6 +148,7 @@ def entries(day: date, last: date | None = None) -> list[dict[str, Any]]:
                 "activity": row["activity"]["id"],
                 "activity_name": row["activity"]["name"],
                 "description": row.get("description") or "",
+                "tags": row.get("tags") or [],
             }
         )
     return found

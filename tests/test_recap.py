@@ -8,6 +8,8 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
+from app.core.db_class.planning import Project
+from app.core.extensions import db
 from app.core.schema.recap import EntryInput, EntryUpdate, TargetInput
 from app.core.utils.actor import acting_as
 from app.core.utils.history import batch, undo
@@ -339,12 +341,51 @@ def test_a_period_is_filled_by_day_and_sent_by_rule(ctx, tracking, monkeypatch):
     assert period_core.propose_period(first, last)["made"] == []  # days with entries are left
 
 
+def _project(slug, repo):
+    db.session.add(Project(name=slug, slug=slug, github_repo=repo))
+    db.session.commit()
+
+
+def test_only_the_chosen_projects_are_seen_and_a_try_creates_nothing(app, signed_in, tracking, monkeypatch):
+    facts = _facts(_commit("new view", 9))
+    facts["repos"] += _facts(_commit("mine", 10), name="cairn")["repos"]
+    monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {DAY: facts})
+    with app.app_context():
+        _rule(tags=["dev"])
+        _project("tool", "org/tool")
+        _project("cairn", "me/cairn")
+    picks = {p["slug"]: p for p in signed_in.get("/api/period-projects").json["projects"]}
+    assert picks["tool"]["chosen"] and not picks["cairn"]["rules"] and not picks["cairn"]["chosen"]
+    url = f"/api/period/{DAY}/{DAY}"
+    assert signed_in.post(f"{url}/try", json={"projects": []}).status_code == 422
+    assert signed_in.post(f"{url}/try", json={"projects": ["cairn"]}).status_code == 409
+    (week,) = signed_in.post(f"{url}/try", json={"projects": ["tool"]}).json["weeks"]
+    (block,) = week[4]["blocks"]
+    assert block["trial"] and block["minutes"] == 480 and block["tags"] == ["dev"]
+    assert (block["customer"], block["project"], block["activity"]) == ("EU", "ALPHA", "T1")
+    found = signed_in.get(url).json
+    assert found["days"][0]["entries"] == [] and tracking == []
+    assert [r["name"] for r in found["days"][0]["facts"]["repos"]] == ["tool"]
+    assert found["days"][0]["unplaced"] == [] and "cairn" not in found["summary"]
+    assert "cairn" not in signed_in.get(f"/api/day/{DAY}").json["summary"]
+    for view in ("calendar", "list"):
+        page = signed_in.get(f"/day/period?from={DAY}&to={DAY}&view={view}").data
+        assert b"ALPHA" in page and b"Create the drafts (8:00)" in page and b"data-rule" not in page
+    signed_in.post(f"{url}/propose")
+    (week,) = signed_in.get(f"{url}/preview").json["weeks"]
+    assert [b["trial"] for b in week[4]["blocks"]] == [False]  # the same, now a draft
+
+
 def test_period_page_and_api(app, signed_in, tracking, monkeypatch):
     monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {a: _facts(_commit("x", 9))})
+    with app.app_context():
+        _rule()
+        _project("tool", "org/tool")
     page = signed_in.get(f"/day/period?from={DAY}&to={DAY}")
-    assert page.status_code == 200 and b"not read" in page.data
+    assert page.status_code == 200 and b'value="tool"' in page.data and b'id="preview"' not in page.data
     form = {"from": DAY.isoformat(), "to": DAY.isoformat()}
-    assert b"1 day read" in signed_in.post("/day/period/read", data=form, follow_redirects=True).data
+    tried = signed_in.post("/day/period/try", data={**form, "projects": "tool"}, follow_redirects=True)
+    assert b"1 day read" in tried.data
     assert b"ends before" in signed_in.get(f"/day/period?from={DAY}&to={DAY - timedelta(days=1)}").data
     assert signed_in.get(f"/api/period/{DAY}/{DAY}").json["days"][0]["read"]
     assert signed_in.post(f"/api/period/{DAY}/{DAY}/send", json={"rules": []}).status_code == 422

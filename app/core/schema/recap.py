@@ -13,6 +13,7 @@ Clock = Annotated[str, Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")]
 Minutes = Annotated[int, Field(ge=5, le=24 * 60)]
 Description = Annotated[str, Field(max_length=4000)]
 Word = Annotated[str, Field(min_length=1, max_length=60)]
+Slug = Annotated[str, Field(min_length=1, max_length=80)]
 
 
 class TargetInput(Strict):
@@ -80,6 +81,12 @@ class RulesInput(Strict):
     """Rules of another Cairn, or a copy of these."""
 
     rules: Annotated[list[TargetInput], Field(min_length=1, max_length=100)]
+
+
+class PeriodTryInput(Strict):
+    """The projects (slugs) looked at for a period (D-104)."""
+
+    projects: Annotated[list[Slug], Field(min_length=1, max_length=100)]
 
 
 class PeriodSendInput(Strict):

@@ -1,85 +1,98 @@
 {% extends "layout/shell.html" %}
 {% block title %}Period summary{% endblock %}
-{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/recap/recap.css') }}">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/planning/planning.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recap/recap.css') }}">{% endblock %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/recap/day.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/recap/period.js') }}"></script>{% endblock %}
 {% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
 {% macro span() %}<input type="hidden" name="from" value="{{ first.isoformat() }}"><input type="hidden" name="to" value="{{ last.isoformat() }}">{% endmacro %}
 {% macro clock(m) %}{{ "%d:%02d" % (m // 60, m % 60) }}{% endmacro %}
+{% macro when(view) %}{{ url_for('recap.period', **{'from': first.isoformat(), 'to': last.isoformat(), 'view': view}) }}#preview{% endmacro %}
+{% set palette = ("terracotta", "sea", "moss", "plum", "ochre", "slate") %}
+{% set colors = {} %}
+{% if found %}{% for r in found.rules %}{% set _ = colors.update({r.id: palette[loop.index0 % 6]}) %}{% endfor %}{% endif %}
 {% block content %}
 <header class="cn-page-header">
   <div class="cn-eyebrow"><a href="{{ url_for('recap.index') }}">Day summary</a></div>
-  <h1>{{ first.strftime("%d %B") }} to {{ last.strftime("%d %B %Y") }}</h1>
-  <p>Your commits, pull requests and issues of the period. Weekends and days off are never filled; nothing leaves Cairn before you send it.</p>
+  <h1>Fill a period</h1>
+  <p>Choose the days and the projects, try, look at the result. Nothing is created before you say so.</p>
 </header>
-<div class="cn-day-bar">
-  <form method="get" action="{{ url_for('recap.period') }}" class="cn-day-pick">
-    <label class="visually-hidden" for="from">From</label><input class="form-control" type="date" id="from" name="from" value="{{ first.isoformat() }}" max="{{ today.isoformat() }}" required>
-    <label class="visually-hidden" for="to">To</label><input class="form-control" type="date" id="to" name="to" value="{{ last.isoformat() }}" max="{{ today.isoformat() }}" required>
-    <button class="btn btn-outline-secondary" type="submit">Show</button></form>
-  {% if found %}<form method="post" action="{{ url_for('recap.read_period') }}" data-slow="Reading…">{{ csrf() }}{{ span() }}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-rotate" aria-hidden="true"></i><span class="ms-2">Read the period</span></button></form>
-  <form method="post" action="{{ url_for('recap.propose_period') }}" data-slow="Proposing…">{{ csrf() }}{{ span() }}<button class="btn btn-outline-secondary" type="submit"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span class="ms-2">Propose the entries</span></button></form>{% endif %}
-  <a class="btn btn-outline-secondary" href="{{ url_for('recap.rules') }}"><i class="fa-solid fa-signs-post" aria-hidden="true"></i><span class="ms-2">Rules</span></a>
-  <a class="btn btn-outline-secondary" href="{{ url_for('settings.index') }}"><i class="fa-solid fa-umbrella-beach" aria-hidden="true"></i><span class="ms-2">Days off</span></a>
-</div>
+
+<section class="cn-panel" aria-labelledby="choose-title">
+  <h2 id="choose-title">1. Choose</h2>
+  <form method="post" action="{{ url_for('recap.try_period') }}" data-slow="Reading…">{{ csrf() }}
+    <div class="cn-period-dates">
+      <div><label class="form-label" for="from">First day</label><input class="form-control" type="date" id="from" name="from" value="{{ first.isoformat() }}" max="{{ today.isoformat() }}" required></div>
+      <div><label class="form-label" for="to">Last day</label><input class="form-control" type="date" id="to" name="to" value="{{ last.isoformat() }}" max="{{ today.isoformat() }}" required></div>
+      {% for name, a, b in months %}<a class="btn btn-outline-secondary" href="{{ url_for('recap.period', **{'from': a.isoformat(), 'to': b.isoformat()}) }}">{{ name }}</a>{% endfor %}
+    </div>
+    <fieldset class="cn-period-projects"><legend class="form-label">Projects to look at</legend>
+      {% for p in choices if p.rules %}<label class="cn-period-pick cn-color-{{ p.color }}"><input class="form-check-input" type="checkbox" name="projects" value="{{ p.slug }}" {% if p.chosen %}checked{% endif %}><span><strong>{{ p.name }}</strong><span class="cn-muted">{{ p.rules | join(", ") }}</span></span></label>
+      {% else %}<p class="cn-muted">No project has a rule yet. <a href="{{ url_for('recap.rules') }}">Write the first one</a>.</p>{% endfor %}
+    </fieldset>
+    {% set without = choices | rejectattr("rules") | list %}
+    {% if without %}<details class="cn-period-more"><summary>Projects without a rule, not looked at ({{ without | length }})</summary>
+      <p>{% for p in without %}<a class="cn-badge" href="{{ url_for('recap.rules', repo=p.repos[0]) }}">{{ p.name }}: add a rule</a> {% endfor %}</p></details>{% endif %}
+    <button class="btn btn-primary" type="submit"><i class="fa-solid fa-flask" aria-hidden="true"></i><span class="ms-2">Try</span></button>
+    <p class="form-text">Weekends and days off are left out. <a href="{{ url_for('recap.rules') }}">Rules</a>, <a href="{{ url_for('settings.index') }}">days off</a></p>
+  </form>
+</section>
 {% if problem %}<p class="alert alert-warning">{{ problem }}</p>{% endif %}
 
-{% if found %}
+{% if found and found.days | selectattr("read") | list %}
 {% if not found.github %}<p class="alert alert-warning">GitHub was not read in full: choose a shorter period, sign in with <code>gh auth login</code>, or try again in a minute. Local commits are here.</p>{% endif %}
-<section class="cn-panel" aria-labelledby="days-title">
-  <h2 id="days-title">Day by day</h2>
-  <div class="table-responsive"><table class="table cn-period">
-    <thead><tr><th scope="col">Day</th><th scope="col">Work</th><th scope="col">Time</th></tr></thead>
-    <tbody>{% for row in found.days %}
-      <tr class="{{ 'cn-period-off' if row.off }}">
-        <th scope="row"><a href="{{ url_for('recap.day', raw=row.day) }}">{{ row.day }}</a></th>
-        <td>{% if not row.read %}<span class="cn-muted">not read</span>
-          {% elif row.facts.repos %}{% for repo in row.facts.repos %}<span class="cn-period-repo">{{ repo.name }} <span class="cn-muted">{{ repo.commits | length }}{% if repo["items"] %} + {{ repo["items"] | length }} on GitHub{% endif %}</span>{% if repo.name in row.unplaced %} <a class="cn-badge" href="{{ url_for('recap.rules', repo=repo.name) }}">no rule</a>{% endif %}</span>{% endfor %}
-          {% else %}<span class="cn-muted">nothing</span>{% endif %}</td>
-        <td>{% if row.off %}<span class="cn-badge">{{ row.off }}</span>{% endif %}
-          {% for e in row.entries %}<span class="cn-period-entry">{% if e.sent %}<i class="fa-solid fa-check" aria-hidden="true"></i><span class="visually-hidden">sent</span>{% endif %} {{ e.target }} {{ clock(e.minutes) }}</span>{% endfor %}</td>
-      </tr>{% endfor %}</tbody>
-  </table></div>
-</section>
-
-{% if weeks %}
-<section class="cn-panel" aria-labelledby="preview-title">
-  <header class="cn-home-head"><h2 id="preview-title">Preview</h2><span class="cn-muted"><span data-chosen></span>{% if not kimai_ready %} Kimai is not set: only the drafts are here.{% endif %}</span></header>
-  <p class="cn-muted">Your drafts beside what Kimai already holds (with a lock). The drafts of the rules ticked below stand out: these are the ones sent.</p>
+{% set trial = found.rules | sum(attribute="trial") %}
+<section class="cn-panel" id="preview" aria-labelledby="preview-title">
+  <header class="cn-home-head"><h2 id="preview-title">2. Look: {{ first.strftime("%d %B") }} to {{ last.strftime("%d %B %Y") }}</h2>
+    <nav class="cn-period-views" aria-label="View"><a class="btn btn-sm {{ 'btn-primary' if view == 'calendar' else 'btn-outline-secondary' }}" href="{{ when('calendar') }}" {% if view == 'calendar' %}aria-current="true"{% endif %}>Calendar</a><a class="btn btn-sm {{ 'btn-primary' if view == 'list' else 'btn-outline-secondary' }}" href="{{ when('list') }}" {% if view == 'list' %}aria-current="true"{% endif %}>List</a></nav></header>
+  <p class="cn-muted">Dashed: the try. Plain: your drafts. Grey with a lock: already in Kimai.{% if not kimai_ready %} Kimai is not set.{% endif %}</p>
+  {% if view == "calendar" %}
   <div class="table-responsive"><table class="table cn-cal">
-    <thead><tr>{% for name in ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun") %}<th scope="col">{{ name }}</th>{% endfor %}</tr></thead>
-    <tbody>{% for week in weeks %}<tr>{% for cell in week %}
+    <thead><tr>{% for n in columns %}<th scope="col">{{ ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")[n] }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for week in weeks %}<tr>{% for n in columns %}{% set cell = week[n] %}
       <td class="{{ 'cn-cal-off' if not cell or cell.off }}">{% if cell %}
         <div class="cn-cal-head"><a href="{{ url_for('recap.day', raw=cell.day) }}">{{ cell.day[8:] }}/{{ cell.day[5:7] }}</a>{% if cell.minutes %}<strong>{{ clock(cell.minutes) }}</strong>{% elif cell.off %}<span class="cn-muted">{{ cell.off }}</span>{% endif %}</div>
-        {% for b in cell.blocks %}<div class="cn-cal-block {{ 'cn-cal-kimai' if not b.rule }}" {% if b.rule %}data-rule="{{ b.rule }}" data-minutes="{{ b.minutes }}"{% endif %} title="{{ b.description }}">
-          {% if not b.rule %}<i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">In Kimai</span>{% endif %} {{ b.begin }}–{{ b.end }} {{ b.name }}</div>{% endfor %}
+        {% for b in cell.blocks %}<div class="cn-cal-block {{ 'cn-color-' ~ colors.get(b.rule, 'slate') if b.rule else 'cn-cal-kimai' }} {{ 'is-trial' if b.trial }}" {% if b.rule and not b.trial %}data-rule="{{ b.rule }}" data-minutes="{{ b.minutes }}"{% endif %} title="{{ b.description }}">
+          {% if not b.rule %}<i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">In Kimai</span>{% endif %} {{ b.begin }}–{{ b.end }}<strong>{{ b.project }}</strong>{{ b.activity }}</div>{% endfor %}
         {% for p in cell.problems %}<div class="cn-cal-problem"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ p }}</div>{% endfor %}
       {% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
   </table></div>
+  {% else %}
+  <div class="table-responsive"><table class="table cn-times">
+    <thead><tr><th scope="col">Date</th><th scope="col">Begin</th><th scope="col">End</th><th scope="col">Duration</th><th scope="col">Customer</th><th scope="col">Project</th><th scope="col">Activity</th><th scope="col">Description</th><th scope="col">Tags</th></tr></thead>
+    <tbody>{% for week in weeks %}{% for cell in week if cell and (cell.blocks or cell.problems) %}
+      <tr class="cn-times-day"><th scope="rowgroup" colspan="3"><a href="{{ url_for('recap.day', raw=cell.day) }}">{{ cell.day }}</a></th><th>{{ clock(cell.minutes) }}</th><td colspan="5">{% for p in cell.problems %}<span class="cn-cal-problem"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ p }}</span> {% endfor %}</td></tr>
+      {% for b in cell.blocks %}<tr class="{{ 'cn-times-kimai' if not b.rule }}">
+        <td>{% if not b.rule %}<span class="cn-badge">in Kimai</span>{% elif b.trial %}<span class="cn-badge">try</span>{% else %}<span class="cn-badge">draft</span>{% endif %}</td>
+        <td>{{ b.begin }}</td><td>{{ b.end }}</td><td>{{ clock(b.minutes) }}</td><td>{{ b.customer }}</td>
+        <td><span class="cn-times-dot cn-color-{{ colors.get(b.rule, 'slate') }}"></span> {{ b.project }}</td><td>{{ b.activity }}</td><td class="cn-times-text">{{ b.description }}</td><td>{% for t in b.tags %}<span class="cn-badge">{{ t }}</span> {% endfor %}</td></tr>{% endfor %}
+    {% endfor %}{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+  {% set lost = found.days | map(attribute="unplaced") | sum(start=[]) | unique | list %}
+  {% if lost %}<p class="alert alert-warning">Some work has no rule: {% for name in lost %}<a href="{{ url_for('recap.rules', repo=name) }}">{{ name }}</a>{{ ", " if not loop.last }}{% endfor %}.</p>{% endif %}
 </section>
-{% endif %}
 
 <section class="cn-panel" aria-labelledby="send-title">
-  <h2 id="send-title">Time by rule</h2>
+  <header class="cn-home-head"><h2 id="send-title">3. Create and send</h2><span class="cn-muted" data-chosen></span></header>
+  {% if trial %}<form class="cn-day-bar" method="post" action="{{ url_for('recap.propose_period') }}" data-slow="Creating…">{{ csrf() }}{{ span() }}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-check" aria-hidden="true"></i><span class="ms-2">Create the drafts ({{ clock(trial) }})</span></button><span class="cn-muted">Drafts stay in Cairn: you can still change them.</span></form>{% endif %}
   {% if found.rules %}
-  {% set waiting = found.rules | selectattr("draft") | list %}
   <cn-confirm message="Send to Kimai?" detail="The drafts of the ticked rules, from {{ first.strftime('%d %B') }} to {{ last.strftime('%d %B') }}. Once there, they are changed in Kimai." confirm-label="Send">
   <form method="post" action="{{ url_for('recap.send_period') }}">{{ csrf() }}{{ span() }}
     <ul class="cn-rules">{% for r in found.rules %}<li class="cn-rule"><div class="form-check">
-      {% if r.draft %}<input class="form-check-input" type="checkbox" name="rules" value="{{ r.id }}" id="rule-{{ r.id }}">{% endif %}
-      <label class="form-check-label" for="rule-{{ r.id }}"><strong>{{ r.target }}</strong> {{ r.project }}, {{ r.activity }}</label>
-      <p class="cn-muted">{% if r.draft %}{{ clock(r.draft) }} to send{% endif %}{% if r.draft and r.sent %}, {% endif %}{% if r.sent %}{{ clock(r.sent) }} in Kimai{% endif %}</p></div></li>{% endfor %}</ul>
-    {% if waiting and kimai_ready %}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span class="ms-2">Send the ticked rules</span></button>{% endif %}
+      {% if r.draft %}<input class="form-check-input" type="checkbox" name="rules" value="{{ r.id }}" id="rule-{{ r.id }}" checked>{% endif %}
+      <label class="form-check-label" for="rule-{{ r.id }}"><span class="cn-times-dot cn-color-{{ colors[r.id] }}"></span> <strong>{{ r.target }}</strong> {{ r.project }}, {{ r.activity }}</label>
+      <p class="cn-muted">{% if r.trial %}{{ clock(r.trial) }} in the try{% endif %}{% if r.draft %} {{ clock(r.draft) }} to send{% endif %}{% if r.sent %} {{ clock(r.sent) }} in Kimai{% endif %}</p></div></li>{% endfor %}</ul>
+    {% if found.rules | selectattr("draft") | list and kimai_ready %}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span class="ms-2">Send the ticked rules</span></button>{% endif %}
   </form></cn-confirm>
   {% if not kimai_ready %}<p class="cn-muted">To send your time, set <code>CAIRN_KIMAI_URL</code> and <code>CAIRN_KIMAI_TOKEN</code> in <code>.env</code> and restart Cairn.</p>{% endif %}
-  {% else %}<p class="cn-muted">No time entry in this period yet: read it, then propose the entries.</p>{% endif %}
+  {% else %}<p class="cn-muted">No work of these projects matches a rule in this period.</p>{% endif %}
 </section>
 
-<section class="cn-panel" aria-labelledby="summary-title">
-  <header class="cn-home-head"><h2 id="summary-title">Summary</h2><button class="btn btn-sm btn-outline-secondary" type="button" data-copy="period-summary"><i class="fa-regular fa-copy" aria-hidden="true"></i><span class="ms-2">Copy</span></button></header>
+<details class="cn-panel"><summary>Summary of the work, with its commits</summary>
+  <button class="btn btn-sm btn-outline-secondary" type="button" data-copy="period-summary"><i class="fa-regular fa-copy" aria-hidden="true"></i><span class="ms-2">Copy</span></button>
   <script type="application/json" id="period-summary">{{ found.summary | tojson }}</script>
   <cn-vitrine kind="markdown" source="period-summary"></cn-vitrine>
-</section>
+</details>
 {% endif %}
 {% endblock %}

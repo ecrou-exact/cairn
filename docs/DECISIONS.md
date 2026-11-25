@@ -570,3 +570,10 @@
 - **Preview**: the weeks of the period, drafts beside what Kimai holds, with what to look at (overlap, more or less than a day, not read, work without time). Ticked rules stand out: only they are sent.
 - GitHub's search gives 100 results here: past that, the page says it was not read in full. One day Kimai refuses does not stop the proposals of the others.
 - **Sending** a period is the owner's click on the rules ticked, confirmed, day by day; a day that fails stops the rest, the days before stay sent. Not an MCP tool.
+
+## D-104 · 2026-11-25 · accepted — A period: choose, try, look, send
+- Owner request: the period page was unreadable and showed work that is not time (Cairn itself). Choose the days and Cairn's projects, try, see what matches as Kimai would show it.
+- **Projects**: only those with a rule on one of their repositories are offered; the others are folded, each with a link to write its rule. The choice is kept as repository names in `recap.repos` and is what the day page, the summaries and the proposals see; empty means all. It filters what is shown: the stored facts stay whole, so a choice changes without reading again.
+- A rule of words alone (no repository) applies inside the chosen projects only.
+- **Try** (`/day/period/try`) reads and shows what would be proposed (`recap_core.proposal`, the one `propose` uses): no entry is made. **Create the drafts** makes them, then the owner sends by rule (D-103).
+- **Preview**: a calendar, or a list with Kimai's columns (begin, end, duration, customer, project, activity, description, tags). It replaces the day-by-day table. Days off and empty weekend columns are not shown, and their work is not looked at. The rules to send are ticked from the start; sending is still confirmed.

@@ -140,6 +140,14 @@ def day_off(day: date) -> str:
     return ""
 
 
+def visible(facts: dict[str, Any]) -> dict[str, Any]:
+    """The facts of the repositories the owner looks at (`recap.repos`, D-104): all when none is chosen."""
+    names = set(get_setting("recap.repos"))
+    if not names:
+        return facts
+    return {**facts, "repos": [row for row in facts["repos"] if row["name"] in names]}
+
+
 def read_day(day: date) -> WorkDay:
     """Read what was done; the summary follows unless the owner wrote in it."""
     _checked(day)
@@ -151,7 +159,7 @@ def store_day(day: date, facts: dict[str, Any]) -> WorkDay:
         found = get_day(day) or WorkDay(day=day, summary_edited=False, summary_md="")
         found.facts, found.read_at = facts, utcnow()
         if not found.summary_edited:
-            found.summary_md = write_summary(day, facts)
+            found.summary_md = write_summary(day, visible(facts))
         db.session.add(found)
         db.session.flush()
         log_action("work_day.read", target_type="work_day", target_id=found.id, meta={"day": day.isoformat()})
@@ -321,10 +329,16 @@ def propose(day: date) -> list[DayEntry]:
         raise RecapError("Read the day first.")
     if entries(day):
         raise RecapError("This day already has time entries: remove them to propose again.")
-    planned, _ = plan(found.facts, targets())
+    wanted = proposal(found.facts, kimai.entries(day) if kimai.configured() else [])
+    with batch():
+        return [_make(day, data) for data in wanted]
+
+
+def proposal(facts: dict[str, Any], taken: list[dict[str, Any]]) -> list[EntryInput]:
+    """The entries of a day from its facts, in the time `taken` in Kimai leaves. Nothing is saved."""
+    planned, _ = plan(visible(facts), targets())
     if not planned:
         raise RecapError("No rule takes the work of this day yet.")
-    taken = kimai.entries(day) if kimai.configured() else []
     total = get_setting("recap.day_minutes") - sum(row["minutes"] for row in taken)
     if total < STEP:
         raise RecapError("Kimai already holds a full day.")
@@ -334,17 +348,14 @@ def propose(day: date) -> list[DayEntry]:
     # each one took; work no rule places takes nothing (D-078).
     parts = share([1] * len(planned), total)
     made = []
-    with batch():
-        for (target, _, text), minutes in zip(planned, parts, strict=True):
-            if clock + minutes > 24 * 60 - 1:
-                raise RecapError(
-                    "The day is too short for its entries after what Kimai holds: add them yourself."
-                )
-            begin = f"{clock // 60:02d}:{clock % 60:02d}"
-            made.append(
-                _make(day, EntryInput(target_id=target.id, begin=begin, minutes=minutes, description=text))
+    for (target, _, text), minutes in zip(planned, parts, strict=True):
+        if clock + minutes > 24 * 60 - 1:
+            raise RecapError(
+                "The day is too short for its entries after what Kimai holds: add them yourself."
             )
-            clock += minutes
+        begin = f"{clock // 60:02d}:{clock % 60:02d}"
+        made.append(EntryInput(target_id=target.id, begin=begin, minutes=minutes, description=text))
+        clock += minutes
     return made
 
 
@@ -522,12 +533,15 @@ def describe_target(target: WorkTarget) -> dict[str, Any]:
 
 def describe_day(day: date) -> dict[str, Any]:
     found = get_day(day)
-    facts = found.facts if found else None
+    facts = visible(found.facts) if found and found.read_at else None
+    told = found.summary_md if found else ""
+    if facts and not found.summary_edited:  # the choice of repositories may have changed since it was read
+        told = write_summary(day, facts)
     return {
         "day": day.isoformat(),
         "read_at": found.read_at.isoformat() if found and found.read_at else None,
         "facts": facts,
-        "summary": found.summary_md if found else "",
+        "summary": told,
         "off": day_off(day),
         "unplaced": list(plan(facts, targets())[1]) if facts else [],
         "entries": [describe_entry(entry) for entry in entries(day)],

@@ -12,6 +12,7 @@ from app.core.schema.recap import (
     EntryInput,
     EntryUpdate,
     PeriodSendInput,
+    PeriodTryInput,
     RulesInput,
     SendInput,
     SummaryInput,
@@ -53,6 +54,19 @@ def preview_period(first: str, last: str):
 def read_period(first: str, last: str):
     _guard(period_core.read_period, _day(first), _day(last))
     return jsonify(period_core.describe_period(_day(first), _day(last)))
+
+
+@recap_api.get("/period-projects")
+def period_projects():
+    """The projects a period can look at, with their repositories and rules."""
+    return jsonify(projects=period_core.choices())
+
+
+@recap_api.post("/period/<first>/<last>/try")
+def try_period(first: str, last: str):
+    """Look at the named projects only, read the period and show what would be proposed."""
+    _guard(period_core.try_period, _day(first), _day(last), body(PeriodTryInput).projects)
+    return preview_period(first, last)
 
 
 @recap_api.post("/period/<first>/<last>/propose")

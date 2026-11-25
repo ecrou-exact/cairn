@@ -12,6 +12,7 @@ from app.core.schema.recap import (
     EntryInput,
     EntryUpdate,
     PeriodSendInput,
+    PeriodTryInput,
     RulesInput,
     SendInput,
     SummaryInput,
@@ -79,14 +80,28 @@ def period():
         today=date.today(),
         found=found,
         weeks=weeks,
+        columns=[n for n in range(7) if any(w[n] and (not w[n]["off"] or w[n]["blocks"]) for w in weeks)],
         problem=problem,
+        choices=period_core.choices(),
+        months=_months(date.today()),
+        view="list" if request.args.get("view") == "list" else "calendar",
         kimai_ready=kimai.configured(),
     )
 
 
-@recap.post("/day/period/read")
-def read_period():
-    return _period(period_core.read_period, lambda n: f"{n} day{'' if n == 1 else 's'} read.")
+def _months(today: date) -> list[tuple[str, date, date]]:
+    this = today.replace(day=1)
+    before = this - timedelta(days=1)
+    return [("This month", this, today), ("Last month", before.replace(day=1), before)]
+
+
+@recap.post("/day/period/try")
+def try_period():
+    def work(first, last):
+        chosen = validate(PeriodTryInput, {"projects": request.form.getlist("projects")})
+        return period_core.try_period(first, last, chosen.projects)
+
+    return _period(work, lambda n: f"{n} day{'' if n == 1 else 's'} read. Nothing is created yet.")
 
 
 @recap.post("/day/period/propose")

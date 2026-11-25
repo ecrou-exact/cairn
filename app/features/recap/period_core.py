@@ -8,10 +8,16 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
+from sqlalchemy import select
+
+from app.core.db_class.planning import Project
+from app.core.extensions import db
 from app.core.utils.actor import current_actor
-from app.core.utils.settings import get_setting
+from app.core.utils.settings import get_setting, set_setting
+from app.features.projects import place_core
 from app.features.recap import facts_core, kimai, recap_core
 from app.features.recap.recap_core import KINDS, RecapError, linked
 
@@ -34,6 +40,40 @@ def read_period(first: date, last: date) -> int:
     for day, facts in facts_core.gather_span(span[0], span[-1]).items():
         recap_core.store_day(day, facts)
     return len(span)
+
+
+def choices() -> list[dict[str, Any]]:
+    """Cairn's projects with a repository: its names, the rules that take it, whether it is looked at
+    (nothing chosen yet: those with a rule)."""
+    chosen, rules = set(get_setting("recap.repos")), recap_core.targets()
+    found = []
+    query = select(Project).where(Project.deleted_at.is_(None)).order_by(Project.name)
+    for project in db.session.scalars(query):
+        names = _repos_of(project)
+        taken = [t.label for t in rules if names & set(t.repos)]
+        if names:
+            on = bool(names & chosen) if chosen else bool(taken)
+            row = {"slug": project.slug, "name": project.name, "color": project.color}
+            found.append({**row, "repos": sorted(names), "rules": taken, "chosen": on and bool(taken)})
+    return found
+
+
+def _repos_of(project: Project) -> set[str]:
+    names = {facts_core.short(project.github_repo)} if project.github_repo else set()
+    git = place_core.git_of(Path(project.local_path).expanduser()) if project.local_path else None
+    if git:
+        names.add(facts_core.short(place_core.origin(git[2]) or git[0].name))
+    return names
+
+
+def try_period(first: date, last: date, slugs: list[str]) -> int:
+    """Look at these projects only and read the period; the number of days read. No entry is made."""
+    span = days(first, last)
+    known = {row["slug"]: row for row in choices() if row["rules"]}
+    if unknown := [slug for slug in slugs if slug not in known]:
+        raise RecapError(f"No such project with a rule: {', '.join(unknown)}.")
+    set_setting("recap.repos", sorted({name for slug in slugs for name in known[slug]["repos"]}))
+    return read_period(span[0], span[-1])
 
 
 def propose_period(first: date, last: date) -> dict[str, list[str]]:
@@ -109,17 +149,20 @@ def describe_period(first: date, last: date) -> dict[str, Any]:
     for day in days(first, last):
         found = recap_core.get_day(day)
         listed = [recap_core.describe_entry(e) for e in recap_core.entries(day)]
-        facts = found.facts if found and found.read_at else None
+        off = recap_core.day_off(day)
+        facts = recap_core.visible(found.facts) if found and found.read_at else None
+        if facts and off:  # a day off is not looked at (D-104)
+            facts = {**facts, "repos": []}
         for entry in listed:
             names = {k: entry[k] for k in ("target", "project", "activity")}
             rule = rules.setdefault(
-                entry["target_id"], {"id": entry["target_id"], **names, "draft": 0, "sent": 0}
+                entry["target_id"], {"id": entry["target_id"], **names, "draft": 0, "sent": 0, "trial": 0}
             )
             rule["sent" if entry["sent"] else "draft"] += entry["minutes"]
         rows.append(
             {
                 "day": day.isoformat(),
-                "off": recap_core.day_off(day),
+                "off": off,
                 "read": facts is not None,
                 "facts": facts or {"repos": []},
                 "unplaced": list(recap_core.plan(facts, recap_core.targets())[1]) if facts else [],
@@ -143,7 +186,12 @@ def preview(found: dict[str, Any]) -> list[list[dict[str, Any] | None]]:
     """The period (from `describe_period`) as weeks from Monday, None outside it: each day's drafts
     beside what Kimai holds, and what to look at before sending."""
     span = days(date.fromisoformat(found["first"]), date.fromisoformat(found["last"]))
-    there = []
+    there: list[dict[str, Any]] = []
+    customers: dict[int, str] = {}
+    rules = {str(t.id): t for t in recap_core.targets()}
+    totals = {rule["id"]: rule for rule in found["rules"]}
+    if kimai.configured():
+        customers = {p["id"]: p["customer"] for p in kimai.catalog()}
     if kimai.configured():
         for start in span[::7]:
             there += kimai.entries(start, min(start + timedelta(days=6), span[-1]))
@@ -151,18 +199,48 @@ def preview(found: dict[str, Any]) -> list[list[dict[str, Any] | None]]:
     for row in found["days"]:
         day = date.fromisoformat(row["day"])
         mine = [e for e in row["entries"] if not e["sent"]]
+        trial, refused = _trial(row, [k for k in there if k["begin"].date() == day])
+        for entry in trial:
+            target = rules[entry["target_id"]]
+            names = {"project": target.project_label, "activity": target.activity_label}
+            new = {
+                "id": entry["target_id"],
+                "target": target.label,
+                **names,
+                "draft": 0,
+                "sent": 0,
+                "trial": 0,
+            }
+            totals.setdefault(entry["target_id"], new)["trial"] += entry["minutes"]
         blocks = [
-            _block(k["begin"], k["end"], f"{k['project_name']}, {k['activity_name']}")
+            _block(
+                k["begin"],
+                k["end"],
+                f"{k['project_name']}, {k['activity_name']}",
+                {
+                    "customer": customers.get(k["project"], ""),
+                    "project": k["project_name"],
+                    "activity": k["activity_name"],
+                    "description": k["description"],
+                    "tags": k.get("tags", []),
+                },
+            )
             for k in there
             if k["begin"].date() == day
         ]
-        for entry in mine:
+        for entry in mine + trial:
+            target = rules.get(entry["target_id"])
             begin = datetime.fromisoformat(f"{row['day']}T{entry['begin']}")
             end = begin + timedelta(minutes=entry["minutes"])
             blocks.append(
                 {
-                    **_block(begin, end, entry["target"]),
+                    **_block(begin, end, target.label if target else entry["target"]),
+                    "customer": customers.get(target.kimai_project, "") if target else "",
+                    "project": target.project_label if target else entry["project"],
+                    "activity": target.activity_label if target else entry["activity"],
+                    "tags": target.tags if target else [],
                     "rule": entry["target_id"],
+                    "trial": "id" not in entry,
                     "description": entry["description"],
                 }
             )
@@ -173,23 +251,43 @@ def preview(found: dict[str, Any]) -> list[list[dict[str, Any] | None]]:
                 "off": row["off"],
                 "blocks": blocks,
                 "minutes": sum(b["minutes"] for b in blocks),
-                "problems": _problems(row, mine, blocks),
+                "problems": refused + _problems(row, mine + trial, blocks),
             }
         )
+    found["rules"] = sorted(totals.values(), key=lambda r: r["target"])
     padded = [None] * (span[0].isoweekday() - 1) + cells
     padded += [None] * (-len(padded) % 7)
     return [padded[n : n + 7] for n in range(0, len(padded), 7)]
 
 
-def _block(begin: datetime, end: datetime | None, name: str) -> dict[str, Any]:
-    """One entry of the preview; `rule` is empty for what Kimai holds."""
+def _trial(row: dict[str, Any], taken: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+    """What would be proposed for a read working day with no entry yet, and why not when it cannot."""
+    if not row["read"] or row["off"] or row["entries"] or not row["facts"]["repos"]:
+        return [], []
+    try:
+        wanted = recap_core.proposal(row["facts"], taken)
+    except RecapError as exc:
+        return [], [str(exc).rstrip(".").lower()]
+    return [{**e.model_dump(), "target_id": str(e.target_id)} for e in wanted], []
+
+
+def _block(
+    begin: datetime, end: datetime | None, name: str, more: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """One entry of the preview; `rule` is empty for what Kimai holds, `trial` is only an attempt."""
     return {
         "begin": f"{begin:%H:%M}",
         "end": f"{end:%H:%M}" if end else "",
         "minutes": round((end - begin).total_seconds() / 60) if end else 0,
         "name": name,
         "rule": "",
+        "trial": False,
+        "customer": "",
+        "project": "",
+        "activity": "",
+        "tags": [],
         "description": "",
+        **(more or {}),
     }
 
 

@@ -1,0 +1,6 @@
+{
+  "label": "Repositories looked at",
+  "category": "Day summary",
+  "description": "Names of the repositories the day summary shows and counts, chosen by project on the Period page. Empty: all of them.",
+  "value": []
+}

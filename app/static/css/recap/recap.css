@@ -22,14 +22,29 @@
 .cn-rule-guidance { white-space: pre-line; font-style: italic; }
 @media (max-width: 40rem) { .cn-entry-fields, .cn-rule-form { grid-template-columns: 1fr; } }
 /* A period (D-103) */
-.cn-period td, .cn-period th { vertical-align: top; }
-.cn-period-off { color: var(--cn-text-muted); }
-.cn-period-repo, .cn-period-entry { display: inline-block; margin-right: var(--cn-space-3); }
-.cn-cal { table-layout: fixed; min-width: 56rem; }
+.cn-cal { table-layout: fixed; min-width: 32rem; }
 .cn-cal td { vertical-align: top; overflow-wrap: anywhere; }
 .cn-cal-off { background: var(--cn-surface-sunken); }
 .cn-cal-head { display: flex; justify-content: space-between; gap: var(--cn-space-2); font-size: var(--cn-text-sm); }
-.cn-cal-block { margin-top: var(--cn-space-1); padding: var(--cn-space-1) var(--cn-space-2); border: var(--cn-border-width) dashed var(--cn-border-strong); border-radius: var(--cn-radius-sm); font-size: var(--cn-text-xs); }
-.cn-cal-block.is-chosen { border-style: solid; border-color: var(--cn-accent); background: var(--cn-accent-soft); }
 .cn-cal-kimai { border-style: solid; background: var(--cn-surface-sunken); color: var(--cn-text-muted); }
 .cn-cal-problem { margin-top: var(--cn-space-1); font-size: var(--cn-text-xs); color: var(--cn-warning); }
+.cn-cal-block { margin-top: var(--cn-space-1); padding: var(--cn-space-1) var(--cn-space-2); border: var(--cn-border-width) solid var(--cn-border); border-left: var(--cn-space-1) solid var(--cn-project, var(--cn-border-strong)); border-radius: var(--cn-radius-sm); background: var(--cn-surface-raised); font-size: var(--cn-text-xs); }
+.cn-cal-block strong { display: block; }
+.cn-cal-block.is-trial { border-style: dashed; border-left-style: solid; }
+.cn-cal-block.is-chosen { border-color: var(--cn-accent); background: var(--cn-accent-soft); }
+.cn-cal-block.cn-cal-kimai { background: var(--cn-surface-sunken); color: var(--cn-text-muted); }
+/* Filling a period (D-104) */
+.cn-period-dates { display: flex; flex-wrap: wrap; align-items: end; gap: var(--cn-space-3); margin-bottom: var(--cn-space-4); }
+.cn-period-projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--cn-space-2); margin-bottom: var(--cn-space-3); }
+.cn-period-projects legend { grid-column: 1 / -1; font-size: var(--cn-text-md); }
+.cn-period-pick { display: flex; gap: var(--cn-space-3); padding: var(--cn-space-3); border: var(--cn-border-width) solid var(--cn-border); border-left: var(--cn-space-1) solid var(--cn-project, var(--cn-border-strong)); border-radius: var(--cn-radius-sm); cursor: pointer; }
+.cn-period-pick:has(:checked) { background: var(--cn-accent-soft); }
+.cn-period-pick .cn-muted { display: block; font-size: var(--cn-text-xs); }
+.cn-period-more { margin-bottom: var(--cn-space-4); color: var(--cn-text-muted); }
+.cn-period-views { display: flex; gap: var(--cn-space-1); }
+.cn-home-head .cn-period-views .btn-primary { color: var(--cn-on-accent); }
+.cn-times { font-size: var(--cn-text-sm); min-width: 60rem; }
+.cn-times-day > * { background: var(--cn-surface-sunken); }
+.cn-times-kimai { color: var(--cn-text-muted); }
+.cn-times-text { white-space: pre-line; overflow-wrap: anywhere; max-width: 28rem; }
+.cn-times-dot { display: inline-block; width: var(--cn-space-3); height: var(--cn-space-3); border-radius: 50%; background: var(--cn-project, var(--cn-border-strong)); }
