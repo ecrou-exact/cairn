@@ -165,8 +165,6 @@ def test_rules_place_the_work(ctx, tracking):
     assert {t.label for t, _, _ in found} == {"Tool", "Study"} and lost == {}
     assert recap_core.plan(_facts(_commit("fix", 9), name="mine"), rules) == ([], {"mine": 1})
     assert [t.label for t in recap_core.targets("phish")] == [] and len(recap_core.targets("tool")) == 2
-    assert recap_core.share([3, 1], 480) == [360, 120]
-    assert sum(recap_core.share([7, 5, 3], 480)) == 480
 
 
 def test_drafts_then_the_owner_sends_once(ctx, tracking, monkeypatch):
@@ -282,9 +280,67 @@ def test_claude_cannot_send():
 
 
 def test_the_day_is_shared_equally():
-    assert recap_core.share([1], 480) == [480]
-    assert recap_core.share([1, 1], 480) == [240, 240]
-    assert sorted(recap_core.share([1, 1, 1], 480)) == [150, 165, 165]
+    assert recap_core.share(1, 480) == [480]
+    assert recap_core.share(4, 480) == [120] * 4
+    assert recap_core.share(3, 480) == [165, 165, 150]
+    assert recap_core.share(0, 480) == []
+    for count in range(1, 33):
+        for total in (480, 420, 435):
+            parts = recap_core.share(count, total)
+            assert sum(parts) == total and max(parts) - min(parts) <= recap_core.STEP
+
+
+def test_a_day_never_goes_past_its_length(ctx, tracking, monkeypatch):
+    rules = [_rule(f"R{n}", 70 + n % 2, repos=[f"r{n}"]) for n in range(4)]
+    facts = {"repos": [], "github": True, "folders": 1}
+    for n in range(4):
+        facts["repos"] += _facts(_commit(f"c{n}", 9), name=f"r{n}")["repos"]
+    monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {DAY: facts})
+    period_core.read_period(DAY, DAY)
+    period_core.propose_period(DAY, DAY)
+    made = recap_core.entries(DAY)
+    assert [e.minutes for e in made] == [120] * 4
+    more = recap_core.add_entry(
+        DAY, EntryInput(target_id=rules[0].id, begin="17:00", minutes=30, description="more")
+    )
+    with pytest.raises(recap_core.RecapError, match="8:30, 8:00 at most"):
+        recap_core.send(DAY, [e.id for e in made] + [more.id])
+    assert tracking == []
+    recap_core.send(DAY, [e.id for e in made])
+    with pytest.raises(recap_core.RecapError, match="at most"):  # what Kimai holds counts
+        recap_core.send(DAY, [more.id])
+    assert sum(h["minutes"] for h in tracking) == 480
+
+
+def _held(begin, end):
+    at = datetime(2026, 11, 20)
+    times = [at.replace(hour=h // 100, minute=h % 100) for h in (begin, end)]
+    return {"begin": times[0], "end": times[1], "minutes": (times[1] - times[0]).seconds // 60}
+
+
+def test_the_day_goes_from_eight_to_four(ctx, tracking):
+    free = recap_core.free_time
+    assert free([]) == [(480, 960)]
+    assert free([_held(1400, 1500)]) == [(480, 840), (900, 960)]
+    assert free([_held(700, 900), _held(830, 1000)]) == [(600, 960)]
+    assert free([_held(1700, 1800)]) == [(480, 960)] and free([_held(800, 1600)]) == []
+    assert free([{**_held(1000, 1100), "end": None}]) == [(480, 600)]
+    for n in range(4):
+        _rule(f"R{n}", 70, repos=[f"r{n}"])
+    facts = {"repos": []}
+    for n in range(4):
+        facts["repos"] += _facts(_commit(f"c{n}", 9), name=f"r{n}")["repos"]
+    day = recap_core.proposal(facts, [])
+    assert [(e.begin, e.minutes) for e in day] == [(f"{h:02d}:00", 120) for h in (8, 10, 12, 14)]
+    meeting = {**_held(1500, 1600), "project": 1, "activity": 1}  # the afternoon is not pushed past 16:00
+    day = recap_core.proposal(facts, [meeting])
+    assert sum(e.minutes for e in day) == 420 and day[-1].begin == "13:15" and day[-1].minutes == 105
+    noon = {**_held(1200, 1300), "project": 1, "activity": 1}
+    day = recap_core.proposal(facts, [noon])
+    last = day[-1]
+    assert sum(e.minutes for e in day) == 420
+    assert int(last.begin[:2]) * 60 + int(last.begin[3:]) + last.minutes == 960
+    assert all(not 720 <= int(e.begin[:2]) * 60 + int(e.begin[3:]) < 780 for e in day)
 
 
 def test_weekends_and_days_off_are_never_filled(ctx, tracking, monkeypatch):

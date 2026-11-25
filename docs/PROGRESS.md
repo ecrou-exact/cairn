@@ -149,6 +149,7 @@ Goal: owner approves architecture + design direction.
 - [x] A period summary from commits, pull requests and issues only; weekends and days off never filled; previewed in a calendar, sent by rule (D-103)
 - [x] A period: days and projects chosen, tried without creating anything, seen as a calendar or as Kimai lists it (D-104)
 - [x] Entries of a period changed in a window like Kimai's; the same period again updates and never adds twice (D-105)
+- [x] A day never holds more than its length: equal parts, checked again when sent (D-106)
 - [ ] Owner ideas (2026-11-23), later: mail connected for Claude
 - [ ] Calendar, scheduled runs, Gantt timeline, activity feed, right-now panel, alerts
 - [ ] Security review, E2E (Playwright), docs, logo, packaging, release checklist

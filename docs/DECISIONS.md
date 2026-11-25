@@ -584,3 +584,8 @@
 - **Again**: a day with entries is compared with its facts (`recap_core.refreshes`). Same: left. Drafts Cairn made: their words follow, and they are made again when the day's rules change. Changed or added by hand (`edited`, and every entry from before this): left. GitHub read in part: nothing is refreshed. Work of a project and activity Kimai already holds that day is not proposed.
 - **Updating Kimai** (changes D-078's "no call that changes"): `kimai.update` changes the description and the tags only, of an entry Cairn sent (`sent_as` keeps what was sent), on the owner's confirmed send. Refused when the entry was changed or removed in Kimai since; nothing is deleted or made again there. Times of a sent entry stay: new work of another rule on that day is said, not added. Entries sent before this have no `sent_as`: never updated.
 - Read in Kimai's source first (`TimesheetController::patchAction`): a refused change answers 200 with the form's errors, so the answer must be the entry.
+
+## D-106 · 2026-11-25 · accepted — Never more than the day
+- Owner request: 8 h a day at most, shared: four entries are 2 h each. `share` gives equal parts in steps of 15 minutes, at most one step apart, exactly the total.
+- Sending refuses a day that would hold more than `recap.day_minutes`, counting what Kimai holds; nothing of that day is sent. The drafts may go past it (the preview says so). A day too short for one step each is not proposed.
+- The entries go from `recap.day_start` (8:00) to its length later (16:00), in the time Kimai leaves: an entry stops where Kimai holds something and goes on after it. Nothing is proposed outside.

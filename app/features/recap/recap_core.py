@@ -248,15 +248,12 @@ def _fits(begin: str, minutes: int) -> None:
         raise RecapError("This entry would end the next day.")
 
 
-def share(weights: list[int], total: int) -> list[int]:
-    """`total` minutes by weight, in steps, at least one step each; the biggest takes the rest."""
-    if not weights:
+def share(count: int, total: int) -> list[int]:
+    """`total` minutes in `count` equal parts, in steps: never more than `total`, never a step apart."""
+    if not count:
         return []
-    whole = sum(weights)
-    parts = [max(STEP, round(total * w / whole / STEP) * STEP) for w in weights]
-    biggest = max(range(len(parts)), key=lambda i: parts[i])
-    parts[biggest] = max(STEP, parts[biggest] + total - sum(parts))
-    return parts
+    each, more = divmod(total // STEP, count)
+    return [(each + (n < more)) * STEP for n in range(count)]
 
 
 def describe_work(about: str, parts: list[dict[str, Any]]) -> str:
@@ -343,24 +340,55 @@ def proposal(facts: dict[str, Any], taken: list[dict[str, Any]]) -> list[EntryIn
     planned = [p for p in planned if (p[0].kimai_project, p[0].kimai_activity) not in held]
     if not planned:  # entered there by hand, or by another Cairn: never a second time (D-105)
         raise RecapError("Kimai already holds this work.")
-    total = get_setting("recap.day_minutes") - sum(row["minutes"] for row in taken)
+    gaps = free_time(taken)
+    total = min(
+        get_setting("recap.day_minutes") - sum(row["minutes"] for row in taken),
+        sum(until - begin for begin, until in gaps),
+    )
     if total < STEP:
         raise RecapError("Kimai already holds a full day.")
-    clock = _minutes(get_setting("recap.day_start"))
-    clock = max([clock, *(_minutes(f"{row['end']:%H:%M}") for row in taken if row["end"])])
     # The owner's rule: the whole day goes to the projects worked on, in equal parts, however long
     # each one took; work no rule places takes nothing (D-078).
-    parts = share([1] * len(planned), total)
+    parts = share(len(planned), total)
+    if not parts[-1]:
+        raise RecapError("The day is too short for all its work: add the entries yourself.")
     made = []
-    for (target, _, text), minutes in zip(planned, parts, strict=True):
-        if clock + minutes > 24 * 60 - 1:
-            raise RecapError(
-                "The day is too short for its entries after what Kimai holds: add them yourself."
+    for (target, _, text), left in zip(planned, parts, strict=True):
+        while left:  # an entry stops where Kimai holds something, and goes on after it
+            begin, until = gaps[0]
+            minutes = min(left, until - begin)
+            made.append(
+                EntryInput(target_id=target.id, begin=_clock(begin), minutes=minutes, description=text)
             )
-        begin = f"{clock // 60:02d}:{clock % 60:02d}"
-        made.append(EntryInput(target_id=target.id, begin=begin, minutes=minutes, description=text))
-        clock += minutes
+            left -= minutes
+            gaps[0] = (begin + minutes, until)
+            if begin + minutes == until:
+                gaps.pop(0)
     return made
+
+
+def free_time(taken: list[dict[str, Any]]) -> list[tuple[int, int]]:
+    """The minutes of the day, from its start for its length (8:00 to 16:00), that Kimai leaves, as
+    spans of whole steps (D-106)."""
+    clock = _minutes(get_setting("recap.day_start"))
+    last = min(clock + get_setting("recap.day_minutes"), 24 * 60 - 1)
+    held = sorted(
+        (_minutes(f"{r['begin']:%H:%M}"), _minutes(f"{r['end']:%H:%M}") if r["end"] else 24 * 60)
+        for r in taken
+    )
+    found = []
+    for begin, until in [*held, (last, last)]:
+        if until < begin:  # ends the next day
+            until = 24 * 60
+        long = (min(begin, last) - clock) // STEP * STEP
+        if long > 0:
+            found.append((clock, clock + long))
+        clock = max(clock, until)
+    return found
+
+
+def _clock(minutes: int) -> str:
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
 
 def refreshes(day: date, facts: dict[str, Any]) -> tuple[dict[uuid.UUID, str], bool, list[str]]:
@@ -394,6 +422,9 @@ def refresh(day: date) -> bool:
     with batch():
         if again:
             wanted = proposal(found.facts, kimai.entries(day) if kimai.configured() else [])
+            same = [(e.target_id, e.begin, e.minutes, e.description) for e in wanted]
+            if same == [(e.target_id, e.begin, e.minutes, e.description) for e in entries(day)]:
+                return False  # the other rule's work is in Kimai already
             for entry in entries(day):
                 delete_entry(entry.id)
             for data in wanted:
@@ -511,7 +542,9 @@ def send(day: date, entry_ids: list[uuid.UUID]) -> list[DayEntry]:
         there = kimai.entries(day)
         fresh = [entry for entry in chosen if entry.sent_at is None]
         changed = [entry for entry in chosen if entry.sent_at is not None]
-        _no_overlap([entry for entry in fresh if _same(entry, there) is None], there)
+        new = [entry for entry in fresh if _same(entry, there) is None]
+        _no_overlap(new, there)
+        _within_day(new, there)
         for entry in changed:
             _unchanged_there(entry, there)
         for entry in fresh:
@@ -592,6 +625,18 @@ def _same(entry: DayEntry, there: list[dict[str, Any]]) -> int | None:
         ):
             return row["id"]
     return None
+
+
+def _within_day(chosen: list[DayEntry], there: list[dict[str, Any]]) -> None:
+    """A day never goes past its length in Kimai, whatever the drafts say (D-106)."""
+    length = get_setting("recap.day_minutes")
+    total = sum(entry.minutes for entry in chosen) + sum(row["minutes"] for row in there)
+    if chosen and total > length:
+        raise RecapError(f"Nothing was sent: the day would hold {_hours(total)}, {_hours(length)} at most.")
+
+
+def _hours(minutes: int) -> str:
+    return f"{minutes // 60}:{minutes % 60:02d}"
 
 
 def _no_overlap(chosen: list[DayEntry], there: list[dict[str, Any]]) -> None:

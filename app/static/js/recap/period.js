@@ -70,6 +70,7 @@ if (dialog) {
     const locked = block.state === 'kimai' || block.state === 'update';
     field('entry').value = block.id;
     field('trial_day').value = block.day;
+    field('trial_begin').value = block.begin;
     field('rule').value = block.rule;
     field('day').value = block.day;
     field('begin').value = block.begin;

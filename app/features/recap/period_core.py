@@ -100,11 +100,12 @@ def propose_period(first: date, last: date) -> dict[str, list[str]]:
     return {"made": made, "updated": updated, "left": left}
 
 
-def edit_trial(day: date, target_id: uuid.UUID, data: EntryUpdate) -> DayEntry:
-    """Change an entry of the try: the day's drafts are made, then this one takes the owner's words."""
+def edit_trial(day: date, target_id: uuid.UUID, data: EntryUpdate, begin: str = "") -> DayEntry:
+    """Change an entry of the try: the day's drafts are made, then this one takes the owner's words.
+    `begin` says which when the day has several of the rule."""
     with batch():
         made = recap_core.propose(day)
-        entry = next((e for e in made if e.target_id == target_id), None)
+        entry = next((e for e in made if e.target_id == target_id and begin in ("", e.begin)), None)
         if entry is None:
             raise RecapError("The try has changed: look at it again.")
         return recap_core.update_entry(entry.id, data)

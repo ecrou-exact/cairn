@@ -145,7 +145,8 @@ def period_entry():
         if entry_id:
             recap_core.update_entry(entry_id, data)
         else:
-            period_core.edit_trial(_day(form.get("trial_day", "")), uuid.UUID(form.get("rule", "")), data)
+            rule, began = uuid.UUID(form.get("rule", "")), form.get("trial_begin", "")
+            period_core.edit_trial(_day(form.get("trial_day", "")), rule, data, began)
         return "Entry saved."
 
     try:

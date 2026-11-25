@@ -94,7 +94,7 @@
 <dialog class="cn-dialog cn-entry-dialog" data-entry-dialog aria-labelledby="entry-title">
   <h2 class="cn-dialog-title" id="entry-title">Time entry</h2>
   <p class="cn-dialog-text" data-entry-note></p>
-  <form method="post" action="{{ url_for('recap.period_entry') }}">{{ csrf() }}{{ span() }}<input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="entry"><input type="hidden" name="trial_day"><input type="hidden" name="rule"><input type="hidden" name="place">
+  <form method="post" action="{{ url_for('recap.period_entry') }}">{{ csrf() }}{{ span() }}<input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="entry"><input type="hidden" name="trial_day"><input type="hidden" name="trial_begin"><input type="hidden" name="rule"><input type="hidden" name="place">
     <fieldset data-entry-fields>
       <label for="e-day">From</label><div><input class="form-control" type="date" id="e-day" name="day" max="{{ today.isoformat() }}" required><input class="form-control" type="time" name="begin" aria-label="Begin" required></div>
       <label for="e-duration">Duration / End</label><div><input class="form-control" id="e-duration" name="duration" pattern="[0-9]{1,2}:[0-5][0-9]" title="hours:minutes" required><input class="form-control" type="time" data-end aria-label="End" required></div>
