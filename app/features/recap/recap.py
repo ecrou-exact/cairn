@@ -66,10 +66,11 @@ def _period(action, message):
 @recap.get("/day/period")
 def period():
     first, last = _span()
-    found, problem = None, ""
+    found, weeks, problem = None, [], ""
     try:
         found = period_core.describe_period(first, last)
-    except recap_core.RecapError as exc:
+        weeks = period_core.preview(found)
+    except (recap_core.RecapError, kimai.KimaiError) as exc:
         problem = str(exc)
     return render_template(
         "recap/period.html",
@@ -77,9 +78,9 @@ def period():
         last=last,
         today=date.today(),
         found=found,
+        weeks=weeks,
         problem=problem,
         kimai_ready=kimai.configured(),
-        kinds=recap_core.KINDS,
     )
 
 

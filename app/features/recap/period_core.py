@@ -7,11 +7,12 @@ days off are read and shown, never filled.
 from __future__ import annotations
 
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from app.core.utils.actor import current_actor
-from app.features.recap import facts_core, recap_core
+from app.core.utils.settings import get_setting
+from app.features.recap import facts_core, kimai, recap_core
 from app.features.recap.recap_core import KINDS, RecapError, linked
 
 MAX_DAYS = 62
@@ -45,7 +46,7 @@ def propose_period(first: date, last: date) -> dict[str, list[str]]:
             continue
         try:
             recap_core.propose(day)
-        except RecapError as exc:
+        except (RecapError, kimai.KimaiError) as exc:
             left.append(f"{day:%a %d %b}: {exc}")
         else:
             made.append(day.isoformat())
@@ -65,7 +66,7 @@ def send_period(first: date, last: date, rule_ids: list[uuid.UUID]) -> int:
             continue
         try:
             sent += len(recap_core.send(day, drafts))
-        except (RecapError, ValueError) as exc:
+        except (RecapError, kimai.KimaiError) as exc:
             raise RecapError(f"{day:%a %d %b}: {exc} ({sent} sent before.)") from exc
     if not sent:
         raise RecapError("No draft of these rules in the period.")
@@ -81,16 +82,23 @@ def write_summary(first: date, last: date, rows: list[dict[str, Any]]) -> str:
     by_repo: dict[str, dict[str, Any]] = {}
     for row in rows:
         for repo in row["facts"]["repos"]:
-            kept = by_repo.setdefault(repo["name"], {"repo": repo["repo"], "items": [], "commits": []})
+            kept = by_repo.setdefault(
+                repo["name"], {"repo": repo["repo"], "items": [], "days": [], "count": 0}
+            )
             kept["items"] += repo["items"]
-            kept["commits"] += [{**c, "day": row["day"]} for c in repo["commits"]]
-    for kept in sorted(by_repo.values(), key=lambda r: -len(r["commits"])):
+            named, more = recap_core.brief(repo["commits"])
+            kept["days"].append((date.fromisoformat(row["day"]), named, more))
+            kept["count"] += len(repo["commits"])
+    for kept in sorted(by_repo.values(), key=lambda r: -r["count"]):
         lines += ["", f"## {kept['repo']}"]
         for item in kept["items"]:
             lines.append(f"- {KINDS[item['kind']]}: [#{item['number']}]({item['url']}) {item['title']}")
-        for commit in kept["commits"]:
-            branch = f" ({commit['branch']})" if commit["branch"] else ""
-            lines.append(f"- {date.fromisoformat(commit['day']):%d %b} {linked(commit)}{branch}")
+        for day, named, more in kept["days"]:
+            for commit in named:
+                branch = f" ({commit['branch']})" if commit["branch"] else ""
+                lines.append(f"- {day:%d %b} {linked(commit)}{branch}")
+            if more:
+                lines.append(f"- {day:%d %b} and {more} more commit{'' if more == 1 else 's'}")
     if not by_repo:
         lines += ["", "Nothing found for this period."]
     return "\n".join(lines) + "\n"
@@ -122,6 +130,90 @@ def describe_period(first: date, last: date) -> dict[str, Any]:
         "first": first.isoformat(),
         "last": last.isoformat(),
         "days": rows,
+        "github": all(row["facts"].get("github", True) for row in rows),
         "rules": sorted(rules.values(), key=lambda r: r["target"]),
         "summary": write_summary(first, last, [r for r in rows if r["read"]]),
     }
+
+
+# -- the preview --------------------------------------------------------------------------------
+
+
+def preview(found: dict[str, Any]) -> list[list[dict[str, Any] | None]]:
+    """The period (from `describe_period`) as weeks from Monday, None outside it: each day's drafts
+    beside what Kimai holds, and what to look at before sending."""
+    span = days(date.fromisoformat(found["first"]), date.fromisoformat(found["last"]))
+    there = []
+    if kimai.configured():
+        for start in span[::7]:
+            there += kimai.entries(start, min(start + timedelta(days=6), span[-1]))
+    cells = []
+    for row in found["days"]:
+        day = date.fromisoformat(row["day"])
+        mine = [e for e in row["entries"] if not e["sent"]]
+        blocks = [
+            _block(k["begin"], k["end"], f"{k['project_name']}, {k['activity_name']}")
+            for k in there
+            if k["begin"].date() == day
+        ]
+        for entry in mine:
+            begin = datetime.fromisoformat(f"{row['day']}T{entry['begin']}")
+            end = begin + timedelta(minutes=entry["minutes"])
+            blocks.append(
+                {
+                    **_block(begin, end, entry["target"]),
+                    "rule": entry["target_id"],
+                    "description": entry["description"],
+                }
+            )
+        blocks.sort(key=lambda b: b["begin"])
+        cells.append(
+            {
+                "day": row["day"],
+                "off": row["off"],
+                "blocks": blocks,
+                "minutes": sum(b["minutes"] for b in blocks),
+                "problems": _problems(row, mine, blocks),
+            }
+        )
+    padded = [None] * (span[0].isoweekday() - 1) + cells
+    padded += [None] * (-len(padded) % 7)
+    return [padded[n : n + 7] for n in range(0, len(padded), 7)]
+
+
+def _block(begin: datetime, end: datetime | None, name: str) -> dict[str, Any]:
+    """One entry of the preview; `rule` is empty for what Kimai holds."""
+    return {
+        "begin": f"{begin:%H:%M}",
+        "end": f"{end:%H:%M}" if end else "",
+        "minutes": round((end - begin).total_seconds() / 60) if end else 0,
+        "name": name,
+        "rule": "",
+        "description": "",
+    }
+
+
+def _problems(row: dict[str, Any], drafts: list[dict[str, Any]], blocks: list[dict[str, Any]]) -> list[str]:
+    said = []
+    until, held = "", False  # two entries of Kimai may overlap: only a draft can be changed here
+    for block in blocks:
+        if block["begin"] < until and (block["rule"] or held):
+            said.append("entries overlap")
+            break
+        if (block["end"] or "24:00") > until:
+            until, held = block["end"] or "24:00", bool(block["rule"])
+    total, length = sum(b["minutes"] for b in blocks), get_setting("recap.day_minutes")
+    if drafts and row["off"]:
+        said.append(f"drafts on a {row['off']}")
+    if drafts and total != length:
+        said.append("more than a day" if total > length else "less than a day")
+    if any(not e["description"].strip() for e in drafts):
+        said.append("no description")
+    if not row["off"]:
+        if not row["read"]:
+            said.append("not read")
+        elif row["facts"]["repos"] and not blocks:
+            said.append("work without time")
+        elif not row["facts"]["repos"] and not blocks:
+            said.append("no work found")
+    return said

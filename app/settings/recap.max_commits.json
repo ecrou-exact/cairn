@@ -1,0 +1,6 @@
+{
+  "label": "Commits named for a day",
+  "category": "Day summary",
+  "description": "How many commits of a repository are named for one day, in the summaries and in the descriptions sent to Kimai. The others are counted.",
+  "value": 6
+}

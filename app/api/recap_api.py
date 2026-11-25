@@ -42,6 +42,13 @@ def get_period(first: str, last: str):
     return jsonify(_guard(period_core.describe_period, _day(first), _day(last)))
 
 
+@recap_api.get("/period/<first>/<last>/preview")
+def preview_period(first: str, last: str):
+    """The weeks of a period: drafts beside what Kimai holds, and what to look at before sending."""
+    found = _guard(period_core.describe_period, _day(first), _day(last))
+    return jsonify(weeks=_guard(period_core.preview, found))
+
+
 @recap_api.post("/period/<first>/<last>/read")
 def read_period(first: str, last: str):
     _guard(period_core.read_period, _day(first), _day(last))

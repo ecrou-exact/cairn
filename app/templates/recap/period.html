@@ -2,7 +2,8 @@
 {% block title %}Period summary{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/recap/recap.css') }}">{% endblock %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/components/cn-vitrine.js') }}"></script>
-<script type="module" src="{{ url_for('static', filename='js/recap/day.js') }}"></script>{% endblock %}
+<script type="module" src="{{ url_for('static', filename='js/recap/day.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/recap/period.js') }}"></script>{% endblock %}
 {% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
 {% macro span() %}<input type="hidden" name="from" value="{{ first.isoformat() }}"><input type="hidden" name="to" value="{{ last.isoformat() }}">{% endmacro %}
 {% macro clock(m) %}{{ "%d:%02d" % (m // 60, m % 60) }}{% endmacro %}
@@ -25,6 +26,7 @@
 {% if problem %}<p class="alert alert-warning">{{ problem }}</p>{% endif %}
 
 {% if found %}
+{% if not found.github %}<p class="alert alert-warning">GitHub was not read in full: choose a shorter period, sign in with <code>gh auth login</code>, or try again in a minute. Local commits are here.</p>{% endif %}
 <section class="cn-panel" aria-labelledby="days-title">
   <h2 id="days-title">Day by day</h2>
   <div class="table-responsive"><table class="table cn-period">
@@ -40,6 +42,23 @@
       </tr>{% endfor %}</tbody>
   </table></div>
 </section>
+
+{% if weeks %}
+<section class="cn-panel" aria-labelledby="preview-title">
+  <header class="cn-home-head"><h2 id="preview-title">Preview</h2><span class="cn-muted"><span data-chosen></span>{% if not kimai_ready %} Kimai is not set: only the drafts are here.{% endif %}</span></header>
+  <p class="cn-muted">Your drafts beside what Kimai already holds (with a lock). The drafts of the rules ticked below stand out: these are the ones sent.</p>
+  <div class="table-responsive"><table class="table cn-cal">
+    <thead><tr>{% for name in ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun") %}<th scope="col">{{ name }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for week in weeks %}<tr>{% for cell in week %}
+      <td class="{{ 'cn-cal-off' if not cell or cell.off }}">{% if cell %}
+        <div class="cn-cal-head"><a href="{{ url_for('recap.day', raw=cell.day) }}">{{ cell.day[8:] }}/{{ cell.day[5:7] }}</a>{% if cell.minutes %}<strong>{{ clock(cell.minutes) }}</strong>{% elif cell.off %}<span class="cn-muted">{{ cell.off }}</span>{% endif %}</div>
+        {% for b in cell.blocks %}<div class="cn-cal-block {{ 'cn-cal-kimai' if not b.rule }}" {% if b.rule %}data-rule="{{ b.rule }}" data-minutes="{{ b.minutes }}"{% endif %} title="{{ b.description }}">
+          {% if not b.rule %}<i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">In Kimai</span>{% endif %} {{ b.begin }}–{{ b.end }} {{ b.name }}</div>{% endfor %}
+        {% for p in cell.problems %}<div class="cn-cal-problem"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ p }}</div>{% endfor %}
+      {% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
 
 <section class="cn-panel" aria-labelledby="send-title">
   <h2 id="send-title">Time by rule</h2>

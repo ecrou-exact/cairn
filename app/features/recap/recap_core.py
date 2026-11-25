@@ -23,7 +23,6 @@ from app.features.recap import facts_core, kimai
 
 STEP = 15  # minutes
 SUBJECT = 120  # characters of a commit named in a description
-SUBJECTS = 6  # commits named for each branch in a description
 KINDS = {"pr_opened": "PR opened", "pr_merged": "PR merged", "issue_opened": "Issue opened"}
 _sending = threading.Lock()
 
@@ -165,9 +164,12 @@ def write_summary(day: date, facts: dict[str, Any]) -> str:
         lines += ["", f"## {row['repo']}"]
         for item in row["items"]:
             lines.append(f"- {KINDS[item['kind']]}: [#{item['number']}]({item['url']}) {item['title']}")
-        for branch, commits in _by_branch(row["commits"]).items():
-            lines.append(f"- `{branch or 'default branch'}`: {_count(len(commits), 'commit')}")
+        kept, more = brief(row["commits"])
+        for branch, commits in _by_branch(kept).items():
+            lines.append(f"- `{branch or 'default branch'}`")
             lines += [f"  - {linked(commit)}" for commit in commits]
+        if more:
+            lines.append(f"- and {_count(more, 'more commit')}")
     if not facts["repos"]:
         lines += ["", "Nothing found for this day."]
     return "\n".join(lines) + "\n"
@@ -187,6 +189,13 @@ def save_summary(day: date, text: str) -> WorkDay:
 
 def _count(n: int, word: str) -> str:
     return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+def brief(commits: list[dict]) -> tuple[list[dict], int]:
+    """The commits of a repository named for a day, each subject once, and how many are not."""
+    once = {commit["subject"]: commit for commit in reversed(commits)}
+    kept = [c for c in commits if once[c["subject"]] is c][: get_setting("recap.max_commits")]
+    return kept, len(commits) - len(kept)
 
 
 def linked(commit: dict) -> str:
@@ -250,12 +259,14 @@ def describe_work(about: str, parts: list[dict[str, Any]]) -> str:
             lines.append(
                 f"{KINDS[item['kind']]} {part['name']}#{item['number']}: {item['title']} - {item['url']}"
             )
-        for branch, commits in _by_branch(part["commits"]).items():
-            subjects = list(dict.fromkeys(shorten(c["subject"], SUBJECT, placeholder="…") for c in commits))
-            more = f"; and {len(subjects) - SUBJECTS} more" if len(subjects) > SUBJECTS else ""
+        kept, more = brief(part["commits"])
+        for branch, commits in _by_branch(kept).items():
+            subjects = [shorten(c["subject"], SUBJECT, placeholder="…") for c in commits]
             where = f"{part['name']} ({branch})" if branch else part["name"]
             last = f" - {commits[-1]['url']}" if commits[-1]["url"] else ""
-            lines.append(f"{where}: {'; '.join(subjects[:SUBJECTS])}{more}{last}")
+            lines.append(f"{where}: {'; '.join(subjects)}{last}")
+        if more:
+            lines.append(f"{part['name']}: and {_count(more, 'more commit')}")
     return "\n".join(lines)[:4000]
 
 

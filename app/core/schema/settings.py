@@ -188,6 +188,7 @@ SETTING_TYPES: dict[str, TypeAdapter] = {
     ),
     "recap.day_start": TypeAdapter(Annotated[str, Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")]),
     "recap.day_minutes": TypeAdapter(Annotated[int, Field(strict=True, ge=15, le=1440)]),
+    "recap.max_commits": TypeAdapter(Annotated[int, Field(strict=True, ge=1, le=50)]),
     "recap.work_days": TypeAdapter(
         Annotated[list[Annotated[int, Field(strict=True, ge=1, le=7)]], Field(max_length=7)]
     ),

@@ -18,6 +18,7 @@ from typing import Any
 
 TIMEOUT = 20
 CATALOG_SECONDS = 600
+SIZE = 100  # entries asked at once
 _catalog: dict[str, Any] = {}
 
 
@@ -117,13 +118,23 @@ def labels(project_id: int, activity_id: int) -> tuple[str, str]:
     raise KimaiError("Kimai has no such activity for this project.")
 
 
-def entries(day: date) -> list[dict[str, Any]]:
-    """What Kimai already holds for the owner that day."""
+def entries(day: date, last: date | None = None) -> list[dict[str, Any]]:
+    """What Kimai already holds for the owner that day, or from that day to `last` (a week at most)."""
+    last = last or day
     query = urllib.parse.urlencode(
-        {"begin": f"{day}T00:00:00", "end": f"{day}T23:59:59", "full": "true", "size": "100", "order": "ASC"}
+        {
+            "begin": f"{day}T00:00:00",
+            "end": f"{last}T23:59:59",
+            "full": "true",
+            "size": str(SIZE),
+            "order": "ASC",
+        }
     )
     found = []
-    for row in _call(f"timesheets?{query}"):
+    rows = _call(f"timesheets?{query}")
+    if len(rows) >= SIZE:
+        raise KimaiError("Kimai holds too many entries here to check them all.")
+    for row in rows:
         begin = datetime.fromisoformat(row["begin"]).replace(tzinfo=None)
         end = datetime.fromisoformat(row["end"]).replace(tzinfo=None) if row.get("end") else None
         found.append(

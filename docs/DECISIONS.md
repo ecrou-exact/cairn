@@ -564,6 +564,9 @@
 - Owner request: from a date to a date, the work with its commits, their links, pull requests and projects; the rules place it; Kimai is filled for the period, and the owner chooses what is sent (only the Rulezet rules, only Lookyloo…).
 - **Only what the owner wrote counts**: commits, pull requests, issues. Claude's conversations, Cairn's tasks and timers are no longer read (owner: "pas de Claude de Cairn"); D-078's facts lose them. Old days keep their stored facts until read again.
 - **A period** (`/day/period`, 62 days at most): git and GitHub read once for the span, split by day (GitHub's search allows few calls a minute). Each day keeps its own facts, drafts and entries, so the day page and the period page show the same thing.
-- **Never filled**: a day not in `recap.work_days` (Monday to Friday by default) or in `recap.days_off` (days and spans, in the settings). Read and shown, refused to `propose`; the owner may still add an entry by hand. Kimai's absences are not read: Kimai has no standard API for them.
+- **Never filled**: a day not in `recap.work_days` (Monday to Friday by default) or in `recap.days_off` (days and spans, in the settings). Read and shown, refused to `propose`; the owner may still add an entry by hand. Kimai's absences are not read.
 - **Filling** keeps D-078's rule: each working day's 8 h go in equal parts to the rules worked on that day, after what Kimai already holds; a day with entries is left as it is.
+- **A busy day** names `recap.max_commits` commits by repository (6), each subject once, and counts the others, in the summaries and in what goes to Kimai.
+- **Preview**: the weeks of the period, drafts beside what Kimai holds, with what to look at (overlap, more or less than a day, not read, work without time). Ticked rules stand out: only they are sent.
+- GitHub's search gives 100 results here: past that, the page says it was not read in full. One day Kimai refuses does not stop the proposals of the others.
 - **Sending** a period is the owner's click on the rules ticked, confirmed, day by day; a day that fails stops the rest, the days before stay sent. Not an MCP tool.

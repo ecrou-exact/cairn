@@ -46,7 +46,11 @@ def tracking(monkeypatch):
         return held[-1]["id"]
 
     monkeypatch.setattr(kimai, "create", create)
-    monkeypatch.setattr(kimai, "entries", lambda day: [h for h in held if h["begin"].date() == day])
+    monkeypatch.setattr(
+        kimai,
+        "entries",
+        lambda day, last=None: [h for h in held if day <= h["begin"].date() <= (last or day)],
+    )
     return held
 
 
@@ -344,3 +348,58 @@ def test_period_page_and_api(app, signed_in, tracking, monkeypatch):
     assert b"ends before" in signed_in.get(f"/day/period?from={DAY}&to={DAY - timedelta(days=1)}").data
     assert signed_in.get(f"/api/period/{DAY}/{DAY}").json["days"][0]["read"]
     assert signed_in.post(f"/api/period/{DAY}/{DAY}/send", json={"rules": []}).status_code == 422
+
+
+def test_a_period_says_what_kimai_or_github_did_not_give(ctx, tracking, monkeypatch):
+    _rule()
+
+    def refused(day, last=None):
+        raise kimai.KimaiError("no answer")
+
+    facts = {**_facts(_commit("x", 9)), "github": False}
+    monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {DAY: facts})
+    monkeypatch.setattr(kimai, "entries", refused)
+    period_core.read_period(DAY, DAY)
+    done = period_core.propose_period(DAY, DAY)
+    assert done["made"] == [] and "no answer" in done["left"][0] and recap_core.entries(DAY) == []
+    assert not period_core.describe_period(DAY, DAY)["github"]
+
+
+def test_more_than_github_gives_is_not_read_in_full(monkeypatch):
+    def gh(path, *args):
+        return {"login": "me"} if path == "user" else {"total_count": 101, "items": []}
+
+    monkeypatch.setattr(facts_core.programs, "gh", gh)
+    assert not facts_core._github(*facts_core.bounds(DAY))["read"]
+
+
+def test_a_day_of_many_commits_names_a_few(ctx, tracking, monkeypatch):
+    rule = _rule()
+    facts = _facts(
+        _commit("same", 9), *(_commit(f"c{n}", 9, f"b{n}") for n in range(300)), _commit("same", 9)
+    )
+    monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {DAY: facts})
+    period_core.read_period(DAY, DAY)
+    ((_, _, text),), _ = recap_core.plan(facts, [rule])
+    period = period_core.describe_period(DAY, DAY)["summary"]
+    for said in (text, recap_core.get_day(DAY).summary_md, period):
+        assert "and 296 more commits" in said and "c4" in said and "c5" not in said
+        assert said.count("https://x/same") == 1
+
+
+def test_the_preview_shows_kimai_and_what_is_wrong(app, signed_in, tracking, monkeypatch):
+    first, last = DAY - timedelta(days=1), date(2026, 11, 22)  # Thursday to Sunday
+    monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {DAY: _facts(_commit("x", 9))})
+    with app.app_context():
+        _rule()
+    signed_in.post(f"/api/period/{first}/{last}/read")
+    signed_in.post(f"/api/period/{first}/{last}/propose")
+    (week,) = signed_in.get(f"/api/period/{first}/{last}/preview").json["weeks"]
+    assert week[:3] == [None] * 3 and week[3]["problems"] == ["not read"]
+    assert week[4]["minutes"] == 480 and week[4]["problems"] == [] and week[5]["off"] == "weekend"
+    kimai.create(datetime(2026, 11, 20, 9), 60, 1, 1, "Meeting", [])
+    (week,) = signed_in.get(f"/api/period/{first}/{last}/preview").json["weeks"]
+    assert len(week[4]["blocks"]) == 2
+    assert week[4]["problems"] == ["entries overlap", "more than a day"]
+    page = signed_in.get(f"/day/period?from={first}&to={last}").data
+    assert b"entries overlap" in page and b"data-rule" in page and len(tracking) == 1

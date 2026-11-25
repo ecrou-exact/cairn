@@ -180,7 +180,13 @@ def _github(start: datetime, end: datetime) -> dict[str, Any]:
         )
     return {
         "login": login,
-        "read": all(a is not None for a in answers.values()),
+        # GitHub gives 100 results at most here: more than that, or a search cut short, is not all of it
+        "read": all(
+            a is not None
+            and not a.get("incomplete_results")
+            and a.get("total_count", 0) <= len(a.get("items", []))
+            for a in answers.values()
+        ),
         "items": items,
         "commits": commits,
     }

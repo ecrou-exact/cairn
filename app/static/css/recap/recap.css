@@ -25,3 +25,11 @@
 .cn-period td, .cn-period th { vertical-align: top; }
 .cn-period-off { color: var(--cn-text-muted); }
 .cn-period-repo, .cn-period-entry { display: inline-block; margin-right: var(--cn-space-3); }
+.cn-cal { table-layout: fixed; min-width: 56rem; }
+.cn-cal td { vertical-align: top; overflow-wrap: anywhere; }
+.cn-cal-off { background: var(--cn-surface-sunken); }
+.cn-cal-head { display: flex; justify-content: space-between; gap: var(--cn-space-2); font-size: var(--cn-text-sm); }
+.cn-cal-block { margin-top: var(--cn-space-1); padding: var(--cn-space-1) var(--cn-space-2); border: var(--cn-border-width) dashed var(--cn-border-strong); border-radius: var(--cn-radius-sm); font-size: var(--cn-text-xs); }
+.cn-cal-block.is-chosen { border-style: solid; border-color: var(--cn-accent); background: var(--cn-accent-soft); }
+.cn-cal-kimai { border-style: solid; background: var(--cn-surface-sunken); color: var(--cn-text-muted); }
+.cn-cal-problem { margin-top: var(--cn-space-1); font-size: var(--cn-text-xs); color: var(--cn-warning); }
