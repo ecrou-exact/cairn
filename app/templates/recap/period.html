@@ -40,7 +40,7 @@
 {% if problem %}<p class="alert alert-warning">{{ problem }}</p>{% endif %}
 
 {% if found and found.days | selectattr("read") | list %}
-{% if not found.github %}<p class="alert alert-warning">GitHub was not read in full: choose a shorter period, sign in with <code>gh auth login</code>, or try again in a minute. Local commits are here.</p>{% endif %}
+{% if not found.github %}<p class="alert alert-warning">GitHub was not read in full: it did not answer every search (too many calls in a minute, or <code>gh</code> is signed out). Try again in a minute. Local commits are here.</p>{% endif %}
 {% set trial = found.rules | sum(attribute="trial") %}
 <section class="cn-panel" id="preview" aria-labelledby="preview-title">
   <header class="cn-home-head"><h2 id="preview-title">2. Look: {{ first.strftime("%d %B") }} to {{ last.strftime("%d %B %Y") }}</h2>

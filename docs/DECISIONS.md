@@ -568,7 +568,7 @@
 - **Filling** keeps D-078's rule: each working day's 8 h go in equal parts to the rules worked on that day, after what Kimai already holds; a day with entries is left as it is.
 - **A busy day** names `recap.max_commits` commits by repository (6), each subject once, and counts the others, in the summaries and in what goes to Kimai.
 - **Preview**: the weeks of the period, drafts beside what Kimai holds, with what to look at (overlap, more or less than a day, not read, work without time). Ticked rules stand out: only they are sent.
-- GitHub's search gives 100 results here: past that, the page says it was not read in full. One day Kimai refuses does not stop the proposals of the others.
+- GitHub's search is read page by page (100 each), the time cut in two past the 1000 results one search gives; a page that does not come, and the page says GitHub was not read in full. One day Kimai refuses does not stop the proposals of the others.
 - **Sending** a period is the owner's click on the rules ticked, confirmed, day by day; a day that fails stops the rest, the days before stay sent. Not an MCP tool.
 
 ## D-104 · 2026-11-25 · accepted — A period: choose, try, look, send

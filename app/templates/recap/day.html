@@ -28,7 +28,7 @@
 </div>
 
 {% if found.facts %}
-{% if not found.facts.github %}<p class="alert alert-warning">GitHub was not read in full: sign in with <code>gh auth login</code>, or try again in a minute. Local commits are here.</p>{% endif %}
+{% if not found.facts.github %}<p class="alert alert-warning">GitHub was not read in full: it did not answer every search (too many calls in a minute, or <code>gh</code> is signed out). Try again in a minute. Local commits are here.</p>{% endif %}
 <section class="cn-panel" aria-labelledby="done-title">
   <h2 id="done-title">What you did</h2>
   {% if found.facts.repos %}<ul class="cn-day-repos">

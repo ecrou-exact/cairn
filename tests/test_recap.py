@@ -406,12 +406,54 @@ def test_a_period_says_what_kimai_or_github_did_not_give(ctx, tracking, monkeypa
     assert not period_core.describe_period(DAY, DAY)["github"]
 
 
-def test_more_than_github_gives_is_not_read_in_full(monkeypatch):
-    def gh(path, *args):
-        return {"login": "me"} if path == "user" else {"total_count": 101, "items": []}
+def _hub(dates, calls):
+    """GitHub's search over commits of these dates: 100 by page, 1000 at most."""
 
-    monkeypatch.setattr(facts_core.programs, "gh", gh)
-    assert not facts_core._github(*facts_core.bounds(DAY))["read"]
+    def gh(path, *fields):
+        if path == "user":
+            return {"login": "me"}
+        asked = dict(f.split("=", 1) for f in fields)
+        if path != "search/commits":
+            return {"total_count": 0, "items": []}
+        calls.append(asked)
+        first, _, last = asked["q"].split("author-date:")[1].partition("..")
+        kept = [d for d in dates if datetime.fromisoformat(first) <= d <= datetime.fromisoformat(last)]
+        page = int(asked.get("page", 1))
+        rows = [
+            {
+                "sha": f"{d:%d}{n}",
+                "repository": {"full_name": "org/tool"},
+                "commit": {"author": {"date": d.isoformat()}, "message": "x"},
+            }
+            for n, d in enumerate(kept)
+        ]
+        return {"total_count": len(kept), "items": rows[:1000][(page - 1) * 100 : page * 100]}
+
+    return gh
+
+
+def test_every_page_of_github_is_read(monkeypatch):
+    start, end = facts_core.bounds(date(2026, 11, 1))[0], facts_core.bounds(date(2026, 11, 20))[1]
+    calls = []
+    month = [start + timedelta(minutes=50 * n) for n in range(524)]
+    monkeypatch.setattr(facts_core.programs, "gh", _hub(month, calls))
+    found = facts_core._github(start, end)
+    assert found["read"] and len(found["commits"]) == 524 and len(calls) == 6
+    many = [start + timedelta(minutes=20 * n) for n in range(1400)]  # more than one search gives
+    monkeypatch.setattr(facts_core.programs, "gh", _hub(many, calls))
+    found = facts_core._github(start, end)
+    assert found["read"] and len(found["commits"]) == 1400
+    assert len({c["at"] for c in found["commits"]}) == 1400
+
+
+def test_a_page_github_does_not_give_is_said(monkeypatch):
+    start, end = facts_core.bounds(DAY)
+    whole = _hub([start + timedelta(minutes=n) for n in range(150)], [])
+    monkeypatch.setattr(
+        facts_core.programs, "gh", lambda path, *f: None if "page=2" in f else whole(path, *f)
+    )
+    found = facts_core._github(start, end)
+    assert not found["read"] and len(found["commits"]) == 100
 
 
 def test_a_day_of_many_commits_names_a_few(ctx, tracking, monkeypatch):

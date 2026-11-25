@@ -24,6 +24,7 @@ SLOT = 30  # minutes: how finely activity is counted
 SKIPPED = {"node_modules", "venv", "vendor", "__pycache__"}
 REMOTE = re.compile(r"[:/]([\w.-]+)/([\w.-]+?)(?:\.git)?/?$")
 FORMAT = "%H%x1f%aI%x1f%an%x1f%ae%x1f%ct%x1f%s"
+PAGE, FOUND = 100, 1000  # results of GitHub's search: by page, and at most for one search
 BOTS = ("dependabot/", "renovate/", "pre-commit-ci")
 
 
@@ -129,30 +130,52 @@ def _read_repository(folder: Path, start: datetime, end: datetime, login: str) -
 # -- GitHub ------------------------------------------------------------------------------------
 
 
+def _search(path: str, query: str, start: datetime, end: datetime) -> tuple[list[dict[str, Any]], bool]:
+    """Every result of a search from `start` to `end`, page by page, and whether GitHub gave them all.
+    `query` holds `{span}`. Past what one search gives, the time is cut in two."""
+    span = f"{start.isoformat()}..{(end - timedelta(seconds=1)).isoformat()}"
+    fields = (f"q={query.format(span=span)}", f"per_page={PAGE}")
+    answer = programs.gh(path, *fields)
+    if not isinstance(answer, dict):
+        return [], False
+    total = answer.get("total_count", 0)
+    if total > FOUND and end - start > timedelta(days=1):
+        middle = (start + (end - start) / 2).replace(microsecond=0)
+        left, right = _search(path, query, start, middle), _search(path, query, middle, end)
+        return left[0] + right[0], left[1] and right[1]
+    items, whole = list(answer.get("items", [])), not answer.get("incomplete_results")
+    for page in range(2, (min(total, FOUND) - 1) // PAGE + 2):
+        more = programs.gh(path, *fields, f"page={page}")
+        if not isinstance(more, dict):
+            return items, False
+        items += more.get("items", [])
+        whole = whole and not more.get("incomplete_results")
+    return items, whole and len(items) >= total
+
+
 def _github(start: datetime, end: datetime) -> dict[str, Any]:
     """Pull requests, issues and commits, with GitHub's own command line signed in by the owner."""
     user = programs.gh("user")
     if not isinstance(user, dict) or not user.get("login"):
         return {"login": "", "read": False, "items": [], "commits": []}
     login = user["login"]
-    span = f"{start.isoformat()}..{(end - timedelta(seconds=1)).isoformat()}"
     searches = {
-        "pr_opened": ("search/issues", f"author:{login} is:pr created:{span}"),
-        "pr_merged": ("search/issues", f"author:{login} is:pr merged:{span}"),
-        "issue_opened": ("search/issues", f"author:{login} is:issue created:{span}"),
-        "commits": ("search/commits", f"author:{login} author-date:{span}"),
+        "pr_opened": ("search/issues", f"author:{login} is:pr created:{{span}}"),
+        "pr_merged": ("search/issues", f"author:{login} is:pr merged:{{span}}"),
+        "issue_opened": ("search/issues", f"author:{login} is:issue created:{{span}}"),
+        "commits": ("search/commits", f"author:{login} author-date:{{span}}"),
     }
     with ThreadPoolExecutor(4) as pool:
         answers = dict(
             zip(
                 searches,
-                pool.map(lambda s: programs.gh(s[0], f"q={s[1]}", "per_page=100"), searches.values()),
+                pool.map(lambda s: _search(*s, start, end), searches.values()),
                 strict=True,
             )
         )
     items, commits = [], []
     for kind in ("pr_opened", "pr_merged", "issue_opened"):
-        for row in (answers[kind] or {}).get("items", []):
+        for row in answers[kind][0]:
             repo = row["repository_url"].split("/repos/", 1)[-1]
             merged = (row.get("pull_request") or {}).get("merged_at") or row.get("closed_at")
             at = merged if kind == "pr_merged" else row["created_at"]
@@ -166,7 +189,7 @@ def _github(start: datetime, end: datetime) -> dict[str, Any]:
                     "url": row["html_url"],
                 }
             )
-    for row in (answers["commits"] or {}).get("items", []):
+    for row in answers["commits"][0]:
         if len(row.get("parents") or []) > 1:
             continue
         commits.append(
@@ -180,13 +203,7 @@ def _github(start: datetime, end: datetime) -> dict[str, Any]:
         )
     return {
         "login": login,
-        # GitHub gives 100 results at most here: more than that, or a search cut short, is not all of it
-        "read": all(
-            a is not None
-            and not a.get("incomplete_results")
-            and a.get("total_count", 0) <= len(a.get("items", []))
-            for a in answers.values()
-        ),
+        "read": all(whole for _, whole in answers.values()),
         "items": items,
         "commits": commits,
     }
