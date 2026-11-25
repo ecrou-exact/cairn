@@ -26,13 +26,14 @@
 .cn-cal td { vertical-align: top; overflow-wrap: anywhere; }
 .cn-cal-off { background: var(--cn-surface-sunken); }
 .cn-cal-head { display: flex; justify-content: space-between; gap: var(--cn-space-2); font-size: var(--cn-text-sm); }
-.cn-cal-kimai { border-style: solid; background: var(--cn-surface-sunken); color: var(--cn-text-muted); }
 .cn-cal-problem { margin-top: var(--cn-space-1); font-size: var(--cn-text-xs); color: var(--cn-warning); }
 .cn-cal-block { margin-top: var(--cn-space-1); padding: var(--cn-space-1) var(--cn-space-2); border: var(--cn-border-width) solid var(--cn-border); border-left: var(--cn-space-1) solid var(--cn-project, var(--cn-border-strong)); border-radius: var(--cn-radius-sm); background: var(--cn-surface-raised); font-size: var(--cn-text-xs); }
-.cn-cal-block strong { display: block; }
+.cn-cal-block { display: block; width: 100%; text-align: left; color: var(--cn-text); }
+.cn-cal-block > * { display: block; }
+.cn-cal-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; white-space: pre-line; color: var(--cn-text-muted); }
 .cn-cal-block.is-trial { border-style: dashed; border-left-style: solid; }
 .cn-cal-block.is-chosen { border-color: var(--cn-accent); background: var(--cn-accent-soft); }
-.cn-cal-block.cn-cal-kimai { background: var(--cn-surface-sunken); color: var(--cn-text-muted); }
+.cn-cal-block.is-kimai { background: var(--cn-surface-sunken); color: var(--cn-text-muted); }
 /* Filling a period (D-104) */
 .cn-period-dates { display: flex; flex-wrap: wrap; align-items: end; gap: var(--cn-space-3); margin-bottom: var(--cn-space-4); }
 .cn-period-projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--cn-space-2); margin-bottom: var(--cn-space-3); }
@@ -48,3 +49,8 @@
 .cn-times-kimai { color: var(--cn-text-muted); }
 .cn-times-text { white-space: pre-line; overflow-wrap: anywhere; max-width: 28rem; }
 .cn-times-dot { display: inline-block; width: var(--cn-space-3); height: var(--cn-space-3); border-radius: 50%; background: var(--cn-project, var(--cn-border-strong)); }
+.cn-cal-block.is-update { border-color: var(--cn-info); }
+.cn-entry-dialog { width: min(94vw, 46rem); }
+.cn-entry-dialog fieldset { display: grid; grid-template-columns: 9rem 1fr; gap: var(--cn-space-3); align-items: center; }
+.cn-entry-dialog fieldset > div { display: grid; grid-template-columns: 1fr 1fr; gap: var(--cn-space-3); }
+@media (max-width: 40rem) { .cn-entry-dialog fieldset { grid-template-columns: 1fr; } }

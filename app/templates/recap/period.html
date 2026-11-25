@@ -41,19 +41,21 @@
 
 {% if found and found.days | selectattr("read") | list %}
 {% if not found.github %}<p class="alert alert-warning">GitHub was not read in full: it did not answer every search (too many calls in a minute, or <code>gh</code> is signed out). Try again in a minute. Local commits are here.</p>{% endif %}
-{% set trial = found.rules | sum(attribute="trial") %}
+{% set trial = found.rules | sum(attribute="trial") %}{% set updates = found.rules | sum(attribute="update") %}
 <section class="cn-panel" id="preview" aria-labelledby="preview-title">
   <header class="cn-home-head"><h2 id="preview-title">2. Look: {{ first.strftime("%d %B") }} to {{ last.strftime("%d %B %Y") }}</h2>
     <nav class="cn-period-views" aria-label="View"><a class="btn btn-sm {{ 'btn-primary' if view == 'calendar' else 'btn-outline-secondary' }}" href="{{ when('calendar') }}" {% if view == 'calendar' %}aria-current="true"{% endif %}>Calendar</a><a class="btn btn-sm {{ 'btn-primary' if view == 'list' else 'btn-outline-secondary' }}" href="{{ when('list') }}" {% if view == 'list' %}aria-current="true"{% endif %}>List</a></nav></header>
-  <p class="cn-muted">Dashed: the try. Plain: your drafts. Grey with a lock: already in Kimai.{% if not kimai_ready %} Kimai is not set.{% endif %}</p>
+  <p class="cn-muted">Click an entry to read or change it. Dashed: the try. Plain: your drafts. Lock: already in Kimai, left as it is. Arrows: in Kimai, to update.{% if not kimai_ready %} Kimai is not set.{% endif %}</p>
   {% if view == "calendar" %}
   <div class="table-responsive"><table class="table cn-cal">
     <thead><tr>{% for n in columns %}<th scope="col">{{ ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")[n] }}</th>{% endfor %}</tr></thead>
     <tbody>{% for week in weeks %}<tr>{% for n in columns %}{% set cell = week[n] %}
       <td class="{{ 'cn-cal-off' if not cell or cell.off }}">{% if cell %}
         <div class="cn-cal-head"><a href="{{ url_for('recap.day', raw=cell.day) }}">{{ cell.day[8:] }}/{{ cell.day[5:7] }}</a>{% if cell.minutes %}<strong>{{ clock(cell.minutes) }}</strong>{% elif cell.off %}<span class="cn-muted">{{ cell.off }}</span>{% endif %}</div>
-        {% for b in cell.blocks %}<div class="cn-cal-block {{ 'cn-color-' ~ colors.get(b.rule, 'slate') if b.rule else 'cn-cal-kimai' }} {{ 'is-trial' if b.trial }}" {% if b.rule and not b.trial %}data-rule="{{ b.rule }}" data-minutes="{{ b.minutes }}"{% endif %} title="{{ b.description }}">
-          {% if not b.rule %}<i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">In Kimai</span>{% endif %} {{ b.begin }}–{{ b.end }}<strong>{{ b.project }}</strong>{{ b.activity }}</div>{% endfor %}
+        {% for b in cell.blocks %}<button type="button" class="cn-cal-block {{ 'cn-color-' ~ colors.get(b.rule, 'slate') if b.rule }} is-{{ b.state }}" data-block='{{ b | tojson }}' {% if b.state == "draft" %}data-rule="{{ b.rule }}" data-minutes="{{ b.minutes }}"{% endif %}>
+          <span>{% if b.state == "kimai" %}<i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">In Kimai</span>{% elif b.state == "update" %}<i class="fa-solid fa-rotate" aria-hidden="true"></i><span class="visually-hidden">To update in Kimai</span>{% endif %} {{ b.begin }}–{{ b.end }}</span>
+          <strong>{{ b.project }}</strong><span>{{ b.activity }}</span><span class="cn-cal-text">{{ b.description }}</span>
+          {% if b.tags %}<span>{% for tag in b.tags %}<span class="cn-badge">{{ tag }}</span> {% endfor %}</span>{% endif %}</button>{% endfor %}
         {% for p in cell.problems %}<div class="cn-cal-problem"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ p }}</div>{% endfor %}
       {% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
   </table></div>
@@ -62,10 +64,10 @@
     <thead><tr><th scope="col">Date</th><th scope="col">Begin</th><th scope="col">End</th><th scope="col">Duration</th><th scope="col">Customer</th><th scope="col">Project</th><th scope="col">Activity</th><th scope="col">Description</th><th scope="col">Tags</th></tr></thead>
     <tbody>{% for week in weeks %}{% for cell in week if cell and (cell.blocks or cell.problems) %}
       <tr class="cn-times-day"><th scope="rowgroup" colspan="3"><a href="{{ url_for('recap.day', raw=cell.day) }}">{{ cell.day }}</a></th><th>{{ clock(cell.minutes) }}</th><td colspan="5">{% for p in cell.problems %}<span class="cn-cal-problem"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ p }}</span> {% endfor %}</td></tr>
-      {% for b in cell.blocks %}<tr class="{{ 'cn-times-kimai' if not b.rule }}">
-        <td>{% if not b.rule %}<span class="cn-badge">in Kimai</span>{% elif b.trial %}<span class="cn-badge">try</span>{% else %}<span class="cn-badge">draft</span>{% endif %}</td>
+      {% for b in cell.blocks %}<tr class="{{ 'cn-times-kimai' if b.state == 'kimai' }}">
+        <td><button type="button" class="btn btn-sm btn-outline-secondary" data-block='{{ b | tojson }}'>{{ {"kimai": "View", "update": "View"}.get(b.state, "Edit") }}</button> <span class="cn-badge">{{ {"kimai": "in Kimai", "update": "to update", "trial": "try", "draft": "draft"}[b.state] }}</span></td>
         <td>{{ b.begin }}</td><td>{{ b.end }}</td><td>{{ clock(b.minutes) }}</td><td>{{ b.customer }}</td>
-        <td><span class="cn-times-dot cn-color-{{ colors.get(b.rule, 'slate') }}"></span> {{ b.project }}</td><td>{{ b.activity }}</td><td class="cn-times-text">{{ b.description }}</td><td>{% for t in b.tags %}<span class="cn-badge">{{ t }}</span> {% endfor %}</td></tr>{% endfor %}
+        <td><span class="cn-times-dot cn-color-{{ colors.get(b.rule, 'slate') }}"></span> {{ b.project }}</td><td>{{ b.activity }}</td><td class="cn-times-text">{{ b.description }}</td><td>{% for tag in b.tags %}<span class="cn-badge">{{ tag }}</span> {% endfor %}</td></tr>{% endfor %}
     {% endfor %}{% endfor %}</tbody>
   </table></div>
   {% endif %}
@@ -75,19 +77,37 @@
 
 <section class="cn-panel" aria-labelledby="send-title">
   <header class="cn-home-head"><h2 id="send-title">3. Create and send</h2><span class="cn-muted" data-chosen></span></header>
-  {% if trial %}<form class="cn-day-bar" method="post" action="{{ url_for('recap.propose_period') }}" data-slow="Creating…">{{ csrf() }}{{ span() }}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-check" aria-hidden="true"></i><span class="ms-2">Create the drafts ({{ clock(trial) }})</span></button><span class="cn-muted">Drafts stay in Cairn: you can still change them.</span></form>{% endif %}
+  {% if trial or updates or found.days | selectattr("entries") | list %}<form class="cn-day-bar" method="post" action="{{ url_for('recap.propose_period') }}" data-slow="Creating…">{{ csrf() }}{{ span() }}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-check" aria-hidden="true"></i><span class="ms-2">{% if trial %}Create the drafts ({{ clock(trial) }}){% else %}Bring the entries up to date{% endif %}</span></button><span class="cn-muted">What is the same is left as it is, and so is what you changed by hand.</span></form>{% endif %}
   {% if found.rules %}
   <cn-confirm message="Send to Kimai?" detail="The drafts of the ticked rules, from {{ first.strftime('%d %B') }} to {{ last.strftime('%d %B') }}. Once there, they are changed in Kimai." confirm-label="Send">
   <form method="post" action="{{ url_for('recap.send_period') }}">{{ csrf() }}{{ span() }}
     <ul class="cn-rules">{% for r in found.rules %}<li class="cn-rule"><div class="form-check">
-      {% if r.draft %}<input class="form-check-input" type="checkbox" name="rules" value="{{ r.id }}" id="rule-{{ r.id }}" checked>{% endif %}
+      {% if r.draft or r.update %}<input class="form-check-input" type="checkbox" name="rules" value="{{ r.id }}" id="rule-{{ r.id }}" checked>{% endif %}
       <label class="form-check-label" for="rule-{{ r.id }}"><span class="cn-times-dot cn-color-{{ colors[r.id] }}"></span> <strong>{{ r.target }}</strong> {{ r.project }}, {{ r.activity }}</label>
-      <p class="cn-muted">{% if r.trial %}{{ clock(r.trial) }} in the try{% endif %}{% if r.draft %} {{ clock(r.draft) }} to send{% endif %}{% if r.sent %} {{ clock(r.sent) }} in Kimai{% endif %}</p></div></li>{% endfor %}</ul>
-    {% if found.rules | selectattr("draft") | list and kimai_ready %}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span class="ms-2">Send the ticked rules</span></button>{% endif %}
+      <p class="cn-muted">{% if r.trial %}{{ clock(r.trial) }} in the try{% endif %}{% if r.draft %} {{ clock(r.draft) }} to send{% endif %}{% if r.sent %} {{ clock(r.sent) }} in Kimai{% endif %}{% if r.update %}, {{ r.update }} to update{% endif %}</p></div></li>{% endfor %}</ul>
+    {% if (found.rules | selectattr("draft") | list or found.rules | selectattr("update") | list) and kimai_ready %}<button class="btn btn-primary" type="submit"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span class="ms-2">Send the ticked rules</span></button>{% endif %}
   </form></cn-confirm>
   {% if not kimai_ready %}<p class="cn-muted">To send your time, set <code>CAIRN_KIMAI_URL</code> and <code>CAIRN_KIMAI_TOKEN</code> in <code>.env</code> and restart Cairn.</p>{% endif %}
   {% else %}<p class="cn-muted">No work of these projects matches a rule in this period.</p>{% endif %}
 </section>
+
+<dialog class="cn-dialog cn-entry-dialog" data-entry-dialog aria-labelledby="entry-title">
+  <h2 class="cn-dialog-title" id="entry-title">Time entry</h2>
+  <p class="cn-dialog-text" data-entry-note></p>
+  <form method="post" action="{{ url_for('recap.period_entry') }}">{{ csrf() }}{{ span() }}<input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="entry"><input type="hidden" name="trial_day"><input type="hidden" name="rule"><input type="hidden" name="place">
+    <fieldset data-entry-fields>
+      <label for="e-day">From</label><div><input class="form-control" type="date" id="e-day" name="day" max="{{ today.isoformat() }}" required><input class="form-control" type="time" name="begin" aria-label="Begin" required></div>
+      <label for="e-duration">Duration / End</label><div><input class="form-control" id="e-duration" name="duration" pattern="[0-9]{1,2}:[0-5][0-9]" title="hours:minutes" required><input class="form-control" type="time" data-end aria-label="End" required></div>
+      <label for="e-customer">Customer</label><select class="form-select" id="e-customer" data-customer></select>
+      <label for="e-project">Project</label><select class="form-select" id="e-project" data-project required></select>
+      <label for="e-activity">Activity</label><select class="form-select" id="e-activity" data-activity required></select>
+      <label for="e-text">Description</label><textarea class="form-control" id="e-text" name="description" rows="8" maxlength="4000" required></textarea>
+      <label for="e-tags">Tags</label><input class="form-control" id="e-tags" name="tags" placeholder="dev, rules">
+    </fieldset>
+    <div class="cn-dialog-actions"><button class="btn btn-outline-secondary" type="submit" name="action" value="remove" data-remove formnovalidate>Remove</button><button class="btn btn-outline-secondary" type="button" data-close>Close</button><button class="btn btn-primary" type="submit" data-save>Save</button></div>
+  </form>
+</dialog>
+<script type="application/json" id="kimai-places">{{ places | tojson }}</script>
 
 <details class="cn-panel"><summary>Summary of the work, with its commits</summary>
   <button class="btn btn-sm btn-outline-secondary" type="button" data-copy="period-summary"><i class="fa-regular fa-copy" aria-hidden="true"></i><span class="ms-2">Copy</span></button>

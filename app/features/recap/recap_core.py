@@ -339,6 +339,10 @@ def proposal(facts: dict[str, Any], taken: list[dict[str, Any]]) -> list[EntryIn
     planned, _ = plan(visible(facts), targets())
     if not planned:
         raise RecapError("No rule takes the work of this day yet.")
+    held = {(row["project"], row["activity"]) for row in taken}
+    planned = [p for p in planned if (p[0].kimai_project, p[0].kimai_activity) not in held]
+    if not planned:  # entered there by hand, or by another Cairn: never a second time (D-105)
+        raise RecapError("Kimai already holds this work.")
     total = get_setting("recap.day_minutes") - sum(row["minutes"] for row in taken)
     if total < STEP:
         raise RecapError("Kimai already holds a full day.")
@@ -359,8 +363,53 @@ def proposal(facts: dict[str, Any], taken: list[dict[str, Any]]) -> list[EntryIn
     return made
 
 
-def _make(day: date, data: EntryInput) -> DayEntry:
-    entry = DayEntry(day=day, **data.model_dump())
+def refreshes(day: date, facts: dict[str, Any]) -> tuple[dict[uuid.UUID, str], bool, list[str]]:
+    """What reading a day again changes in its entries (D-105): the new description of each, whether its
+    drafts are to be made again (other rules, nothing sent nor done by hand), and the rules with work
+    that has no entry. What is the same, or was done by hand, is left as it is."""
+    planned, _ = plan(visible(facts), targets())
+    wanted = {target.id: text for target, _, text in planned}
+    now = entries(day)
+    if not wanted or not now or not facts.get("github", True):  # read in part: nothing is taken away
+        return {}, False, []
+    missing = [target.label for target, _, _ in planned if target.id not in {e.target_id for e in now}]
+    if all(e.sent_at is None and not e.edited for e in now) and {e.target_id for e in now} != set(wanted):
+        return {}, True, []
+    texts = {
+        e.id: wanted[e.target_id]
+        for e in now
+        if not e.edited
+        and (e.sent_at is None or e.sent_as)
+        and wanted.get(e.target_id, e.description) != e.description
+    }
+    return texts, False, missing
+
+
+def refresh(day: date) -> bool:
+    """Bring the entries of a day up to its facts; whether anything changed."""
+    found = get_day(day)
+    if found is None or found.read_at is None or day_off(day):
+        return False
+    texts, again, _ = refreshes(day, found.facts)
+    with batch():
+        if again:
+            wanted = proposal(found.facts, kimai.entries(day) if kimai.configured() else [])
+            for entry in entries(day):
+                delete_entry(entry.id)
+            for data in wanted:
+                _make(day, data)
+        for entry_id, text in texts.items():
+            entry = get_entry(entry_id)
+            before = {name: pair[1] for name, pair in _diff({}, entry).items()}
+            entry.description = text
+            log_action(
+                "day_entry.refresh", target_type="day_entry", target_id=entry.id, diff=_diff(before, entry)
+            )
+    return again or bool(texts)
+
+
+def _make(day: date, data: EntryInput, *, edited: bool = False) -> DayEntry:
+    entry = DayEntry(day=day, edited=edited, **data.model_dump())
     db.session.add(entry)
     db.session.flush()
     log_action("day_entry.create", target_type="day_entry", target_id=entry.id, diff=_diff({}, entry))
@@ -373,6 +422,9 @@ def _diff(before: dict[str, Any], entry: DayEntry) -> dict[str, Any]:
         "minutes": entry.minutes,
         "target_id": str(entry.target_id),
         "description": entry.description,
+        "day": entry.day.isoformat(),
+        "place": entry.place,
+        "tags": entry.tags,
     }
     return {name: [before.get(name), value] for name, value in now.items() if before.get(name) != value}
 
@@ -382,7 +434,7 @@ def add_entry(day: date, data: EntryInput) -> DayEntry:
     get_target(data.target_id)
     _fits(data.begin, data.minutes)
     with batch():
-        return _make(day, data)
+        return _make(day, data, edited=True)
 
 
 def update_entry(entry_id: uuid.UUID, data: EntryUpdate) -> DayEntry:
@@ -392,11 +444,23 @@ def update_entry(entry_id: uuid.UUID, data: EntryUpdate) -> DayEntry:
     if data.target_id is not None:
         get_target(data.target_id)
     values = data.model_dump(exclude_none=True)
+    if "day" in values:
+        _checked(values["day"])
+    if values.get("target_id", entry.target_id) != entry.target_id:
+        values |= {"place": None, "tags": values.get("tags")}  # the new rule's
+    if data.kimai_project and data.kimai_activity:
+        ids = values.pop("kimai_project"), values.pop("kimai_activity")
+        project, activity = kimai.labels(*ids)
+        values["place"] = {
+            "kimai_project": ids[0], "project": project[:160],
+            "kimai_activity": ids[1], "activity": activity[:160],
+        }  # fmt: skip
     _fits(values.get("begin", entry.begin), values.get("minutes", entry.minutes))
     before = {name: pair[1] for name, pair in _diff({}, entry).items()}
     with batch():
         for name, value in values.items():
             setattr(entry, name, value)
+        entry.edited = True
         log_action("day_entry.update", target_type="day_entry", target_id=entry.id, diff=_diff(before, entry))
     return entry
 
@@ -439,30 +503,92 @@ def send(day: date, entry_ids: list[uuid.UUID]) -> list[DayEntry]:
         chosen = [get_entry(entry_id) for entry_id in dict.fromkeys(entry_ids)]
         if any(entry.day != day for entry in chosen):
             raise RecapError("An entry is not of this day.")
-        chosen = sorted((e for e in chosen if e.sent_at is None), key=lambda e: e.begin)
+        chosen = sorted((e for e in chosen if waiting(e)), key=lambda e: e.begin)
         if not chosen:
             raise RecapError("These entries are in Kimai already.")
         if any(not entry.description.strip() for entry in chosen):
             raise RecapError("Write a description for each entry.")
         there = kimai.entries(day)
-        free = [entry for entry in chosen if _same(entry, there) is None]
-        _no_overlap(free, there)
-        for entry in chosen:
+        fresh = [entry for entry in chosen if entry.sent_at is None]
+        changed = [entry for entry in chosen if entry.sent_at is not None]
+        _no_overlap([entry for entry in fresh if _same(entry, there) is None], there)
+        for entry in changed:
+            _unchanged_there(entry, there)
+        for entry in fresh:
             _send_one(entry, _same(entry, there))
+        for entry in changed:
+            _update_one(entry)
     finally:
         _sending.release()
     return chosen
 
 
+def placed(entry: DayEntry) -> dict[str, Any]:
+    """Where an entry goes: its own project and activity, else its rule's; its tags the same way."""
+    target = db.session.get(WorkTarget, entry.target_id)
+    place = entry.place or {
+        "kimai_project": target.kimai_project,
+        "project": target.project_label,
+        "kimai_activity": target.kimai_activity,
+        "activity": target.activity_label,
+    }
+    return {**place, "tags": target.tags if entry.tags is None else entry.tags}
+
+
+def _payload(entry: DayEntry) -> dict[str, Any]:
+    where = placed(entry)
+    return {
+        "begin": _begin(entry).isoformat(),
+        "minutes": entry.minutes,
+        "project": where["kimai_project"],
+        "activity": where["kimai_activity"],
+        "description": entry.description,
+    }
+
+
+def waiting(entry: DayEntry) -> bool:
+    """Not in Kimai yet, or there with words that changed here since (D-105)."""
+    return entry.sent_at is None or bool(entry.sent_as and entry.sent_as["description"] != entry.description)
+
+
+def _words(text: str) -> str:
+    return "\n".join(line.rstrip() for line in text.strip().splitlines())
+
+
+def _unchanged_there(entry: DayEntry, there: list[dict[str, Any]]) -> None:
+    """Refuse to write over an entry changed, or removed, in Kimai since it was sent."""
+    was = entry.sent_as or {}
+    row = next((r for r in there if r["id"] == entry.kimai_id), None)
+    if row is None:
+        raise RecapError(f"Nothing was sent: the {entry.begin} entry is no longer in Kimai.")
+    same = (row["begin"].isoformat(), row["minutes"], row["project"], row["activity"]) == (
+        was["begin"], was["minutes"], was["project"], was["activity"],
+    )  # fmt: skip
+    if not same or _words(row["description"]) != _words(was["description"]):
+        raise RecapError(f"Nothing was sent: the {entry.begin} entry was changed in Kimai, it is left as is.")
+
+
+def _update_one(entry: DayEntry) -> None:
+    kimai.update(entry.kimai_id, entry.description, placed(entry)["tags"])
+    with batch():
+        entry.sent_as, entry.sent_at = _payload(entry), utcnow()
+        log_action(
+            "day_entry.resend",
+            target_type="day_entry",
+            target_id=entry.id,
+            meta={"kimai_id": entry.kimai_id},
+        )
+
+
 def _same(entry: DayEntry, there: list[dict[str, Any]]) -> int | None:
     """This very entry, sent before and whose answer was lost."""
-    target, begin = get_target(entry.target_id), _begin(entry)
+    where, begin = placed(entry), _begin(entry)
     for row in there:
         if (row["begin"], row["minutes"], row["project"], row["activity"]) == (
             begin,
             entry.minutes,
-            target.kimai_project,
-            target.kimai_activity,
+            where["kimai_project"],
+            where["kimai_activity"],
         ):
             return row["id"]
     return None
@@ -484,17 +610,18 @@ def _no_overlap(chosen: list[DayEntry], there: list[dict[str, Any]]) -> None:
 
 
 def _send_one(entry: DayEntry, known: int | None) -> None:
-    target = get_target(entry.target_id)
+    get_target(entry.target_id)
+    where = placed(entry)
     kimai_id = known or kimai.create(
         _begin(entry),
         entry.minutes,
-        target.kimai_project,
-        target.kimai_activity,
+        where["kimai_project"],
+        where["kimai_activity"],
         entry.description,
-        target.tags,
+        where["tags"],
     )
     with batch():  # one by one: what reached Kimai is recorded even if the next one fails
-        entry.kimai_id, entry.sent_at = kimai_id, utcnow()
+        entry.kimai_id, entry.sent_at, entry.sent_as = kimai_id, utcnow(), _payload(entry)
         log_action(
             "day_entry.send",
             target_type="day_entry",
@@ -515,10 +642,11 @@ def describe_entry(entry: DayEntry) -> dict[str, Any]:
         "minutes": entry.minutes,
         "target_id": str(entry.target_id),
         "target": target.label,
-        "project": target.project_label,
-        "activity": target.activity_label,
+        **placed(entry),
         "description": entry.description,
+        "edited": entry.edited,
         "sent": entry.sent_at is not None,
+        "update": entry.sent_at is not None and waiting(entry),
         "kimai_id": entry.kimai_id,
     }
 

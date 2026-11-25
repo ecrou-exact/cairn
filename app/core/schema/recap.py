@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Annotated
 
 from pydantic import Field, field_validator, model_validator
@@ -62,9 +63,21 @@ class EntryInput(Strict):
 
 class EntryUpdate(Strict):
     target_id: uuid.UUID | None = None
+    day: date | None = None
+    kimai_project: Annotated[int, Field(ge=1)] | None = None
+    kimai_activity: Annotated[int, Field(ge=1)] | None = None
+    tags: Annotated[list[Word], Field(max_length=10)] | None = None
     begin: Clock | None = None
     minutes: Minutes | None = None
     description: Description | None = None
+
+    @model_validator(mode="after")
+    def _pair(self) -> EntryUpdate:
+        if (self.kimai_project is None) != (self.kimai_activity is None):
+            raise ValueError("Choose a project and its activity.")
+        if any("," in tag for tag in self.tags or []):
+            raise ValueError("a tag has no comma")
+        return self
 
 
 class SummaryInput(Strict):

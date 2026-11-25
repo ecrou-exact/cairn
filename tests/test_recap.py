@@ -361,7 +361,7 @@ def test_only_the_chosen_projects_are_seen_and_a_try_creates_nothing(app, signed
     assert signed_in.post(f"{url}/try", json={"projects": ["cairn"]}).status_code == 409
     (week,) = signed_in.post(f"{url}/try", json={"projects": ["tool"]}).json["weeks"]
     (block,) = week[4]["blocks"]
-    assert block["trial"] and block["minutes"] == 480 and block["tags"] == ["dev"]
+    assert block["state"] == "trial" and block["minutes"] == 480 and block["tags"] == ["dev"]
     assert (block["customer"], block["project"], block["activity"]) == ("EU", "ALPHA", "T1")
     found = signed_in.get(url).json
     assert found["days"][0]["entries"] == [] and tracking == []
@@ -373,7 +373,7 @@ def test_only_the_chosen_projects_are_seen_and_a_try_creates_nothing(app, signed
         assert b"ALPHA" in page and b"Create the drafts (8:00)" in page and b"data-rule" not in page
     signed_in.post(f"{url}/propose")
     (week,) = signed_in.get(f"{url}/preview").json["weeks"]
-    assert [b["trial"] for b in week[4]["blocks"]] == [False]  # the same, now a draft
+    assert [b["state"] for b in week[4]["blocks"]] == ["draft"]  # the same, now a draft
 
 
 def test_period_page_and_api(app, signed_in, tracking, monkeypatch):
@@ -486,3 +486,110 @@ def test_the_preview_shows_kimai_and_what_is_wrong(app, signed_in, tracking, mon
     assert week[4]["problems"] == ["entries overlap", "more than a day"]
     page = signed_in.get(f"/day/period?from={first}&to={last}").data
     assert b"entries overlap" in page and b"data-rule" in page and len(tracking) == 1
+
+
+def _read(monkeypatch, *commits, github=True):
+    monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {DAY: {**_facts(*commits), "github": github}})
+    period_core.read_period(DAY, DAY)
+
+
+def test_the_same_period_again_adds_nothing_and_updates_what_changed(ctx, tracking, monkeypatch):
+    rule = _rule(tags=["dev"])
+    changed = []
+
+    def update(kimai_id, description, tags):
+        changed.append(kimai_id)
+        next(h for h in tracking if h["id"] == kimai_id).update(description=description, tags=tags)
+
+    monkeypatch.setattr(kimai, "update", update)
+    _read(monkeypatch, _commit("one", 9))
+    assert period_core.propose_period(DAY, DAY)["made"] == [DAY.isoformat()]
+    period_core.send_period(DAY, DAY, [rule.id])
+    for _ in range(3):  # the same again: nothing
+        _read(monkeypatch, _commit("one", 9))
+        assert period_core.propose_period(DAY, DAY) == {"made": [], "updated": [], "left": []}
+        with pytest.raises(recap_core.RecapError, match="No draft"):
+            period_core.send_period(DAY, DAY, [rule.id])
+    assert len(tracking) == 1 and changed == []
+    _read(monkeypatch, _commit("one", 9), github=False)  # read in part: nothing is taken away
+    assert period_core.propose_period(DAY, DAY)["updated"] == []
+    _read(monkeypatch, _commit("one", 9), _commit("two", 10))
+    found = period_core.describe_period(DAY, DAY)
+    ((cell,),) = [[c for c in week if c] for week in period_core.preview(found)]
+    (block,) = cell["blocks"]
+    assert block["state"] == "update" and "two" in block["description"]
+    assert period_core.propose_period(DAY, DAY)["updated"] == [DAY.isoformat()]
+    assert period_core.send_period(DAY, DAY, [rule.id]) == 1
+    assert len(tracking) == 1 and changed == [tracking[0]["id"]] and "two" in tracking[0]["description"]
+    tracking[0]["description"] = "by hand"  # changed in Kimai: never written over
+    _read(monkeypatch, _commit("three", 9))
+    period_core.propose_period(DAY, DAY)
+    with pytest.raises(recap_core.RecapError, match="changed in Kimai"):
+        period_core.send_period(DAY, DAY, [rule.id])
+    tracking.clear()  # removed in Kimai: not made again
+    with pytest.raises(recap_core.RecapError, match="no longer in Kimai"):
+        period_core.send_period(DAY, DAY, [rule.id])
+    assert tracking == []
+
+
+def test_what_is_in_kimai_by_hand_is_not_added_again(ctx, tracking, monkeypatch):
+    _rule()
+    kimai.create(datetime(2026, 11, 20, 8), 60, 7, 70, "typed there", [])
+    _read(monkeypatch, _commit("one", 9))
+    assert "already holds this work" in period_core.propose_period(DAY, DAY)["left"][0]
+
+
+def test_drafts_follow_the_work_unless_changed_by_hand(ctx, tracking, monkeypatch):
+    _rule()
+    other = _rule("Other", 71, repos=["other"])
+    _read(monkeypatch, _commit("one", 9))
+    period_core.propose_period(DAY, DAY)
+    _read(monkeypatch, _commit("two", 9))
+    assert period_core.propose_period(DAY, DAY)["updated"] and "two" in recap_core.entries(DAY)[0].description
+    facts = _facts(_commit("two", 9))
+    facts["repos"] += _facts(_commit("x", 10), name="other")["repos"]
+    monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {DAY: facts})
+    period_core.read_period(DAY, DAY)
+    period_core.propose_period(DAY, DAY)
+    assert [e.minutes for e in recap_core.entries(DAY)] == [240, 240]
+    mine = next(e for e in recap_core.entries(DAY) if e.target_id == other.id)
+    recap_core.update_entry(mine.id, EntryUpdate(description="mine"))
+    _read(monkeypatch, _commit("four", 9))
+    period_core.propose_period(DAY, DAY)
+    assert {e.description for e in recap_core.entries(DAY) if e.edited} == {"mine"}
+    assert len(recap_core.entries(DAY)) == 2
+
+
+def test_an_entry_is_changed_in_its_window(app, signed_in, tracking, monkeypatch):
+    with app.app_context():
+        rule_id = _rule(tags=["dev"]).id
+    monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {DAY: _facts(_commit("x", 9))})
+    signed_in.post(f"/api/period/{DAY}/{DAY}/read")
+    form = {
+        "from": DAY.isoformat(), "to": DAY.isoformat(), "view": "list", "entry": "", "rule": str(rule_id),
+        "trial_day": DAY.isoformat(), "day": (DAY - timedelta(days=1)).isoformat(), "begin": "10:00",
+        "duration": "2:30", "place": "7:71", "description": "by hand", "tags": "a, b",
+    }  # fmt: skip
+    bad = signed_in.post("/day/period/entry", data={**form, "place": "7:999"}, follow_redirects=True).data
+    assert b"no such activity" in bad
+    with app.app_context():
+        assert recap_core.entries(DAY) == []  # all or nothing
+    page = signed_in.post("/day/period/entry", data=form, follow_redirects=True)
+    assert b"Entry saved" in page.data and b"view=list" in page.request.query_string
+    with app.app_context():
+        (entry,) = recap_core.entries(DAY - timedelta(days=1))
+        found = recap_core.describe_entry(entry)
+    assert (found["activity"], found["tags"], found["minutes"]) == ("T2", ["a", "b"], 150)
+    form |= {"entry": found["id"], "description": "again"}
+    signed_in.post("/day/period/entry", data=form)
+    with app.app_context():
+        recap_core.send(DAY - timedelta(days=1), [entry.id])
+    (held,) = tracking
+    assert (held["activity"], held["tags"], held["description"]) == (71, ["a", "b"], "again")
+    assert signed_in.post("/day/period/entry", data={**form, "entry": "x"}).status_code == 404
+
+
+def test_an_update_kimai_refuses_is_said(monkeypatch):
+    monkeypatch.setattr(kimai, "_call", lambda *a, **k: {"code": 400, "errors": {}})
+    with pytest.raises(kimai.KimaiError, match="did not take"):
+        kimai.update(5, "x", [])

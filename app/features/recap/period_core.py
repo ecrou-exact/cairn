@@ -14,8 +14,11 @@ from typing import Any
 from sqlalchemy import select
 
 from app.core.db_class.planning import Project
+from app.core.db_class.recap import DayEntry, WorkTarget
 from app.core.extensions import db
+from app.core.schema.recap import EntryUpdate
 from app.core.utils.actor import current_actor
+from app.core.utils.history import batch
 from app.core.utils.settings import get_setting, set_setting
 from app.features.projects import place_core
 from app.features.recap import facts_core, kimai, recap_core
@@ -77,20 +80,34 @@ def try_period(first: date, last: date, slugs: list[str]) -> int:
 
 
 def propose_period(first: date, last: date) -> dict[str, list[str]]:
-    """Drafts for each working day with work and no entry yet; why the other days were left."""
+    """Drafts for each working day with work and no entry yet; a day that has entries is brought up to
+    its facts (D-105). Why the other days were left."""
     made: list[str] = []
+    updated: list[str] = []
     left: list[str] = []
     for day in days(first, last):
         found = recap_core.get_day(day)
-        if recap_core.day_off(day) or found is None or recap_core.entries(day):
+        if recap_core.day_off(day) or found is None:
             continue
+        there = bool(recap_core.entries(day))
         try:
-            recap_core.propose(day)
+            changed = recap_core.refresh(day) if there else recap_core.propose(day)
         except (RecapError, kimai.KimaiError) as exc:
             left.append(f"{day:%a %d %b}: {exc}")
         else:
-            made.append(day.isoformat())
-    return {"made": made, "left": left}
+            if changed:
+                (updated if there else made).append(day.isoformat())
+    return {"made": made, "updated": updated, "left": left}
+
+
+def edit_trial(day: date, target_id: uuid.UUID, data: EntryUpdate) -> DayEntry:
+    """Change an entry of the try: the day's drafts are made, then this one takes the owner's words."""
+    with batch():
+        made = recap_core.propose(day)
+        entry = next((e for e in made if e.target_id == target_id), None)
+        if entry is None:
+            raise RecapError("The try has changed: look at it again.")
+        return recap_core.update_entry(entry.id, data)
 
 
 def send_period(first: date, last: date, rule_ids: list[uuid.UUID]) -> int:
@@ -101,7 +118,7 @@ def send_period(first: date, last: date, rule_ids: list[uuid.UUID]) -> int:
     chosen = set(rule_ids)
     sent = 0
     for day in days(first, last):
-        drafts = [e.id for e in recap_core.entries(day) if e.sent_at is None and e.target_id in chosen]
+        drafts = [e.id for e in recap_core.entries(day) if recap_core.waiting(e) and e.target_id in chosen]
         if not drafts:
             continue
         try:
@@ -144,6 +161,13 @@ def write_summary(first: date, last: date, rows: list[dict[str, Any]]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _rule_row(target_id: str) -> dict[str, Any]:
+    """A rule with the minutes of its entries, and how many entries in Kimai are to be updated."""
+    target = db.session.get(WorkTarget, uuid.UUID(target_id))
+    names = {"target": target.label, "project": target.project_label, "activity": target.activity_label}
+    return {"id": target_id, **names, "draft": 0, "sent": 0, "trial": 0, "update": 0}
+
+
 def describe_period(first: date, last: date) -> dict[str, Any]:
     rows, rules = [], {}
     for day in days(first, last):
@@ -154,10 +178,8 @@ def describe_period(first: date, last: date) -> dict[str, Any]:
         if facts and off:  # a day off is not looked at (D-104)
             facts = {**facts, "repos": []}
         for entry in listed:
-            names = {k: entry[k] for k in ("target", "project", "activity")}
-            rule = rules.setdefault(
-                entry["target_id"], {"id": entry["target_id"], **names, "draft": 0, "sent": 0, "trial": 0}
-            )
+            rule = rules.setdefault(entry["target_id"], _rule_row(entry["target_id"]))
+            rule["update"] += entry["update"]
             rule["sent" if entry["sent"] else "draft"] += entry["minutes"]
         rows.append(
             {
@@ -188,7 +210,6 @@ def preview(found: dict[str, Any]) -> list[list[dict[str, Any] | None]]:
     span = days(date.fromisoformat(found["first"]), date.fromisoformat(found["last"]))
     there: list[dict[str, Any]] = []
     customers: dict[int, str] = {}
-    rules = {str(t.id): t for t in recap_core.targets()}
     totals = {rule["id"]: rule for rule in found["rules"]}
     if kimai.configured():
         customers = {p["id"]: p["customer"] for p in kimai.catalog()}
@@ -198,52 +219,46 @@ def preview(found: dict[str, Any]) -> list[list[dict[str, Any] | None]]:
     cells = []
     for row in found["days"]:
         day = date.fromisoformat(row["day"])
-        mine = [e for e in row["entries"] if not e["sent"]]
-        trial, refused = _trial(row, [k for k in there if k["begin"].date() == day])
+        held = [k for k in there if k["begin"].date() == day]
+        mine, trial, texts, said = _trial(row, held)
         for entry in trial:
-            target = rules[entry["target_id"]]
-            names = {"project": target.project_label, "activity": target.activity_label}
-            new = {
-                "id": entry["target_id"],
-                "target": target.label,
-                **names,
-                "draft": 0,
-                "sent": 0,
-                "trial": 0,
+            rule = totals.setdefault(entry["target_id"], _rule_row(entry["target_id"]))
+            rule["trial"] += entry["minutes"]
+        for entry_id in texts:
+            entry = next(e for e in row["entries"] if e["id"] == entry_id)
+            if entry["sent"] and not entry["update"]:
+                totals[entry["target_id"]]["update"] += 1
+        sent = {e["kimai_id"]: e for e in row["entries"] if e["sent"]}
+        blocks = []
+        for k in held:
+            own = sent.get(k["id"])
+            new = texts.get(own["id"]) or (own["description"] if own["update"] else None) if own else None
+            more = {
+                "customer": customers.get(k["project"], ""),
+                "project": k["project_name"],
+                "project_id": k["project"],
+                "activity": k["activity_name"],
+                "activity_id": k["activity"],
+                "description": new or k["description"],
+                "tags": k.get("tags", []),
+                "state": "update" if new else "kimai",
             }
-            totals.setdefault(entry["target_id"], new)["trial"] += entry["minutes"]
-        blocks = [
-            _block(
-                k["begin"],
-                k["end"],
-                f"{k['project_name']}, {k['activity_name']}",
-                {
-                    "customer": customers.get(k["project"], ""),
-                    "project": k["project_name"],
-                    "activity": k["activity_name"],
-                    "description": k["description"],
-                    "tags": k.get("tags", []),
-                },
-            )
-            for k in there
-            if k["begin"].date() == day
-        ]
+            blocks.append(_block(row["day"], k["begin"], k["end"], more))
         for entry in mine + trial:
-            target = rules.get(entry["target_id"])
             begin = datetime.fromisoformat(f"{row['day']}T{entry['begin']}")
-            end = begin + timedelta(minutes=entry["minutes"])
-            blocks.append(
-                {
-                    **_block(begin, end, target.label if target else entry["target"]),
-                    "customer": customers.get(target.kimai_project, "") if target else "",
-                    "project": target.project_label if target else entry["project"],
-                    "activity": target.activity_label if target else entry["activity"],
-                    "tags": target.tags if target else [],
-                    "rule": entry["target_id"],
-                    "trial": "id" not in entry,
-                    "description": entry["description"],
-                }
-            )
+            more = {
+                "id": entry.get("id", ""),
+                "customer": customers.get(entry["kimai_project"], ""),
+                "project": entry["project"],
+                "project_id": entry["kimai_project"],
+                "activity": entry["activity"],
+                "activity_id": entry["kimai_activity"],
+                "tags": entry["tags"],
+                "rule": entry["target_id"],
+                "state": "draft" if "id" in entry else "trial",
+                "description": texts.get(entry.get("id"), entry["description"]),
+            }
+            blocks.append(_block(row["day"], begin, begin + timedelta(minutes=entry["minutes"]), more))
         blocks.sort(key=lambda b: b["begin"])
         cells.append(
             {
@@ -251,7 +266,7 @@ def preview(found: dict[str, Any]) -> list[list[dict[str, Any] | None]]:
                 "off": row["off"],
                 "blocks": blocks,
                 "minutes": sum(b["minutes"] for b in blocks),
-                "problems": refused + _problems(row, mine + trial, blocks),
+                "problems": said + _problems(row, mine + trial, blocks),
             }
         )
     found["rules"] = sorted(totals.values(), key=lambda r: r["target"])
@@ -260,34 +275,39 @@ def preview(found: dict[str, Any]) -> list[list[dict[str, Any] | None]]:
     return [padded[n : n + 7] for n in range(0, len(padded), 7)]
 
 
-def _trial(row: dict[str, Any], taken: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
-    """What would be proposed for a read working day with no entry yet, and why not when it cannot."""
-    if not row["read"] or row["off"] or row["entries"] or not row["facts"]["repos"]:
-        return [], []
+def _trial(
+    row: dict[str, Any], taken: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, str], list[str]]:
+    """For a day: its drafts kept, what would be proposed, the new words of entries, what to say."""
+    mine = [e for e in row["entries"] if not e["sent"]]
+    if not row["read"] or row["off"] or not row["facts"]["repos"]:
+        return mine, [], {}, []
+    texts, again, missing = recap_core.refreshes(date.fromisoformat(row["day"]), row["facts"])
+    said = [f"no entry for {name}" for name in missing]
+    if row["entries"] and not again:
+        return mine, [], {str(entry_id): text for entry_id, text in texts.items()}, said
     try:
         wanted = recap_core.proposal(row["facts"], taken)
     except RecapError as exc:
-        return [], [str(exc).rstrip(".").lower()]
-    return [{**e.model_dump(), "target_id": str(e.target_id)} for e in wanted], []
+        return mine, [], {}, [str(exc).rstrip(".").lower()]
+    trial = []
+    for data in wanted:
+        entry = DayEntry(**data.model_dump())
+        trial.append({**data.model_dump(), "target_id": str(data.target_id), **recap_core.placed(entry)})
+    return [], trial, {}, []
 
 
-def _block(
-    begin: datetime, end: datetime | None, name: str, more: dict[str, Any] | None = None
-) -> dict[str, Any]:
-    """One entry of the preview; `rule` is empty for what Kimai holds, `trial` is only an attempt."""
+def _block(day: str, begin: datetime, end: datetime | None, more: dict[str, Any]) -> dict[str, Any]:
+    """One entry of the preview. `state`: what Kimai holds ("kimai"), holds with words to update
+    ("update"), a draft of Cairn ("draft"), an attempt ("trial"). `rule` is empty for the first two."""
     return {
+        "id": "",
+        "day": day,
         "begin": f"{begin:%H:%M}",
         "end": f"{end:%H:%M}" if end else "",
         "minutes": round((end - begin).total_seconds() / 60) if end else 0,
-        "name": name,
         "rule": "",
-        "trial": False,
-        "customer": "",
-        "project": "",
-        "activity": "",
-        "tags": [],
-        "description": "",
-        **(more or {}),
+        **more,
     }
 
 

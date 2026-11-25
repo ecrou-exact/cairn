@@ -2,7 +2,8 @@
 
 The address and the token come from `.env` only (`CAIRN_KIMAI_URL`, `CAIRN_KIMAI_TOKEN`): never in
 the database, a page, a log or a program Cairn starts. Cairn reads what it needs and can create a
-time entry; it has no call that changes or deletes anything in Kimai.
+time entry. It can change the description and the tags of an entry (`update`, D-105: only ones it
+created, see `recap_core`); it has no call that deletes anything in Kimai.
 """
 
 from __future__ import annotations
@@ -45,7 +46,7 @@ def configured() -> bool:
     return bool(_token()) and urllib.parse.urlsplit(address()).scheme == "https"
 
 
-def _call(path: str, data: dict[str, Any] | None = None) -> Any:
+def _call(path: str, data: dict[str, Any] | None = None, method: str = "POST") -> Any:
     if not configured():
         raise KimaiError("Set CAIRN_KIMAI_URL (https) and CAIRN_KIMAI_TOKEN in .env, then restart Cairn.")
     request = urllib.request.Request(  # noqa: S310 (https only, see `configured`)
@@ -57,7 +58,7 @@ def _call(path: str, data: dict[str, Any] | None = None) -> Any:
             "Content-Type": "application/json",
             "User-Agent": "cairn",
         },
-        method="GET" if data is None else "POST",
+        method="GET" if data is None else method,
     )
     try:
         with urllib.request.build_opener(_NoRedirect).open(request, timeout=TIMEOUT) as answer:
@@ -171,3 +172,11 @@ def create(
         return int(answer["id"])
     except (KeyError, TypeError, ValueError):
         raise KimaiError("Kimai answered without an entry. Check it before you send again.") from None
+
+
+def update(kimai_id: int, description: str, tags: list[str]) -> None:
+    """Change the words of an entry. Kimai answers 200 with the form's errors when it refuses."""
+    data = {"description": description, "tags": ",".join(tags)}
+    answer = _call(f"timesheets/{kimai_id}", data, method="PATCH")
+    if not isinstance(answer, dict) or answer.get("id") != kimai_id:
+        raise KimaiError("Kimai did not take the change. Check the entry there.")

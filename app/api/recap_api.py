@@ -119,6 +119,13 @@ def update_entry(entry_id: uuid.UUID):
     )
 
 
+@recap_api.patch("/day/<raw>/trial/<uuid:target_id>")
+def edit_trial(raw: str, target_id: uuid.UUID):
+    """Change an entry of the try: the drafts of the day are made, this one with these words."""
+    made = _guard(period_core.edit_trial, _day(raw), target_id, body(EntryUpdate))
+    return jsonify(entry=recap_core.describe_entry(made)), 201
+
+
 @recap_api.delete("/day-entries/<uuid:entry_id>")
 def delete_entry(entry_id: uuid.UUID):
     _guard(recap_core.delete_entry, entry_id)

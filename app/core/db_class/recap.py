@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Date, ForeignKey, Integer, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import JSON, Boolean, Date, ForeignKey, Integer, String, Text, UniqueConstraint, Uuid, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db_class.base import BaseEntity, UTCDateTime
@@ -54,4 +54,10 @@ class DayEntry(BaseEntity):
     target_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("work_target.id"), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     kimai_id: Mapped[int | None] = mapped_column(Integer)
+    # made or changed by hand: never refreshed from the facts (D-105)
+    edited: Mapped[bool] = mapped_column(Boolean, default=False, server_default=true(), nullable=False)
+    # its own project and activity, and tags, when not its rule's
+    place: Mapped[dict[str, Any] | None] = mapped_column(JSON(none_as_null=True))
+    tags: Mapped[list[str] | None] = mapped_column(JSON(none_as_null=True))
+    sent_as: Mapped[dict[str, Any] | None] = mapped_column(JSON(none_as_null=True))  # what Kimai was given
     sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime)

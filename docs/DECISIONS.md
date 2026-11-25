@@ -577,3 +577,10 @@
 - A rule of words alone (no repository) applies inside the chosen projects only.
 - **Try** (`/day/period/try`) reads and shows what would be proposed (`recap_core.proposal`, the one `propose` uses): no entry is made. **Create the drafts** makes them, then the owner sends by rule (D-103).
 - **Preview**: a calendar, or a list with Kimai's columns (begin, end, duration, customer, project, activity, description, tags). It replaces the day-by-day table. Days off and empty weekend columns are not shown, and their work is not looked at. The rules to send are ticked from the start; sending is still confirmed.
+
+## D-105 · 2026-11-25 · accepted — An entry in its window; the same period again
+- Owner request: read and change each entry of the preview as in Kimai's own window; running the same period several times must not add the same thing again, only update what changed.
+- **Window**: date, begin, duration or end, customer, project, activity, description, tags. A draft may have its own project, activity and tags (`DayEntry.place`, `tags`), else its rule's. Saving an entry of the try makes the day's drafts first. What is in Kimai is shown, not changed there.
+- **Again**: a day with entries is compared with its facts (`recap_core.refreshes`). Same: left. Drafts Cairn made: their words follow, and they are made again when the day's rules change. Changed or added by hand (`edited`, and every entry from before this): left. GitHub read in part: nothing is refreshed. Work of a project and activity Kimai already holds that day is not proposed.
+- **Updating Kimai** (changes D-078's "no call that changes"): `kimai.update` changes the description and the tags only, of an entry Cairn sent (`sent_as` keeps what was sent), on the owner's confirmed send. Refused when the entry was changed or removed in Kimai since; nothing is deleted or made again there. Times of a sent entry stay: new work of another rule on that day is said, not added. Entries sent before this have no `sent_as`: never updated.
+- Read in Kimai's source first (`TimesheetController::patchAction`): a refused change answers 200 with the form's errors, so the answer must be the entry.

@@ -61,7 +61,8 @@ def _period(action, message):
         flash(str(exc), "danger")
     else:
         flash(message(done), "success")
-    return redirect(url_for("recap.period", **{"from": first.isoformat(), "to": last.isoformat()}))
+    view = {"view": "list"} if request.form.get("view") == "list" else {}
+    return redirect(url_for("recap.period", **{"from": first.isoformat(), "to": last.isoformat()}, **view))
 
 
 @recap.get("/day/period")
@@ -82,6 +83,7 @@ def period():
         weeks=weeks,
         columns=[n for n in range(7) if any(w[n] and (not w[n]["off"] or w[n]["blocks"]) for w in weeks)],
         problem=problem,
+        places=kimai.catalog() if found and kimai.configured() and not problem else [],
         choices=period_core.choices(),
         months=_months(date.today()),
         view="list" if request.args.get("view") == "list" else "calendar",
@@ -109,9 +111,47 @@ def propose_period():
     def told(done):
         for line in done["left"]:
             flash(line, "warning")
-        return f"Drafts proposed for {len(done['made'])} days: check them before you send."
+        return (
+            f"{len(done['made'])} days filled, {len(done['updated'])} brought up to date, the others are "
+            "left as they are: check before you send."
+        )
 
     return _period(period_core.propose_period, told)
+
+
+@recap.post("/day/period/entry")
+def period_entry():
+    """Save or remove one entry from its window, a draft or one of the try."""
+    form = request.form
+
+    def work(first, last):
+        entry_id = uuid.UUID(form["entry"]) if form.get("entry") else None
+        if entry_id and form.get("action") == "remove":
+            recap_core.delete_entry(entry_id)
+            return "Entry removed."
+        project, _, activity = form.get("place", "").partition(":")
+        data = validate(
+            EntryUpdate,
+            {
+                "day": form.get("day", ""),
+                "begin": form.get("begin", ""),
+                "minutes": _clock_minutes(form.get("duration", "")),
+                "description": form.get("description", ""),
+                "tags": split_list(form.get("tags")),
+                "kimai_project": project or None,
+                "kimai_activity": activity or None,
+            },
+        )
+        if entry_id:
+            recap_core.update_entry(entry_id, data)
+        else:
+            period_core.edit_trial(_day(form.get("trial_day", "")), uuid.UUID(form.get("rule", "")), data)
+        return "Entry saved."
+
+    try:
+        return _period(work, lambda told: told)
+    except ValueError:
+        abort(404)
 
 
 @recap.post("/day/period/send")
@@ -186,12 +226,16 @@ def propose(raw: str):
     return _act(raw, lambda: recap_core.propose(chosen), "Time entries proposed: check them before you send.")
 
 
-def _entry_form() -> dict[str, str]:
-    hours, _, minutes = request.form.get("duration", "").partition(":")
+def _clock_minutes(raw: str) -> int:
+    hours, _, minutes = raw.partition(":")
     try:
-        total = int(hours) * 60 + int(minutes or 0)
+        return int(hours) * 60 + int(minutes or 0)
     except ValueError as exc:
         raise FormErrors({"duration": "Write the duration as hours:minutes."}) from exc
+
+
+def _entry_form() -> dict[str, str]:
+    total = _clock_minutes(request.form.get("duration", ""))
     values = {name: request.form.get(name, "") for name in ("target_id", "begin", "description")}
     return {**values, "minutes": total}
 
