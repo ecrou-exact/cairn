@@ -49,7 +49,7 @@ def test_tools_are_counted(ctx, signed_in, tmp_path, monkeypatch):
     assert "Old" not in found
     assert [t["label"] for t in tools_core.overview("take note", "cairn")["tools"]] == ["take_note"]
     page = signed_in.get("/claude/tools").data
-    assert b"take_note" in page and b"asks you" in page and b"SECRET" not in page
+    assert b"take_note" in page and b"writes: your mode" in page and b"SECRET" not in page
     assert signed_in.get("/api/claude/tools?kind=skill").json["tools"][0]["label"] == "review"
     assert signed_in.get("/api/claude/tools?kind=x").status_code == 422
 

@@ -664,14 +664,14 @@ def test_nothing_of_cairn_reaches_what_it_starts(ctx, monkeypatch):
     assert not [key for key in terminal_core._environment() if key.upper().startswith("CAIRN_")]
 
 
-def test_rules_ask_for_changes_and_refuse_private_files(ctx, tmp_path):
+def test_writing_in_cairn_follows_the_mode_and_private_files_are_refused(ctx, tmp_path):
     from app.features.claude import mcp_server, session_settings
 
     code = main_core.code_folder().as_posix().lstrip("/")
     plain = session_settings.permissions(str(tmp_path))
     main = session_settings.permissions(str(main_core.folder()))
     assert f"Read(//{code}/.env)" in plain["deny"] and plain["deny"] == main["deny"]
-    assert {f"mcp__cairn__{name}" for name in mcp_server.WRITE_TOOLS} <= set(plain["ask"])
+    assert not [rule for rule in plain["ask"] + main["ask"] if rule.startswith("mcp__cairn__")]  # D-101
     assert f"Edit(//{code}/**)" in main["ask"] and "Bash(git push *)" in main["ask"]
     assert f"Edit(//{code}/**)" not in plain["ask"]
     assert not set(mcp_server.READ_TOOLS) & set(mcp_server.WRITE_TOOLS)

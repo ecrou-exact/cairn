@@ -24,7 +24,7 @@
   <tbody>{% for t in overview.tools %}<tr {% if not t.calls %}class="is-unused"{% endif %}>
     <td><code>{{ t.label }}</code>{% if t.about %}<span class="cn-tool-about">{{ t.about }}</span>{% endif %}</td>
     <td>{{ t.source }}</td>
-    <td>{% if t.asks is none %}<span class="cn-muted">Claude Code's</span>{% elif t.asks %}<span class="cn-badge cn-badge-warning">asks you</span>{% else %}<span class="cn-badge cn-badge-success">allowed</span>{% endif %}</td>
+    <td>{% if t.asks is none %}<span class="cn-muted">Claude Code's</span>{% elif t.asks %}<span class="cn-badge cn-badge-warning" title="Asked in the default mode, not in auto">writes: your mode</span>{% else %}<span class="cn-badge cn-badge-success">allowed</span>{% endif %}</td>
     <td><span class="cn-tool-calls"><meter min="0" max="{{ overview.most or 1 }}" value="{{ t.calls }}" aria-hidden="true"></meter>{{ t.calls }}</span></td>
     <td>{% if t.failed %}<span class="cn-due-late">{{ t.failed }}</span>{% else %}0{% endif %}</td>
     <td>{% if t.last %}<time data-instance-since="{{ t.last }}"></time>{% else %}<span class="cn-muted">not used</span>{% endif %}</td>

@@ -1,8 +1,9 @@
 """Cairn in every Claude Code of this machine (D-080): `manage.py claude-connect on | off | status | show`.
 
 Three things of the owner's own Claude Code configuration, shown first, put and removed together: the
-MCP server (by `claude mcp`), a skill that says when to use it, and rules so that what writes in Cairn
-is asked for in every permission mode. Nothing that is not Cairn's is changed.
+MCP server (by `claude mcp`), a skill that says when to use it, and a session start hook. Writing in
+Cairn follows the session's permission mode (D-101): the ask rules earlier versions put are taken out.
+Nothing that is not Cairn's is changed.
 """
 
 from __future__ import annotations
@@ -73,8 +74,20 @@ def _hooks_mine(entry: dict) -> bool:
     return any(HOOK in str(hook.get("command", "")) for hook in entry.get("hooks", []))
 
 
-def rules() -> list[str]:
-    return [f"mcp__{mcp_server.SERVER_NAME}__{name}" for name in mcp_server.WRITE_TOOLS]
+def _without_old_rules(data: dict) -> bool:
+    """Takes out the ask rules on Cairn's tools that earlier versions put; says if any was there."""
+    permissions = data.get("permissions", {})
+    asked = permissions.get("ask", [])
+    mine = f"mcp__{mcp_server.SERVER_NAME}__"
+    kept = [rule for rule in asked if not str(rule).startswith(mine)]
+    if kept == asked:
+        return False
+    permissions["ask"] = kept
+    if not kept:
+        del permissions["ask"]
+    if not permissions:
+        del data["permissions"]
+    return True
 
 
 def server_command() -> list[str]:
@@ -154,16 +167,16 @@ def show() -> str:
             "1. The MCP server, by this command:",
             f"   claude mcp add --scope user {mcp_server.SERVER_NAME} -- {command}",
             "",
-            f"2. Rules in {settings_file()} (permissions.ask), so that writing in Cairn is always asked:",
-            *(f"   {rule}" for rule in rules()),
-            "",
-            f"3. A session start hook in {settings_file()}: in a Cairn project's folder, Claude is told so",
+            f"2. A session start hook in {settings_file()}: in a Cairn project's folder, Claude is told so",
             "   and to keep its tasks true; silent anywhere else:",
             f"   {hook_command()}",
             "",
-            f"4. A skill, {skill_file()}:",
+            f"3. A skill, {skill_file()}:",
             "",
             *(f"   {line}".rstrip() for line in SKILL.read_text(encoding="utf-8").splitlines()),
+            "",
+            "Writing in Cairn follows your permission mode: asked in the default mode, not in auto.",
+            f"Ask rules on Cairn's tools that an earlier version left in {settings_file()} are taken out.",
             "",
             "Removed by: manage.py claude-connect off",
         ]
@@ -172,9 +185,8 @@ def show() -> str:
 
 def status() -> dict[str, bool]:
     data = _settings()
-    asked = data.get("permissions", {}).get("ask", [])
     hook = any(_hooks_mine(e) for e in data.get("hooks", {}).get("SessionStart", []))
-    return {"server": _registered(), "rules": set(rules()) <= set(asked), "skill": _ours(), "hook": hook}
+    return {"server": _registered(), "skill": _ours(), "hook": hook}
 
 
 def on() -> None:
@@ -190,16 +202,13 @@ def on() -> None:
     added = _mcp("add", "--scope", "user", mcp_server.SERVER_NAME, "--", *server_command())
     if added.returncode:
         raise ConnectError((added.stderr or added.stdout).strip()[:300] or "claude mcp add failed.")
-    permissions = data.setdefault("permissions", {})
-    asked = permissions.setdefault("ask", [])
-    missing = [rule for rule in rules() if rule not in asked]
+    old_rules = _without_old_rules(data)
     starts = data.setdefault("hooks", {}).setdefault("SessionStart", [])
     mine = {"hooks": [{"type": "command", "command": hook_command(), "timeout": 20}]}
     hook_changed = [e for e in starts if _hooks_mine(e)] != [mine]
     if hook_changed:
         starts[:] = [e for e in starts if not _hooks_mine(e)] + [mine]
-    if missing or hook_changed:
-        asked += missing
+    if old_rules or hook_changed:
         _write(data)
     skill_file().parent.mkdir(parents=True, exist_ok=True)
     skill_file().write_text(SKILL.read_text(encoding="utf-8"), encoding="utf-8")
@@ -209,25 +218,17 @@ def off() -> None:
     data = _settings()
     if "manage.py" in _mcp("get", mcp_server.SERVER_NAME).stdout:
         _mcp("remove", "--scope", "user", mcp_server.SERVER_NAME)
-    permissions = data.get("permissions", {})
-    asked = permissions.get("ask", [])
-    mine = f"mcp__{mcp_server.SERVER_NAME}__"
-    kept = [rule for rule in asked if not str(rule).startswith(mine)]
     hooks = data.get("hooks", {})
     starts = hooks.get("SessionStart", [])
+    changed = _without_old_rules(data)
     if any(_hooks_mine(e) for e in starts):
         hooks["SessionStart"] = [e for e in starts if not _hooks_mine(e)]
         if not hooks["SessionStart"]:
             del hooks["SessionStart"]
         if not hooks:
             del data["hooks"]
-        _write(data)
-    if kept != asked:
-        permissions["ask"] = kept
-        if not kept:
-            del permissions["ask"]
-        if not permissions:
-            del data["permissions"]
+        changed = True
+    if changed:
         _write(data)
     if _ours():
         skill_file().unlink()

@@ -146,17 +146,17 @@ def claude_home(tmp_path, monkeypatch):
 def test_connecting_changes_only_what_is_cairns(claude_home):
     home, held = claude_home
     mine = {"model": "opus", "permissions": {"ask": ["Bash(git push *)"], "allow": ["Read"]}}
-    (home / "settings.json").write_text(json.dumps(mine))
+    left = ["Bash(git push *)", "mcp__cairn__start_project"]
+    old = {**mine, "permissions": {**mine["permissions"], "ask": left}}
+    (home / "settings.json").write_text(json.dumps(old))  # as an earlier version left it
     assert "claude mcp add --scope user cairn" in connect_core.show() and not held
     connect_core.on()
     connect_core.on()  # again, after an update
-    assert connect_core.status() == {"server": True, "rules": True, "skill": True, "hook": True}
+    assert connect_core.status() == {"server": True, "skill": True, "hook": True}
     data = json.loads((home / "settings.json").read_text())
-    assert data["model"] == "opus" and data["permissions"]["ask"][0] == "Bash(git push *)"
-    assert "mcp__cairn__start_project" in data["permissions"]["ask"]
+    assert data["model"] == "opus" and data["permissions"]["ask"] == ["Bash(git push *)"]  # D-101
     (hook,) = data["hooks"]["SessionStart"]
     assert "claude-hook" in hook["hooks"][0]["command"]
-    assert len(data["permissions"]["ask"]) == len(set(data["permissions"]["ask"]))
     assert len(list(home.glob("settings.json.cairn-*.bak"))) == 1
     connect_core.off()
     assert json.loads((home / "settings.json").read_text()) == mine
