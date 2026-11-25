@@ -143,6 +143,22 @@ def claude_home(tmp_path, monkeypatch):
     return home, held
 
 
+def data_hooks(home):
+    return json.loads((home / "settings.json").read_text())["hooks"]
+
+
+def test_writes_go_through_only_while_the_owner_says_so(ctx):
+    from app.core.utils.settings import set_setting
+
+    call = json.dumps({"hook_event_name": "PreToolUse", "tool_name": "mcp__cairn__create_task"})
+    assert connect_core.tool_decision(call) == ""
+    set_setting("claude.cairn_writes_allowed", True)
+    told = json.loads(connect_core.tool_decision(call))["hookSpecificOutput"]
+    assert told["permissionDecision"] == "allow" and told["hookEventName"] == "PreToolUse"
+    other = json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Bash"})
+    assert connect_core.tool_decision(other) == ""
+
+
 def test_connecting_changes_only_what_is_cairns(claude_home):
     home, held = claude_home
     mine = {"model": "opus", "permissions": {"ask": ["Bash(git push *)"], "allow": ["Read"]}}
@@ -153,6 +169,7 @@ def test_connecting_changes_only_what_is_cairns(claude_home):
     connect_core.on()
     connect_core.on()  # again, after an update
     assert connect_core.status() == {"server": True, "skill": True, "hook": True}
+    assert "claude-hook" in data_hooks(home)["PreToolUse"][0]["hooks"][0]["command"]
     data = json.loads((home / "settings.json").read_text())
     assert data["model"] == "opus" and data["permissions"]["ask"] == ["Bash(git push *)"]  # D-101
     (hook,) = data["hooks"]["SessionStart"]

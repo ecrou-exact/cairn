@@ -16,6 +16,7 @@ python manage.py check         lint, security scan and tests — run before decl
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import secrets
 import subprocess  # nosec B404 (fixed argument lists only, never a shell)
@@ -165,15 +166,18 @@ def cmd_open(_: argparse.Namespace) -> int:
 
 
 def cmd_claude_hook(_: argparse.Namespace) -> int:
-    """Claude Code's SessionStart hook (D-100): in a folder of a Cairn project, Claude is told so and
-    to keep its tasks true. Silent anywhere else, and when Cairn cannot be read: never in the way."""
+    """Claude Code's hooks. SessionStart (D-100): in a folder of a Cairn project, Claude is told so and
+    to keep its tasks true. PreToolUse (D-102): Cairn's write tools let through while the owner's
+    setting says so. Silent otherwise, and when Cairn cannot be read: never in the way."""
     from dotenv import load_dotenv
 
     load_dotenv(ENV_FILE)
     try:
         from app.features.claude import connect_core
 
-        told = connect_core.session_context(sys.stdin.read())
+        raw = sys.stdin.read()
+        event = (json.loads(raw or "{}") or {}).get("hook_event_name")
+        told = connect_core.tool_decision(raw) if event == "PreToolUse" else connect_core.session_context(raw)
     except Exception:  # a hook never stops Claude Code
         return 0
     if told:
@@ -263,9 +267,9 @@ def main() -> int:
     sub.add_parser("mcp", help="Cairn's MCP server over stdio (started by Claude Code)").set_defaults(
         func=cmd_mcp
     )
-    sub.add_parser(
-        "claude-hook", help="Claude Code's session start hook (used by claude-connect)"
-    ).set_defaults(func=cmd_claude_hook)
+    sub.add_parser("claude-hook", help="Claude Code's hooks (used by claude-connect)").set_defaults(
+        func=cmd_claude_hook
+    )
     connect = sub.add_parser("claude-connect", help="Cairn's tools in every Claude Code of this machine")
     connect.add_argument("action", choices=("show", "on", "off", "status"))
     connect.set_defaults(func=cmd_claude_connect)

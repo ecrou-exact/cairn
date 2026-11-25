@@ -675,6 +675,18 @@ def test_writing_in_cairn_follows_the_mode_and_private_files_are_refused(ctx, tm
     assert f"Edit(//{code}/**)" in main["ask"] and "Bash(git push *)" in main["ask"]
     assert f"Edit(//{code}/**)" not in plain["ask"]
     assert not set(mcp_server.READ_TOOLS) & set(mcp_server.WRITE_TOOLS)
+    assert plain["allow"] == []
+
+
+def test_the_owner_can_let_cairn_writes_through(ctx, tmp_path):
+    from app.core.utils.settings import set_setting
+    from app.features.claude import session_settings
+
+    set_setting("claude.cairn_writes_allowed", True)
+    allowed = session_settings.permissions(str(tmp_path))["allow"]
+    assert "mcp__cairn__create_task" in allowed and "mcp__cairn__list_tasks" not in allowed
+    main = session_settings.permissions(str(main_core.folder()))
+    assert "Bash(git push *)" in main["ask"]  # still asked
 
 
 @pytest.mark.skipif(os.name != "posix", reason="POSIX permissions")

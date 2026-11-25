@@ -121,6 +121,7 @@ Goal: owner approves architecture + design direction.
 - [x] Resources opened, copied, downloaded and zipped from a project or a task (D-096)
 - [x] Commits kept on tasks; a pull request merged from Cairn by the owner (D-099)
 - [x] Writing in Cairn follows the permission mode: not asked in auto (D-101)
+- [x] Setting "Claude writes in Cairn without asking", for Cairn's sessions and the terminal's (D-102)
 - [ ] Two-way sync (owner request 2026-11-23): what is done outside Cairn shows up live; Claude Code in the owner's terminal keeps Cairn up to date
 - [ ] Stop / "pause" (interrupt + resume by session id) / mid-run instruction / re-run with corrections
 - [ ] Permission UI (`can_use_tool` + `PreToolUse` hooks), directory allowlist (`cwd` + `add_dirs`), sandbox on Linux/macOS

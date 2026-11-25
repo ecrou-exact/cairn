@@ -1,0 +1,6 @@
+{
+  "label": "Claude writes in Cairn without asking",
+  "category": "Claude",
+  "description": "On: every Claude (the ones Cairn opens and, once `manage.py claude-connect on` was run, the ones of your terminal) creates and changes tasks, statuses, comments and notes in Cairn without asking you, in every permission mode. Each change stays logged as that session's and can be undone. Pushing, merging and changing Cairn's own code are still asked. Off: your permission mode decides (asked in the default mode, not in auto).",
+  "value": false
+}

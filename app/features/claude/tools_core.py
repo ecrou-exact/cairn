@@ -15,6 +15,7 @@ from typing import Any
 
 from flask import current_app
 
+from app.core.utils.settings import get_setting
 from app.features.claude import mcp_server, transcript_core
 
 DAYS = 7
@@ -110,6 +111,7 @@ def overview(search: str = "", kind: str = "") -> dict[str, Any]:
             conversations[name] += 1
     described = _described()
     ours = {f"mcp__{mcp_server.SERVER_NAME}__{name}" for name in described}
+    allowed = bool(get_setting("claude.cairn_writes_allowed"))  # D-102
     words, rows = search.lower().split(), []
     for name in {*calls, *ours}:
         label, source = _label(name)
@@ -120,7 +122,7 @@ def overview(search: str = "", kind: str = "") -> dict[str, Any]:
             "source": source,
             "kind": _kind(name),
             "about": about,
-            "asks": label in mcp_server.WRITE_TOOLS if name in ours else None,
+            "asks": label in mcp_server.WRITE_TOOLS and not allowed if name in ours else None,
             "calls": calls[name],
             "failed": failed[name],
             "conversations": conversations[name],

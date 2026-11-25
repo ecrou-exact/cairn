@@ -1,8 +1,10 @@
 """Cairn in every Claude Code of this machine (D-080): `manage.py claude-connect on | off | status | show`.
 
-Three things of the owner's own Claude Code configuration, shown first, put and removed together: the
-MCP server (by `claude mcp`), a skill that says when to use it, and a session start hook. Writing in
-Cairn follows the session's permission mode (D-101): the ask rules earlier versions put are taken out.
+Four things of the owner's own Claude Code configuration, shown first, put and removed together: the
+MCP server (by `claude mcp`), a skill that says when to use it, a session start hook, and a hook before
+Cairn's write tools that lets them through without asking while `claude.cairn_writes_allowed` is on
+(D-102). Otherwise writing in Cairn follows the session's permission mode (D-101): the ask rules
+earlier versions put are taken out.
 Nothing that is not Cairn's is changed.
 """
 
@@ -68,6 +70,69 @@ def session_context(raw: str) -> str:
             "with what was done. The owner relies on Cairn to find everything later."
             + (f" Next in this project: {'; '.join(nxt)}." if nxt else "")
         )
+
+
+def tool_decision(raw: str) -> str:
+    """PreToolUse (D-102): Cairn's write tools allowed while the owner's setting says so; else silent,
+    and Claude Code's own permission flow applies."""
+    from flask import has_app_context
+
+    from app import create_app
+    from app.core.utils.settings import get_setting
+    from app.features.claude import session_settings
+
+    tool = (json.loads(raw or "{}") or {}).get("tool_name")
+    if tool not in session_settings.cairn_writes():
+        return ""
+    if has_app_context():
+        allowed = get_setting("claude.cairn_writes_allowed")
+    else:  # the hook runs as a program of its own
+        with create_app().app_context():
+            allowed = get_setting("claude.cairn_writes_allowed")
+    if not allowed:
+        return ""
+    reason = "Cairn: the owner lets Claude write in Cairn without asking (claude.cairn_writes_allowed)."
+    return json.dumps(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "allow",
+                "permissionDecisionReason": reason,
+            }
+        }
+    )
+
+
+def _tool_matcher() -> str:
+    from app.features.claude import session_settings
+
+    return "|".join(session_settings.cairn_writes())
+
+
+def _wanted() -> dict[str, dict]:
+    """Cairn's hook entry for each event of Claude Code it listens to."""
+    command = {"type": "command", "command": hook_command()}
+    return {
+        "SessionStart": {"hooks": [{**command, "timeout": 20}]},
+        "PreToolUse": {"matcher": _tool_matcher(), "hooks": [{**command, "timeout": 10}]},
+    }
+
+
+def _set_hooks(data: dict, wanted: dict[str, dict]) -> bool:
+    """Puts Cairn's entries as `wanted` says (none for an event not in it); says if anything changed."""
+    hooks, changed = data.setdefault("hooks", {}), False
+    for event in {*hooks, *wanted}:
+        entries = hooks.get(event, [])
+        others = [e for e in entries if not _hooks_mine(e)]
+        new = others + ([wanted[event]] if event in wanted else [])
+        if new != entries:
+            changed = True
+            hooks[event] = new
+            if not new:
+                del hooks[event]
+    if not hooks:
+        del data["hooks"]
+    return changed
 
 
 def _hooks_mine(entry: dict) -> bool:
@@ -167,15 +232,18 @@ def show() -> str:
             "1. The MCP server, by this command:",
             f"   claude mcp add --scope user {mcp_server.SERVER_NAME} -- {command}",
             "",
-            f"2. A session start hook in {settings_file()}: in a Cairn project's folder, Claude is told so",
-            "   and to keep its tasks true; silent anywhere else:",
+            f"2. Two hooks in {settings_file()}, by this command:",
             f"   {hook_command()}",
+            "   at session start: in a Cairn project's folder, Claude is told so and to keep its tasks true;",
+            "   before Cairn's write tools: let through without asking while “Claude writes in Cairn without",
+            "   asking” is on in Cairn's settings; silent otherwise, and your permission mode decides.",
             "",
             f"3. A skill, {skill_file()}:",
             "",
             *(f"   {line}".rstrip() for line in SKILL.read_text(encoding="utf-8").splitlines()),
             "",
-            "Writing in Cairn follows your permission mode: asked in the default mode, not in auto.",
+            "Writing in Cairn follows your permission mode (asked in the default mode, not in auto),",
+            "unless “Claude writes in Cairn without asking” is on.",
             f"Ask rules on Cairn's tools that an earlier version left in {settings_file()} are taken out.",
             "",
             "Removed by: manage.py claude-connect off",
@@ -185,7 +253,8 @@ def show() -> str:
 
 def status() -> dict[str, bool]:
     data = _settings()
-    hook = any(_hooks_mine(e) for e in data.get("hooks", {}).get("SessionStart", []))
+    hooks = data.get("hooks", {})
+    hook = all(wanted in hooks.get(event, []) for event, wanted in _wanted().items())
     return {"server": _registered(), "skill": _ours(), "hook": hook}
 
 
@@ -203,11 +272,7 @@ def on() -> None:
     if added.returncode:
         raise ConnectError((added.stderr or added.stdout).strip()[:300] or "claude mcp add failed.")
     old_rules = _without_old_rules(data)
-    starts = data.setdefault("hooks", {}).setdefault("SessionStart", [])
-    mine = {"hooks": [{"type": "command", "command": hook_command(), "timeout": 20}]}
-    hook_changed = [e for e in starts if _hooks_mine(e)] != [mine]
-    if hook_changed:
-        starts[:] = [e for e in starts if not _hooks_mine(e)] + [mine]
+    hook_changed = _set_hooks(data, _wanted())
     if old_rules or hook_changed:
         _write(data)
     skill_file().parent.mkdir(parents=True, exist_ok=True)
@@ -218,17 +283,8 @@ def off() -> None:
     data = _settings()
     if "manage.py" in _mcp("get", mcp_server.SERVER_NAME).stdout:
         _mcp("remove", "--scope", "user", mcp_server.SERVER_NAME)
-    hooks = data.get("hooks", {})
-    starts = hooks.get("SessionStart", [])
     changed = _without_old_rules(data)
-    if any(_hooks_mine(e) for e in starts):
-        hooks["SessionStart"] = [e for e in starts if not _hooks_mine(e)]
-        if not hooks["SessionStart"]:
-            del hooks["SessionStart"]
-        if not hooks:
-            del data["hooks"]
-        changed = True
-    if changed:
+    if _set_hooks(data, {}) or changed:
         _write(data)
     if _ours():
         skill_file().unlink()

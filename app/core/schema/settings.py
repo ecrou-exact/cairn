@@ -158,6 +158,7 @@ SETTING_TYPES: dict[str, TypeAdapter] = {
     "tasks.templates": TypeAdapter(Annotated[dict[KEY, TaskTemplate], Field(max_length=50)]),
     "resources.max_upload_mb": TypeAdapter(Annotated[int, Field(strict=True, ge=1, le=50)]),
     "claude.main_autostart": TypeAdapter(Annotated[bool, Field(strict=True)]),
+    "claude.cairn_writes_allowed": TypeAdapter(Annotated[bool, Field(strict=True)]),
     "claude.worktrees": TypeAdapter(Annotated[bool, Field(strict=True)]),
     "claude.max_open": TypeAdapter(Annotated[int, Field(strict=True, ge=1, le=50)]),
     "projects.transfer_folder": TypeAdapter(Annotated[str, Field(max_length=500)]),
