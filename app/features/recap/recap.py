@@ -83,6 +83,7 @@ def period():
         weeks=weeks,
         columns=[n for n in range(7) if any(w[n] and (not w[n]["off"] or w[n]["blocks"]) for w in weeks)],
         problem=problem,
+        gone=sum(cell["gone"] for week in weeks for cell in week if cell),
         places=kimai.catalog() if found and kimai.configured() and not problem else [],
         choices=period_core.choices(),
         months=_months(date.today()),
@@ -117,6 +118,11 @@ def propose_period():
         )
 
     return _period(period_core.propose_period, told)
+
+
+@recap.post("/day/period/put-back")
+def put_back_period():
+    return _period(period_core.put_back_period, lambda n: f"{n} entries are drafts again: look, then send.")
 
 
 @recap.post("/day/period/entry")

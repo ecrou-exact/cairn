@@ -111,6 +111,17 @@ def edit_trial(day: date, target_id: uuid.UUID, data: EntryUpdate, begin: str = 
         return recap_core.update_entry(entry.id, data)
 
 
+def put_back_period(first: date, last: date) -> int:
+    """Make drafts again of the period's entries removed in Kimai; how many."""
+    back = 0
+    for day in days(first, last):
+        if any(e.sent_at for e in recap_core.entries(day)):
+            back += recap_core.put_back(day)
+    if not back:
+        raise RecapError("Kimai still holds every entry sent in this period.")
+    return back
+
+
 def send_period(first: date, last: date, rule_ids: list[uuid.UUID]) -> int:
     """Send the drafts of the period whose rule is chosen, day by day; the number sent. A day that
     fails stops the rest; the days before it stay sent."""
@@ -245,6 +256,10 @@ def preview(found: dict[str, Any]) -> list[list[dict[str, Any] | None]]:
                 "state": "update" if new else "kimai",
             }
             blocks.append(_block(row["day"], k["begin"], k["end"], more))
+        there_ids = {k["id"] for k in held}
+        gone = [e for e in sent.values() if kimai.configured() and e["kimai_id"] not in there_ids]
+        if gone:
+            said = [*said, f"{len(gone)} sent, no longer in Kimai"]
         for entry in mine + trial:
             begin = datetime.fromisoformat(f"{row['day']}T{entry['begin']}")
             more = {
@@ -266,6 +281,7 @@ def preview(found: dict[str, Any]) -> list[list[dict[str, Any] | None]]:
                 "day": row["day"],
                 "off": row["off"],
                 "blocks": blocks,
+                "gone": len(gone),
                 "minutes": sum(b["minutes"] for b in blocks),
                 "problems": said + _problems(row, mine + trial, blocks),
             }
@@ -331,7 +347,7 @@ def _problems(row: dict[str, Any], drafts: list[dict[str, Any]], blocks: list[di
     if not row["off"]:
         if not row["read"]:
             said.append("not read")
-        elif row["facts"]["repos"] and not blocks:
+        elif row["facts"]["repos"] and not blocks and not row["entries"]:
             said.append("work without time")
         elif not row["facts"]["repos"] and not blocks:
             said.append("no work found")

@@ -649,3 +649,49 @@ def test_an_update_kimai_refuses_is_said(monkeypatch):
     monkeypatch.setattr(kimai, "_call", lambda *a, **k: {"code": 400, "errors": {}})
     with pytest.raises(kimai.KimaiError, match="did not take"):
         kimai.update(5, "x", [])
+
+
+def test_entries_removed_in_kimai_are_said_and_put_back(app, signed_in, tracking, monkeypatch):
+    with app.app_context():
+        rule = _rule().id
+    monkeypatch.setattr(facts_core, "gather_span", lambda a, b: {DAY: _facts(_commit("x", 9))})
+    held_there = set()
+    monkeypatch.setattr(kimai, "exists", lambda n: n in held_there or any(h["id"] == n for h in tracking))
+    url, page = f"/api/period/{DAY}/{DAY}", f"/day/period?from={DAY}&to={DAY}"
+    for step in ("read", "propose"):
+        signed_in.post(f"{url}/{step}")
+    signed_in.post(f"{url}/send", json={"rules": [str(rule)]})
+    assert (
+        signed_in.post(f"{url}/put-back").status_code == 409
+        and b"Put them back" not in signed_in.get(page).data
+    )
+    tracking.clear()
+    shown = signed_in.get(page).data
+    assert b"1 sent, no longer in Kimai" in shown and b"Put them back" in shown
+    assert b"work without time" not in shown
+    held_there.add(100)  # not listed, but there: never made twice
+    assert signed_in.post(f"{url}/put-back").status_code == 409
+    held_there.clear()
+    with app.app_context(), acting_as("claude:x"), pytest.raises(recap_core.RecapError, match="owner"):
+        recap_core.put_back(DAY)
+    form = {"from": DAY.isoformat(), "to": DAY.isoformat()}
+    back = signed_in.post("/day/period/put-back", data=form, follow_redirects=True).data
+    assert b"1 entries are drafts again" in back and b"Put them back" not in back and tracking == []
+    (week,) = signed_in.get(f"{url}/preview").json["weeks"]
+    assert [b["state"] for b in week[4]["blocks"]] == ["draft"]
+    signed_in.post(f"{url}/send", json={"rules": [str(rule)]})
+    assert len(tracking) == 1
+
+
+def test_only_a_404_means_an_entry_is_gone(monkeypatch):
+    def missing(*a, **k):
+        raise kimai.KimaiMissing("no")
+
+    def refused(*a, **k):
+        raise kimai.KimaiError("refused")
+
+    monkeypatch.setattr(kimai, "_call", missing)
+    assert not kimai.exists(1)
+    monkeypatch.setattr(kimai, "_call", refused)
+    with pytest.raises(kimai.KimaiError):
+        kimai.exists(1)

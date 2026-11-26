@@ -27,6 +27,10 @@ class KimaiError(ValueError):
     pass
 
 
+class KimaiMissing(KimaiError):
+    """Kimai has no such thing (404)."""
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     """A redirect would carry the token to another address."""
 
@@ -64,7 +68,7 @@ def _call(path: str, data: dict[str, Any] | None = None, method: str = "POST") -
         with urllib.request.build_opener(_NoRedirect).open(request, timeout=TIMEOUT) as answer:
             return json.load(answer)
     except urllib.error.HTTPError as exc:
-        raise KimaiError(_refusal(exc)) from None
+        raise (KimaiMissing if exc.code == 404 else KimaiError)(_refusal(exc)) from None
     except (urllib.error.URLError, TimeoutError, OSError, ValueError):
         raise KimaiError("Kimai did not answer as expected. Check it before you send again.") from None
 
@@ -180,3 +184,12 @@ def update(kimai_id: int, description: str, tags: list[str]) -> None:
     answer = _call(f"timesheets/{kimai_id}", data, method="PATCH")
     if not isinstance(answer, dict) or answer.get("id") != kimai_id:
         raise KimaiError("Kimai did not take the change. Check the entry there.")
+
+
+def exists(kimai_id: int) -> bool:
+    """Whether Kimai still holds an entry; any other answer than yes or "no such entry" is an error."""
+    try:
+        _call(f"timesheets/{kimai_id}")
+    except KimaiMissing:
+        return False
+    return True

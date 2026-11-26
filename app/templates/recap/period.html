@@ -46,6 +46,8 @@
   <header class="cn-home-head"><h2 id="preview-title">2. Look: {{ first.strftime("%d %B") }} to {{ last.strftime("%d %B %Y") }}</h2>
     <nav class="cn-period-views" aria-label="View"><a class="btn btn-sm {{ 'btn-primary' if view == 'calendar' else 'btn-outline-secondary' }}" href="{{ when('calendar') }}" {% if view == 'calendar' %}aria-current="true"{% endif %}>Calendar</a><a class="btn btn-sm {{ 'btn-primary' if view == 'list' else 'btn-outline-secondary' }}" href="{{ when('list') }}" {% if view == 'list' %}aria-current="true"{% endif %}>List</a></nav></header>
   <p class="cn-muted">Click an entry to read or change it. Dashed: the try. Plain: your drafts. Lock: already in Kimai, left as it is. Arrows: in Kimai, to update.{% if not kimai_ready %} Kimai is not set.{% endif %}</p>
+  {% if gone %}<div class="alert alert-warning">{{ gone }} entr{{ "y" if gone == 1 else "ies" }} sent from Cairn {{ "is" if gone == 1 else "are" }} no longer in Kimai. Put back, they are drafts here again; nothing is sent.
+    <form method="post" action="{{ url_for('recap.put_back_period') }}" data-slow="Checking Kimai…">{{ csrf() }}{{ span() }}<button class="btn btn-primary mt-2" type="submit"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i><span class="ms-2">Put them back</span></button></form></div>{% endif %}
   {% if view == "calendar" %}
   <div class="table-responsive"><table class="table cn-cal">
     <thead><tr>{% for n in columns %}<th scope="col">{{ ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")[n] }}</th>{% endfor %}</tr></thead>

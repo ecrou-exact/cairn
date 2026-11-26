@@ -613,6 +613,34 @@ def _update_one(entry: DayEntry) -> None:
         )
 
 
+def put_back(day: date) -> int:
+    """Make drafts again of the entries of a day that were removed in Kimai (D-107); how many."""
+    if current_actor() != "user":
+        raise RecapError("Only the owner puts entries back.")
+    if not _sending.acquire(blocking=False):
+        raise RecapError("Entries are being sent already.")
+    try:
+        # the list first: it answers, so a "no such entry" is about the entry
+        listed = {row["id"] for row in kimai.entries(day)}
+        gone = [
+            e
+            for e in entries(day)
+            if e.kimai_id and e.kimai_id not in listed and not kimai.exists(e.kimai_id)
+        ]
+        with batch():
+            for entry in gone:
+                log_action(
+                    "day_entry.put_back",
+                    target_type="day_entry",
+                    target_id=entry.id,
+                    meta={"kimai_id": entry.kimai_id},
+                )
+                entry.kimai_id = entry.sent_at = entry.sent_as = None
+    finally:
+        _sending.release()
+    return len(gone)
+
+
 def _same(entry: DayEntry, there: list[dict[str, Any]]) -> int | None:
     """This very entry, sent before and whose answer was lost."""
     where, begin = placed(entry), _begin(entry)

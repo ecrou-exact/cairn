@@ -75,6 +75,12 @@ def propose_period(first: str, last: str):
     return jsonify(_guard(period_core.propose_period, _day(first), _day(last))), 201
 
 
+@recap_api.post("/period/<first>/<last>/put-back")
+def put_back_period(first: str, last: str):
+    """Make drafts again of the period's entries that were removed in Kimai."""
+    return jsonify(back=_guard(period_core.put_back_period, _day(first), _day(last)))
+
+
 @recap_api.post("/period/<first>/<last>/send")
 def send_period(first: str, last: str):
     """Create in Kimai the period's drafts of the named rules."""

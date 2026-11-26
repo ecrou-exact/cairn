@@ -589,3 +589,6 @@
 - Owner request: 8 h a day at most, shared: four entries are 2 h each. `share` gives equal parts in steps of 15 minutes, at most one step apart, exactly the total.
 - Sending refuses a day that would hold more than `recap.day_minutes`, counting what Kimai holds; nothing of that day is sent. The drafts may go past it (the preview says so). A day too short for one step each is not proposed.
 - The entries go from `recap.day_start` (8:00) to its length later (16:00), in the time Kimai leaves: an entry stops where Kimai holds something and goes on after it. Nothing is proposed outside.
+
+## D-107 · 2026-11-25 · accepted — Entries removed in Kimai are said, and put back by the owner
+- A day sent then removed in Kimai showed nothing. The preview says how many entries are no longer there; **Put them back** makes them drafts again (the owner's click, not an MCP tool; nothing is sent). Only an entry Kimai answers 404 for, after its list answered: one it still holds is never made twice.
